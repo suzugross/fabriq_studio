@@ -65,6 +65,8 @@ desktop.ini
 !/logs/history
 !/logs/history/.gitkeep
 
+**/template/
+
 # 巨大なバイナリ（インストーラー・ドライバー等）
 *.iso
 *.msi
