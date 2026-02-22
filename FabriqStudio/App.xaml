@@ -48,6 +48,10 @@
                 <views:WelcomeView />
             </DataTemplate>
 
+            <DataTemplate DataType="{x:Type vm:RegistryCollectionViewModel}">
+                <views:RegistryCollectionView />
+            </DataTemplate>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

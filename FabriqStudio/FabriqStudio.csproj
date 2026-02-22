@@ -25,6 +25,23 @@
 
 
   <!--
+    ビルド後に registry_collection/ を出力ディレクトリへコピーする。
+    初回インストール時の初期カタログとして同梱される。
+    SkipUnchangedFiles="true" により、ユーザーが出力先を編集した場合でも
+    ソース側が変更されていなければ上書きされない。
+  -->
+  <Target Name="CopyRegistryCollectionFiles" AfterTargets="Build">
+    <ItemGroup>
+      <RegistryCollectionFiles
+          Include="$(MSBuildProjectDirectory)\registry_collection\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(RegistryCollectionFiles)"
+          DestinationFiles="@(RegistryCollectionFiles->
+            '$(OutDir)registry_collection\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <!--
     ビルド後に template/ を出力ディレクトリへコピーする。
     除外: .git / .claude / dev（テンプレート差し替え時の予防的除外）
   -->
