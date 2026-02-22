@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -34,7 +35,7 @@ public partial class HostListViewModel : ObservableObject
         try
         {
             var items = await _csvService.ReadAsync<HostEntry>("kernel/csv/hostlist.csv");
-            Hosts = new ObservableCollection<HostEntry>(items);
+            Hosts = new ObservableCollection<HostEntry>(items.OrderBy(h => h.AdminID));
         }
         catch (Exception ex)
         {

@@ -1,12 +1,15 @@
 using System.Data;
 using System.Globalization;
 using System.IO;
+using System.Text;
 using CsvHelper;
 
 namespace FabriqStudio.Services;
 
 public class FileService : IFileService
 {
+    private static readonly Encoding Utf8Bom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
+
     public async Task<string?> ReadTextAsync(string absolutePath)
     {
         if (!File.Exists(absolutePath))
@@ -43,5 +46,27 @@ public class FileService : IFileService
         }
 
         return table;
+    }
+
+    public async Task WriteTextAsync(string absolutePath, string content)
+        => await File.WriteAllTextAsync(absolutePath, content, Utf8Bom);
+
+    public async Task WriteCsvFromDataTableAsync(string absolutePath, DataTable table)
+    {
+        using var writer = new StreamWriter(absolutePath, append: false, encoding: Utf8Bom);
+        using var csv    = new CsvWriter(writer, CultureInfo.InvariantCulture);
+
+        // ヘッダー行
+        foreach (DataColumn col in table.Columns)
+            csv.WriteField(col.ColumnName);
+        await csv.NextRecordAsync();
+
+        // データ行
+        foreach (DataRow row in table.Rows)
+        {
+            foreach (DataColumn col in table.Columns)
+                csv.WriteField(row[col]?.ToString() ?? "");
+            await csv.NextRecordAsync();
+        }
     }
 }

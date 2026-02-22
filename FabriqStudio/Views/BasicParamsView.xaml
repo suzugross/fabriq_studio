@@ -149,11 +149,38 @@
                         <TextBlock DockPanel.Dock="Left"
                                    Text="作業者管理"
                                    Style="{StaticResource SectionHeaderStyle}" />
-                        <!-- 保存ステータス -->
+
+                        <!-- 右: ロックトグル -->
+                        <ToggleButton DockPanel.Dock="Right"
+                                      IsChecked="{Binding IsWorkersLocked}"
+                                      Padding="8,3" FontSize="11" Cursor="Hand">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton">
+                                    <Setter Property="Content" Value="🔒 ロック中" />
+                                    <Style.Triggers>
+                                        <Trigger Property="IsChecked" Value="False">
+                                            <Setter Property="Content" Value="✏️ 編集中" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                        </ToggleButton>
+
+                        <!-- 右: 未保存インジケーター -->
+                        <TextBlock DockPanel.Dock="Right"
+                                   Text="● 未保存"
+                                   Foreground="OrangeRed" FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
+                                   Visibility="{Binding IsWorkersDirty,
+                                       Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                        <!-- 右: 保存ステータス -->
                         <TextBlock DockPanel.Dock="Right"
                                    Text="{Binding WorkersSaveStatus}"
                                    Foreground="#107C10" FontSize="12"
                                    VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
                                    Visibility="{Binding WorkersSaveStatus,
                                        Converter={StaticResource NullToCollapsedConverter}}" />
                     </DockPanel>
@@ -172,12 +199,12 @@
                                Visibility="{Binding IsWorkersLoading,
                                    Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                    <!-- DataGrid（行追加・削除対応） -->
+                    <!-- DataGrid: IsReadOnly / CanUserAddRows / CanUserDeleteRows をロックに連動 -->
                     <DataGrid ItemsSource="{Binding Workers}"
-                              IsReadOnly="False"
+                              IsReadOnly="{Binding IsWorkersLocked}"
                               AutoGenerateColumns="False"
-                              CanUserAddRows="True"
-                              CanUserDeleteRows="True"
+                              CanUserAddRows="{Binding IsWorkersEditable}"
+                              CanUserDeleteRows="{Binding IsWorkersEditable}"
                               CanUserReorderColumns="False"
                               CanUserResizeColumns="True"
                               GridLinesVisibility="Horizontal"
@@ -205,11 +232,38 @@
                         <TextBlock DockPanel.Dock="Left"
                                    Text="ログ出力先管理"
                                    Style="{StaticResource SectionHeaderStyle}" />
-                        <!-- 保存ステータス -->
+
+                        <!-- 右: ロックトグル -->
+                        <ToggleButton DockPanel.Dock="Right"
+                                      IsChecked="{Binding IsLogDestLocked}"
+                                      Padding="8,3" FontSize="11" Cursor="Hand">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton">
+                                    <Setter Property="Content" Value="🔒 ロック中" />
+                                    <Style.Triggers>
+                                        <Trigger Property="IsChecked" Value="False">
+                                            <Setter Property="Content" Value="✏️ 編集中" />
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ToggleButton.Style>
+                        </ToggleButton>
+
+                        <!-- 右: 未保存インジケーター -->
+                        <TextBlock DockPanel.Dock="Right"
+                                   Text="● 未保存"
+                                   Foreground="OrangeRed" FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
+                                   Visibility="{Binding IsLogDestDirty,
+                                       Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                        <!-- 右: 保存ステータス -->
                         <TextBlock DockPanel.Dock="Right"
                                    Text="{Binding LogDestSaveStatus}"
                                    Foreground="#107C10" FontSize="12"
                                    VerticalAlignment="Center"
+                                   Margin="0,0,8,0"
                                    Visibility="{Binding LogDestSaveStatus,
                                        Converter={StaticResource NullToCollapsedConverter}}" />
                     </DockPanel>
@@ -233,12 +287,12 @@
                                Visibility="{Binding IsLogDestLoading,
                                    Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                    <!-- DataGrid -->
+                    <!-- DataGrid: IsReadOnly / CanUserAddRows / CanUserDeleteRows をロックに連動 -->
                     <DataGrid ItemsSource="{Binding LogDestinations}"
-                              IsReadOnly="False"
+                              IsReadOnly="{Binding IsLogDestLocked}"
                               AutoGenerateColumns="False"
-                              CanUserAddRows="True"
-                              CanUserDeleteRows="True"
+                              CanUserAddRows="{Binding IsLogDestEditable}"
+                              CanUserDeleteRows="{Binding IsLogDestEditable}"
                               CanUserReorderColumns="False"
                               CanUserResizeColumns="True"
                               GridLinesVisibility="Horizontal"
