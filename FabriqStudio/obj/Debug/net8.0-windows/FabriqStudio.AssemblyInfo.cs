@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FabriqStudio")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+223c99815ceb6f711f635134524f69311175cb30")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3e1efa68422b77e3681184ba2ed5be1c1c5cdcf9")]
 [assembly: System.Reflection.AssemblyProductAttribute("FabriqStudio")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FabriqStudio")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
