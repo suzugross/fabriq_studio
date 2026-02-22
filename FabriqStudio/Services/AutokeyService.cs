@@ -9,12 +9,17 @@ namespace FabriqStudio.Services;
 
 public class AutokeyService : IAutokeyService
 {
-    private readonly IAppSettingsService _settings;
+    private readonly IWorkspaceService _workspace;
 
-    public AutokeyService(IAppSettingsService settings)
+    public AutokeyService(IWorkspaceService workspace)
     {
-        _settings = settings;
+        _workspace = workspace;
     }
+
+    private string GetRoot() =>
+        _workspace.RootPath
+            ?? throw new InvalidOperationException(
+                "ワークスペースが開かれていません。fabriq フォルダを選択してください。");
 
     // ── Load ─────────────────────────────────────────────────────────────────
 
@@ -63,7 +68,7 @@ public class AutokeyService : IAutokeyService
         var sanitized = moduleName.Trim();
 
         // 2. パス解決
-        var fabriqRoot  = _settings.FabriqRootPath;
+        var fabriqRoot  = GetRoot();
         var destDir     = Path.Combine(fabriqRoot, "modules", "extended", sanitized);
 
         // 3. 既存チェック

@@ -80,15 +80,29 @@ public partial class BasicParamsViewModel : ObservableObject
     [ObservableProperty] private bool                                     _isModulesLoading;
     [ObservableProperty] private string?                                  _modulesError;
 
-    public BasicParamsViewModel(ICsvService csvService, IProfileService profileService)
+    public BasicParamsViewModel(ICsvService csvService, IProfileService profileService, IWorkspaceService workspace)
     {
         _csvService     = csvService;
         _profileService = profileService;
-        _ = LoadAllAsync();
+        workspace.WorkspaceChanged += (_, e) =>
+        {
+            if (e.NewPath is null) { ClearAll(); return; }
+            _ = LoadAllAsync();
+        };
+        if (workspace.IsOpen)
+            _ = LoadAllAsync();
     }
 
     private Task LoadAllAsync()
         => Task.WhenAll(LoadWorkersAsync(), LoadLogDestAsync(), LoadProfilesAsync());
+
+    private void ClearAll()
+    {
+        Workers.Clear();
+        LogDestinations.Clear();
+        Profiles.Clear();
+        ProfileModules.Clear();
+    }
 
     private async Task LoadWorkersAsync()
     {
