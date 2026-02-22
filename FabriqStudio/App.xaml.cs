@@ -38,11 +38,14 @@ public partial class App : Application
         services.AddSingleton<ICsvService, CsvService>();
         services.AddSingleton<IProfileService, ProfileService>();
         services.AddSingleton<IModuleService, ModuleService>();
+        services.AddSingleton<IFileService, FileService>();
 
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();
         services.AddSingleton<ModuleEditViewModel>();
         services.AddSingleton<HostListViewModel>();
+        services.AddSingleton<HostDetailViewModel>();
+        services.AddSingleton<ModuleDetailViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // --- Views ---

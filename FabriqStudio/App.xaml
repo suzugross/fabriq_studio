@@ -11,6 +11,7 @@
             <!-- Converters -->
             <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
             <converters:NullOrEmptyToVisibilityConverter x:Key="NullToCollapsedConverter" />
+            <converters:BoolToCollapsedConverter         x:Key="BoolToCollapsedConverter" />
 
             <!-- ViewModel → View の DataTemplate マッピング -->
             <DataTemplate DataType="{x:Type vm:BasicParamsViewModel}">
@@ -23,6 +24,14 @@
 
             <DataTemplate DataType="{x:Type vm:HostListViewModel}">
                 <views:HostListView />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vm:HostDetailViewModel}">
+                <views:HostDetailView />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vm:ModuleDetailViewModel}">
+                <views:ModuleDetailView />
             </DataTemplate>
 
         </ResourceDictionary>

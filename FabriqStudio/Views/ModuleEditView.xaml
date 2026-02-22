@@ -78,8 +78,10 @@
                           Cursor="SizeWE" />
 
             <!-- ─── 右ペイン: モジュールグリッド ─── -->
+            <!-- 行をダブルクリックでモジュール詳細へ遷移 -->
             <DataGrid Grid.Column="2"
                       ItemsSource="{Binding FilteredModules}"
+                      SelectedItem="{Binding SelectedModule}"
                       IsReadOnly="True"
                       AutoGenerateColumns="False"
                       CanUserReorderColumns="True"
@@ -88,6 +90,11 @@
                       GridLinesVisibility="Horizontal"
                       AlternatingRowBackground="#F7F7F7"
                       BorderBrush="#DDDDDD" BorderThickness="1">
+                <DataGrid.InputBindings>
+                    <MouseBinding MouseAction="LeftDoubleClick"
+                                  Command="{Binding ViewDetailCommand}"
+                                  CommandParameter="{Binding SelectedModule}" />
+                </DataGrid.InputBindings>
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="種別"           Binding="{Binding Kind}"       Width="70" />
                     <DataGridTextColumn Header="メニュー名"   Binding="{Binding MenuName}"    Width="200" />
