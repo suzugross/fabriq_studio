@@ -20,11 +20,17 @@ public partial class BasicParamsViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsWorkersEditable))]
     [NotifyCanExecuteChangedFor(nameof(SaveWorkersCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddWorkerCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteWorkerCommand))]
     private bool _isWorkersLocked = true;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveWorkersCommand))]
     private bool _isWorkersDirty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DeleteWorkerCommand))]
+    private WorkerEntry? _selectedWorker;
 
     public bool IsWorkersEditable => !IsWorkersLocked;
 
@@ -36,11 +42,17 @@ public partial class BasicParamsViewModel : ObservableObject
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLogDestEditable))]
     [NotifyCanExecuteChangedFor(nameof(SaveLogDestCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddLogDestCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteLogDestinationCommand))]
     private bool _isLogDestLocked = true;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveLogDestCommand))]
     private bool _isLogDestDirty;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DeleteLogDestinationCommand))]
+    private LogDestination? _selectedLogDest;
 
     public bool IsLogDestEditable => !IsLogDestLocked;
 
@@ -102,6 +114,21 @@ public partial class BasicParamsViewModel : ObservableObject
     private void OnWorkerItemChanged(object? sender, PropertyChangedEventArgs e)
         => IsWorkersDirty = true;
 
+    private bool CanAddWorker() => !IsWorkersLocked;
+
+    [RelayCommand(CanExecute = nameof(CanAddWorker))]
+    private void AddWorker() => Workers.Add(new WorkerEntry());
+
+    private bool CanDeleteWorker() => SelectedWorker is not null && !IsWorkersLocked;
+
+    [RelayCommand(CanExecute = nameof(CanDeleteWorker))]
+    private void DeleteWorker()
+    {
+        if (SelectedWorker is null) return;
+        Workers.Remove(SelectedWorker);
+        SelectedWorker = null;
+    }
+
     private bool CanSaveWorkers() => IsWorkersDirty && !IsWorkersLocked;
 
     [RelayCommand(CanExecute = nameof(CanSaveWorkers))]
@@ -159,6 +186,21 @@ public partial class BasicParamsViewModel : ObservableObject
 
     private void OnLogDestItemChanged(object? sender, PropertyChangedEventArgs e)
         => IsLogDestDirty = true;
+
+    private bool CanAddLogDest() => !IsLogDestLocked;
+
+    [RelayCommand(CanExecute = nameof(CanAddLogDest))]
+    private void AddLogDest() => LogDestinations.Add(new LogDestination());
+
+    private bool CanDeleteLogDestination() => SelectedLogDest is not null && !IsLogDestLocked;
+
+    [RelayCommand(CanExecute = nameof(CanDeleteLogDestination))]
+    private void DeleteLogDestination()
+    {
+        if (SelectedLogDest is null) return;
+        LogDestinations.Remove(SelectedLogDest);
+        SelectedLogDest = null;
+    }
 
     private bool CanSaveLogDest() => IsLogDestDirty && !IsLogDestLocked;
 

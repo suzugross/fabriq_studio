@@ -32,6 +32,8 @@ public partial class ModuleDetailViewModel : ObservableObject
     // ─── ロック ────────────────────────────────────────────────────
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(AddCsvRowCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteCsvRowCommand))]
     private bool _isLocked = true;
 
     // ─── guide.txt ───────────────────────────────────────────────
@@ -55,12 +57,18 @@ public partial class ModuleDetailViewModel : ObservableObject
 
     // ─── 汎用CSV ─────────────────────────────────────────────────
     [ObservableProperty] private DataTable _configCsvData = new();
-    [ObservableProperty] private bool      _hasConfigCsv;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(AddCsvRowCommand))]
+    private bool _hasConfigCsv;
     [ObservableProperty] private string?   _configCsvFileName;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private bool _hasCsvChanges;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(DeleteCsvRowCommand))]
+    private System.Data.DataRowView? _selectedCsvRow;
 
     // ─── 状態 ────────────────────────────────────────────────────
     [ObservableProperty] private bool    _isLoading;
@@ -157,6 +165,29 @@ public partial class ModuleDetailViewModel : ObservableObject
     // ── ロック切り替え ────────────────────────────────────────────
     [RelayCommand]
     private void ToggleLock() => IsLocked = !IsLocked;
+
+    // ── CSV 行追加 ────────────────────────────────────────────────
+    private bool CanAddCsvRow() => HasConfigCsv && !IsLocked;
+
+    [RelayCommand(CanExecute = nameof(CanAddCsvRow))]
+    private void AddCsvRow()
+    {
+        var row = ConfigCsvData.NewRow();
+        foreach (DataColumn col in ConfigCsvData.Columns)
+            row[col] = "";
+        ConfigCsvData.Rows.Add(row);
+    }
+
+    // ── CSV 行削除 ────────────────────────────────────────────────
+    private bool CanDeleteCsvRow() => SelectedCsvRow is not null && HasConfigCsv && !IsLocked;
+
+    [RelayCommand(CanExecute = nameof(CanDeleteCsvRow))]
+    private void DeleteCsvRow()
+    {
+        if (SelectedCsvRow is null) return;
+        SelectedCsvRow.Row.Delete();
+        SelectedCsvRow = null;
+    }
 
     // ── 保存コマンド ──────────────────────────────────────────────
     private bool CanSave() => (IsGuideDirty || HasCsvChanges) && !IsLocked;
