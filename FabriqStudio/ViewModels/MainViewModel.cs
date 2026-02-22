@@ -1,9 +1,11 @@
 using System.IO;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using FabriqStudio.Messages;
 using FabriqStudio.Services;
+using FabriqStudio.Views;
 
 namespace FabriqStudio.ViewModels;
 
@@ -58,12 +60,23 @@ public partial class MainViewModel : ObservableObject
         WorkspaceName   = GetDisplayName(workspace.RootPath);
         _currentPage    = workspace.IsOpen ? (object)_basicParamsVm : _welcomeVm;
 
-        // ── ワークスペース変更通知: 常にメイン画面（BasicParams）へ遷移 ────────
+        // ── ワークスペース変更通知 ─────────────────────────────────────────────
         workspace.WorkspaceChanged += (_, e) =>
         {
-            IsWorkspaceOpen = true;
-            WorkspaceName   = GetDisplayName(e.NewPath);
-            CurrentPage     = _basicParamsVm;
+            if (e.NewPath is null)
+            {
+                // Close() 呼び出し時: WelcomeView へ戻る
+                IsWorkspaceOpen = false;
+                WorkspaceName   = "";
+                CurrentPage     = _welcomeVm;
+            }
+            else
+            {
+                // Open() 呼び出し時: メイン画面へ遷移
+                IsWorkspaceOpen = true;
+                WorkspaceName   = GetDisplayName(e.NewPath);
+                CurrentPage     = _basicParamsVm;
+            }
         };
 
         // ── 詳細画面への遷移 ──────────────────────────────────────────────
@@ -112,32 +125,62 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// ワークスペースを変更する。フォルダ選択ダイアログを開き、
-    /// 選択されたパスで IWorkspaceService.Open() を呼び出す。
-    /// バリデーション失敗時はメッセージボックスで通知する。
+    /// 現在のワークスペースを閉じて WelcomeView へ戻る。
+    /// WorkspaceChanged（NewPath = null）が発火し、UI が自動更新される。
     /// </summary>
     [RelayCommand]
-    private void ChangeWorkspace()
+    private void CloseWorkspace() => _workspace.Close();
+
+    /// <summary>
+    /// テンプレートから新規ワークスペースを作成する。
+    /// 1. 作成先フォルダを選択
+    /// 2. 新しいフォルダ名を入力
+    /// 3. 重複チェック後テンプレートをコピー
+    /// 4. 作成したフォルダをワークスペースとして開く
+    /// </summary>
+    [RelayCommand]
+    private async Task CreateNewWorkspaceAsync()
     {
-        var dialog = new Microsoft.Win32.OpenFolderDialog
+        // 1. 作成先の親フォルダを選択
+        var parentDialog = new Microsoft.Win32.OpenFolderDialog
         {
-            Title = "fabriq ルートフォルダを選択してください"
+            Title = "新規ワークスペースの作成先フォルダを選択してください"
         };
+        if (parentDialog.ShowDialog() != true) return;
 
-        if (dialog.ShowDialog() != true) return;
+        // 2. 新しいフォルダ名を入力
+        var folderName = NewWorkspaceDialog.Show(parentDialog.FolderName);
+        if (string.IsNullOrWhiteSpace(folderName)) return;
 
+        var targetPath = Path.Combine(parentDialog.FolderName, folderName);
+
+        // 3. 既存チェック（安全対策: 同名フォルダが既にある場合は中断）
+        if (Directory.Exists(targetPath))
+        {
+            MessageBox.Show(
+                $"フォルダ「{folderName}」は既に存在します。\n別のフォルダ名を指定してください。",
+                "作成エラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        // 4. テンプレートをコピー
+        var error = await _workspace.CreateFromTemplateAsync(targetPath);
+        if (error is not null)
+        {
+            MessageBox.Show(error, "作成エラー", MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        // 5. 作成したワークスペースを開く（WorkspaceChanged が発火してUIが自動更新される）
         try
         {
-            _workspace.Open(dialog.FolderName);
-            // 成功時は WorkspaceChanged イベントが発火し、CurrentPage が自動更新される
+            _workspace.Open(targetPath);
         }
         catch (ArgumentException ex)
         {
-            System.Windows.MessageBox.Show(
-                ex.Message,
-                "ワークスペースエラー",
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Warning);
+            MessageBox.Show(ex.Message, "ワークスペースエラー", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 

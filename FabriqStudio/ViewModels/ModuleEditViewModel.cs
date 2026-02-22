@@ -41,7 +41,17 @@ public partial class ModuleEditViewModel : ObservableObject
     {
         _moduleService = moduleService;
         _csvService    = csvService;
-        workspace.WorkspaceChanged += (_, _) => _ = LoadAsync();
+        workspace.WorkspaceChanged += (_, e) =>
+        {
+            if (e.NewPath is null)
+            {
+                AllModules.Clear();
+                CategoryNames.Clear();
+                FilteredModules.Clear();
+                return;
+            }
+            _ = LoadAsync();
+        };
         if (workspace.IsOpen)
             _ = LoadAsync();
     }

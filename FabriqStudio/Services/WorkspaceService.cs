@@ -67,6 +67,16 @@ public class WorkspaceService : IWorkspaceService
         WorkspaceChanged?.Invoke(this, new WorkspaceChangedEventArgs(_rootPath, old));
     }
 
+    // ── Close ────────────────────────────────────────────────────────────────
+
+    public void Close()
+    {
+        var old   = _rootPath;
+        _rootPath = null;
+        ClearPersisted();
+        WorkspaceChanged?.Invoke(this, new WorkspaceChangedEventArgs(null, old));
+    }
+
     // ── 永続化復元 ────────────────────────────────────────────────────────────
 
     /// <summary>
@@ -108,6 +118,79 @@ public class WorkspaceService : IWorkspaceService
         catch
         {
             // 永続化に失敗しても動作は継続
+        }
+    }
+
+    // ── 永続化クリア ─────────────────────────────────────────────────────────
+
+    private static void ClearPersisted()
+    {
+        try
+        {
+            if (File.Exists(PersistPath))
+                File.Delete(PersistPath);
+        }
+        catch
+        {
+            // クリアに失敗しても動作は継続
+        }
+    }
+
+    // ── テンプレートから新規作成 ──────────────────────────────────────────────
+
+    /// <summary>
+    /// ビルド出力に含まれるテンプレートフォルダのパス。
+    /// template/template_fabriq/fabriq/ の中身を targetPath に再帰コピーする。
+    /// </summary>
+    private static readonly string TemplateFabriqPath = Path.Combine(
+        AppDomain.CurrentDomain.BaseDirectory,
+        "template", "template_fabriq", "fabriq");
+
+    /// <summary>
+    /// ディレクトリ再帰コピー時にスキップするフォルダ名。
+    /// .git はバージョン管理メタデータ、.claude / dev は fabriq 開発用途のため除外。
+    /// </summary>
+    private static readonly HashSet<string> ExcludedDirNames =
+        new(StringComparer.OrdinalIgnoreCase) { ".git", ".claude", "dev" };
+
+    public async Task<string?> CreateFromTemplateAsync(string targetPath)
+    {
+        if (!Directory.Exists(TemplateFabriqPath))
+            return "テンプレートフォルダが見つかりません。\n" +
+                   "アプリケーションを再インストールしてください。\n" +
+                   $"（{TemplateFabriqPath}）";
+
+        try
+        {
+            await Task.Run(() => CopyDirectoryRecursive(TemplateFabriqPath, targetPath));
+            return null; // 成功
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return $"アクセスが拒否されました。\n{ex.Message}";
+        }
+        catch (IOException ex)
+        {
+            return $"コピー中にエラーが発生しました。\n{ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            return $"予期しないエラーが発生しました。\n{ex.Message}";
+        }
+    }
+
+    private static void CopyDirectoryRecursive(string source, string target)
+    {
+        Directory.CreateDirectory(target);
+
+        foreach (var file in Directory.GetFiles(source))
+            File.Copy(file, Path.Combine(target, Path.GetFileName(file)), overwrite: false);
+
+        foreach (var dir in Directory.GetDirectories(source))
+        {
+            var dirName = Path.GetFileName(dir);
+            if (ExcludedDirNames.Contains(dirName)) continue;
+            CopyDirectoryRecursive(dir, Path.Combine(target, dirName));
         }
     }
 

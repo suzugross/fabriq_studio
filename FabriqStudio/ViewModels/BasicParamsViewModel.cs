@@ -84,13 +84,25 @@ public partial class BasicParamsViewModel : ObservableObject
     {
         _csvService     = csvService;
         _profileService = profileService;
-        workspace.WorkspaceChanged += (_, _) => _ = LoadAllAsync();
+        workspace.WorkspaceChanged += (_, e) =>
+        {
+            if (e.NewPath is null) { ClearAll(); return; }
+            _ = LoadAllAsync();
+        };
         if (workspace.IsOpen)
             _ = LoadAllAsync();
     }
 
     private Task LoadAllAsync()
         => Task.WhenAll(LoadWorkersAsync(), LoadLogDestAsync(), LoadProfilesAsync());
+
+    private void ClearAll()
+    {
+        Workers.Clear();
+        LogDestinations.Clear();
+        Profiles.Clear();
+        ProfileModules.Clear();
+    }
 
     private async Task LoadWorkersAsync()
     {
