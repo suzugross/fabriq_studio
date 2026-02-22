@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
 
@@ -57,7 +59,11 @@ public partial class BasicParamsViewModel : ObservableObject
     public bool IsLogDestEditable => !IsLogDestLocked;
 
     [ObservableProperty] private ObservableCollection<ProfileEntry>       _profiles        = [];
-    [ObservableProperty] private ProfileEntry?                            _selectedProfile;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenProfileEditorCommand))]
+    private ProfileEntry? _selectedProfile;
+
     [ObservableProperty] private bool                                     _isProfilesLoading;
     [ObservableProperty] private string?                                  _profilesError;
 
@@ -266,5 +272,15 @@ public partial class BasicParamsViewModel : ObservableObject
         {
             IsModulesLoading = false;
         }
+    }
+
+    // ─── プロファイル編集画面へ遷移 ──────────────────────────────
+    private bool CanOpenProfileEditor() => SelectedProfile is not null;
+
+    [RelayCommand(CanExecute = nameof(CanOpenProfileEditor))]
+    private void OpenProfileEditor()
+    {
+        if (SelectedProfile is null) return;
+        WeakReferenceMessenger.Default.Send(new ShowProfileDetailMessage(SelectedProfile));
     }
 }

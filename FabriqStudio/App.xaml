@@ -10,9 +10,10 @@
 
             <!-- Converters -->
             <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-            <converters:NullOrEmptyToVisibilityConverter x:Key="NullToCollapsedConverter" />
-            <converters:BoolToCollapsedConverter         x:Key="BoolToCollapsedConverter" />
-            <converters:DirtyToForegroundConverter       x:Key="DirtyToForegroundConverter" />
+            <converters:NullOrEmptyToVisibilityConverter       x:Key="NullToCollapsedConverter" />
+            <converters:BoolToCollapsedConverter               x:Key="BoolToCollapsedConverter" />
+            <converters:DirtyToForegroundConverter             x:Key="DirtyToForegroundConverter" />
+            <converters:SpecialMarkerToBackgroundConverter     x:Key="SpecialMarkerToBackgroundConverter" />
 
             <!-- ViewModel → View の DataTemplate マッピング -->
             <DataTemplate DataType="{x:Type vm:BasicParamsViewModel}">
@@ -33,6 +34,10 @@
 
             <DataTemplate DataType="{x:Type vm:ModuleDetailViewModel}">
                 <views:ModuleDetailView />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vm:ProfileDetailViewModel}">
+                <views:ProfileDetailView />
             </DataTemplate>
 
         </ResourceDictionary>

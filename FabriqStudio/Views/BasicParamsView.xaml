@@ -70,7 +70,7 @@
                                Visibility="{Binding IsProfilesLoading,
                                    Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                    <!-- プロファイル選択 ComboBox -->
+                    <!-- プロファイル選択 ComboBox + 編集ボタン -->
                     <DockPanel LastChildFill="False" Margin="0,0,0,12">
                         <TextBlock DockPanel.Dock="Left"
                                    Text="実行プロファイル:"
@@ -81,6 +81,13 @@
                                   ItemsSource="{Binding Profiles}"
                                   SelectedItem="{Binding SelectedProfile}"
                                   DisplayMemberPath="Name" />
+                        <Button DockPanel.Dock="Left"
+                                Content="✏️ 編集"
+                                Command="{Binding OpenProfileEditorCommand}"
+                                Padding="10,4" FontSize="12"
+                                Background="#5C2D91" Foreground="White"
+                                BorderThickness="0" Cursor="Hand"
+                                Margin="8,0,0,0" />
                     </DockPanel>
 
                     <!-- モジュールリスト サブヘッダー -->
@@ -110,16 +117,18 @@
                               CanUserResizeColumns="True"
                               CanUserSortColumns="False"
                               GridLinesVisibility="Horizontal"
-                              AlternatingRowBackground="#F7F7F7"
-                              BorderBrush="#DDDDDD" BorderThickness="1"
-                              MaxHeight="240">
+                              BorderBrush="#DDDDDD" BorderThickness="1">
+                        <!-- AlternatingRowBackground は SpecialMarkerToBackgroundConverter と競合するため使用しない -->
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
+                                <!-- Background: ScriptPath を Converter に渡し種別ごとに色分け -->
+                                <Setter Property="Background"
+                                        Value="{Binding ScriptPath,
+                                            Converter={StaticResource SpecialMarkerToBackgroundConverter}}" />
                                 <Style.Triggers>
-                                    <!-- システムコマンド行（__RESTART__ 等）を区別表示 -->
+                                    <!-- FontStyle: 特殊マーカー行すべてにイタリックを適用 -->
                                     <DataTrigger Binding="{Binding IsSystemCommand}" Value="True">
-                                        <Setter Property="Background" Value="#EEF0FF" />
-                                        <Setter Property="FontStyle"  Value="Italic" />
+                                        <Setter Property="FontStyle" Value="Italic" />
                                     </DataTrigger>
                                 </Style.Triggers>
                             </Style>

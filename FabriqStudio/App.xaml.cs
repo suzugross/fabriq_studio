@@ -46,6 +46,7 @@ public partial class App : Application
         services.AddSingleton<HostListViewModel>();
         services.AddSingleton<HostDetailViewModel>();
         services.AddSingleton<ModuleDetailViewModel>();
+        services.AddSingleton<ProfileDetailViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // --- Views ---

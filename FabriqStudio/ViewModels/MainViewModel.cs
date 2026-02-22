@@ -11,27 +11,30 @@ namespace FabriqStudio.ViewModels;
 /// </summary>
 public partial class MainViewModel : ObservableObject
 {
-    private readonly BasicParamsViewModel  _basicParamsVm;
-    private readonly ModuleEditViewModel   _moduleEditVm;
-    private readonly HostListViewModel     _hostListVm;
-    private readonly HostDetailViewModel   _hostDetailVm;
-    private readonly ModuleDetailViewModel _moduleDetailVm;
+    private readonly BasicParamsViewModel   _basicParamsVm;
+    private readonly ModuleEditViewModel    _moduleEditVm;
+    private readonly HostListViewModel      _hostListVm;
+    private readonly HostDetailViewModel    _hostDetailVm;
+    private readonly ModuleDetailViewModel  _moduleDetailVm;
+    private readonly ProfileDetailViewModel _profileDetailVm;
 
     [ObservableProperty]
     private object _currentPage;
 
     public MainViewModel(
-        BasicParamsViewModel  basicParamsVm,
-        ModuleEditViewModel   moduleEditVm,
-        HostListViewModel     hostListVm,
-        HostDetailViewModel   hostDetailVm,
-        ModuleDetailViewModel moduleDetailVm)
+        BasicParamsViewModel   basicParamsVm,
+        ModuleEditViewModel    moduleEditVm,
+        HostListViewModel      hostListVm,
+        HostDetailViewModel    hostDetailVm,
+        ModuleDetailViewModel  moduleDetailVm,
+        ProfileDetailViewModel profileDetailVm)
     {
-        _basicParamsVm  = basicParamsVm;
-        _moduleEditVm   = moduleEditVm;
-        _hostListVm     = hostListVm;
-        _hostDetailVm   = hostDetailVm;
-        _moduleDetailVm = moduleDetailVm;
+        _basicParamsVm   = basicParamsVm;
+        _moduleEditVm    = moduleEditVm;
+        _hostListVm      = hostListVm;
+        _hostDetailVm    = hostDetailVm;
+        _moduleDetailVm  = moduleDetailVm;
+        _profileDetailVm = profileDetailVm;
 
         _currentPage = _basicParamsVm;
 
@@ -48,14 +51,21 @@ public partial class MainViewModel : ObservableObject
             CurrentPage = _moduleDetailVm;
         });
 
+        WeakReferenceMessenger.Default.Register<ShowProfileDetailMessage>(this, (_, msg) =>
+        {
+            _profileDetailVm.Load(msg.Value);
+            CurrentPage = _profileDetailVm;
+        });
+
         // ── 一覧画面への戻り ─────────────────────────────────────
         WeakReferenceMessenger.Default.Register<NavigateBackMessage>(this, (_, msg) =>
         {
             CurrentPage = msg.Value switch
             {
-                "HostList"   => (object)_hostListVm,
-                "ModuleEdit" => _moduleEditVm,
-                _            => _basicParamsVm
+                "HostList"    => (object)_hostListVm,
+                "ModuleEdit"  => _moduleEditVm,
+                "BasicParams" => _basicParamsVm,
+                _             => _basicParamsVm
             };
         });
     }
