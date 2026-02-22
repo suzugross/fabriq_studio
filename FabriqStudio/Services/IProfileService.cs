@@ -9,4 +9,10 @@ public interface IProfileService
     /// ファイル名（拡張子なし）をプロファイル名とする。
     /// </summary>
     Task<IReadOnlyList<ProfileEntry>> GetProfilesAsync();
+
+    /// <summary>
+    /// 指定プロファイルの実行モジュールリストを Order 順で返す。
+    /// </summary>
+    /// <param name="profile">対象プロファイル（FilePath を使用）</param>
+    Task<IReadOnlyList<ProfileScriptEntry>> GetProfileModulesAsync(ProfileEntry profile);
 }

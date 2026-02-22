@@ -70,7 +70,8 @@
                                Visibility="{Binding IsProfilesLoading,
                                    Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                    <DockPanel LastChildFill="False">
+                    <!-- プロファイル選択 ComboBox -->
+                    <DockPanel LastChildFill="False" Margin="0,0,0,12">
                         <TextBlock DockPanel.Dock="Left"
                                    Text="実行プロファイル:"
                                    VerticalAlignment="Center"
@@ -82,16 +83,62 @@
                                   DisplayMemberPath="Name" />
                     </DockPanel>
 
-                    <!-- Phase 3 プレースホルダー -->
-                    <Border Background="#FFFBE6"
-                            BorderBrush="#FFD966" BorderThickness="1"
-                            CornerRadius="3" Padding="10,6"
-                            Margin="0,10,0,0">
-                        <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#7A6300">
-                            📋 プロファイルに含まれるスクリプト構成の表示・編集は次フェーズで実装予定です。
-                            現在は選択のみ可能です。
-                        </TextBlock>
-                    </Border>
+                    <!-- モジュールリスト サブヘッダー -->
+                    <TextBlock Text="モジュール構成"
+                               FontSize="12" FontWeight="SemiBold"
+                               Foreground="#555555"
+                               Margin="0,0,0,4" />
+
+                    <!-- モジュール エラー -->
+                    <TextBlock Text="{Binding ModulesError}"
+                               Foreground="Red" Margin="0,0,0,6"
+                               Visibility="{Binding ModulesError,
+                                   Converter={StaticResource NullToCollapsedConverter}}" />
+
+                    <!-- モジュール ローディング -->
+                    <TextBlock Text="読み込み中..."
+                               Foreground="#888888" Margin="0,0,0,6"
+                               Visibility="{Binding IsModulesLoading,
+                                   Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                    <!-- モジュールリスト DataGrid（読み取り専用）
+                         __RESTART__ 等のシステムコマンド行はイタリックで識別表示 -->
+                    <DataGrid ItemsSource="{Binding ProfileModules}"
+                              IsReadOnly="True"
+                              AutoGenerateColumns="False"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              AlternatingRowBackground="#F7F7F7"
+                              BorderBrush="#DDDDDD" BorderThickness="1"
+                              MaxHeight="240">
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <!-- システムコマンド行（__RESTART__ 等）を区別表示 -->
+                                    <DataTrigger Binding="{Binding IsSystemCommand}" Value="True">
+                                        <Setter Property="Background" Value="#EEF0FF" />
+                                        <Setter Property="FontStyle"  Value="Italic" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="順序"
+                                                Binding="{Binding Order}"
+                                                Width="55" />
+                            <DataGridTextColumn Header="有効"
+                                                Binding="{Binding Enabled}"
+                                                Width="50" />
+                            <DataGridTextColumn Header="スクリプト / コマンド"
+                                                Binding="{Binding ScriptPath}"
+                                                Width="*" />
+                            <DataGridTextColumn Header="説明"
+                                                Binding="{Binding Description}"
+                                                Width="200" />
+                        </DataGrid.Columns>
+                    </DataGrid>
                 </StackPanel>
             </Border>
 

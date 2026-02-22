@@ -6,10 +6,12 @@ namespace FabriqStudio.Services;
 public class ProfileService : IProfileService
 {
     private readonly IAppSettingsService _settings;
+    private readonly ICsvService         _csvService;
 
-    public ProfileService(IAppSettingsService settings)
+    public ProfileService(IAppSettingsService settings, ICsvService csvService)
     {
-        _settings = settings;
+        _settings   = settings;
+        _csvService  = csvService;
     }
 
     public Task<IReadOnlyList<ProfileEntry>> GetProfilesAsync()
@@ -33,5 +35,16 @@ public class ProfileService : IProfileService
             .ToArray();
 
         return Task.FromResult(result);
+    }
+
+    public async Task<IReadOnlyList<ProfileScriptEntry>> GetProfileModulesAsync(ProfileEntry profile)
+    {
+        // ProfileEntry.FilePath は絶対パスのため、FabriqRootPath からの相対パスに変換して
+        // 既存の ICsvService.ReadAsync を再利用する。
+        var relativePath = Path.GetRelativePath(_settings.FabriqRootPath, profile.FilePath);
+        var modules      = await _csvService.ReadAsync<ProfileScriptEntry>(relativePath);
+
+        // ファイルの記述順ではなく Order カラムで確実にソートして返す
+        return modules.OrderBy(m => m.Order).ToList();
     }
 }
