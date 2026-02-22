@@ -77,6 +77,14 @@ public class WorkspaceService : IWorkspaceService
         WorkspaceChanged?.Invoke(this, new WorkspaceChangedEventArgs(null, old));
     }
 
+    // ── Reload ───────────────────────────────────────────────────────────────
+
+    public void Reload()
+    {
+        if (_rootPath is null) return;
+        WorkspaceChanged?.Invoke(this, new WorkspaceChangedEventArgs(_rootPath, _rootPath));
+    }
+
     // ── 永続化復元 ────────────────────────────────────────────────────────────
 
     /// <summary>

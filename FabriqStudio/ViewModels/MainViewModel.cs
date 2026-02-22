@@ -70,9 +70,14 @@ public partial class MainViewModel : ObservableObject
                 WorkspaceName   = "";
                 CurrentPage     = _welcomeVm;
             }
+            else if (e.NewPath == e.OldPath)
+            {
+                // Reload() 呼び出し時: CurrentPage はそのまま維持
+                // （各 VM が WorkspaceChanged を受けてデータを自動再ロードする）
+            }
             else
             {
-                // Open() 呼び出し時: メイン画面へ遷移
+                // Open() 呼び出し時: メイン画面（BasicParams）へ遷移
                 IsWorkspaceOpen = true;
                 WorkspaceName   = GetDisplayName(e.NewPath);
                 CurrentPage     = _basicParamsVm;
@@ -130,6 +135,23 @@ public partial class MainViewModel : ObservableObject
     /// </summary>
     [RelayCommand]
     private void CloseWorkspace() => _workspace.Close();
+
+    /// <summary>
+    /// 現在のワークスペースのデータを最新の情報に更新する。
+    /// 確認ダイアログで OK を選んだ場合のみ Reload() を呼び出す。
+    /// </summary>
+    [RelayCommand]
+    private void ReloadWorkspace()
+    {
+        var result = MessageBox.Show(
+            "最新の情報に更新しますか？\n未保存の編集内容はすべて破棄されます。",
+            "最新の情報に更新",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Question);
+
+        if (result == MessageBoxResult.OK)
+            _workspace.Reload();
+    }
 
     /// <summary>
     /// テンプレートから新規ワークスペースを作成する。

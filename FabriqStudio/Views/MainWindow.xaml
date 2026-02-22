@@ -90,6 +90,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
@@ -100,9 +101,44 @@
                                        TextTrimming="CharacterEllipsis" />
                         </StackPanel>
 
+                        <!-- 最新の情報に更新 -->
                         <Button Grid.Column="1"
+                                Content="更新"
+                                Command="{Binding ReloadWorkspaceCommand}"
+                                ToolTip="最新の情報に更新（未保存の内容は破棄されます）">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd"
+                                                        Background="Transparent"
+                                                        Padding="{TemplateBinding Padding}"
+                                                        CornerRadius="3">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#3E3E42" />
+                                                        <Setter Property="Foreground" Value="#CCCCCC" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Setter Property="FontSize"   Value="10" />
+                                    <Setter Property="Foreground" Value="#666666" />
+                                    <Setter Property="Cursor"     Value="Hand" />
+                                    <Setter Property="Padding"    Value="6,2" />
+                                </Style>
+                            </Button.Style>
+                        </Button>
+
+                        <!-- ワークスペースを閉じる -->
+                        <Button Grid.Column="2"
                                 Content="閉じる"
-                                Command="{Binding CloseWorkspaceCommand}">
+                                Command="{Binding CloseWorkspaceCommand}"
+                                Margin="4,0,0,0">
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Template">
