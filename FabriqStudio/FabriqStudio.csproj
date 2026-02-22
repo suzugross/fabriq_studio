@@ -23,4 +23,23 @@
     </None>
   </ItemGroup>
 
+
+  <!--
+    ビルド後に template/ を出力ディレクトリへコピーする。
+    除外: .git / .claude / dev（テンプレート差し替え時の予防的除外）
+  -->
+  <Target Name="CopyTemplateFiles" AfterTargets="Build">
+    <ItemGroup>
+      <TemplateFiles
+          Include="$(MSBuildProjectDirectory)\template\**\*"
+          Exclude="$(MSBuildProjectDirectory)\template\**\.git\**;
+                   $(MSBuildProjectDirectory)\template\**\.claude\**;
+                   $(MSBuildProjectDirectory)\template\**\dev\**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(TemplateFiles)"
+          DestinationFiles="@(TemplateFiles->
+            '$(OutDir)template\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

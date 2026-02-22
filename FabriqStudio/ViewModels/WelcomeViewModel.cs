@@ -1,6 +1,8 @@
+using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FabriqStudio.Services;
+using FabriqStudio.Views;
 
 namespace FabriqStudio.ViewModels;
 
@@ -40,6 +42,53 @@ public partial class WelcomeViewModel : ObservableObject
         catch (ArgumentException ex)
         {
             // Validate() の失敗メッセージを画面に表示する
+            ErrorMessage = ex.Message;
+        }
+    }
+
+    /// <summary>
+    /// テンプレートから新規ワークスペースを作成して開く。
+    /// エラーは ErrorMessage プロパティに表示する（WelcomeView 内に表示）。
+    /// </summary>
+    [RelayCommand]
+    private async Task CreateNewWorkspaceAsync()
+    {
+        // 1. 作成先の親フォルダを選択
+        var parentDialog = new Microsoft.Win32.OpenFolderDialog
+        {
+            Title = "新規ワークスペースの作成先フォルダを選択してください"
+        };
+        if (parentDialog.ShowDialog() != true) return;
+
+        // 2. 新しいフォルダ名を入力
+        var folderName = NewWorkspaceDialog.Show(parentDialog.FolderName);
+        if (string.IsNullOrWhiteSpace(folderName)) return;
+
+        var targetPath = Path.Combine(parentDialog.FolderName, folderName);
+
+        // 3. 既存チェック
+        if (Directory.Exists(targetPath))
+        {
+            ErrorMessage = $"フォルダ「{folderName}」は既に存在します。別のフォルダ名を指定してください。";
+            return;
+        }
+
+        // 4. テンプレートをコピー
+        ErrorMessage = null;
+        var error = await _workspace.CreateFromTemplateAsync(targetPath);
+        if (error is not null)
+        {
+            ErrorMessage = error;
+            return;
+        }
+
+        // 5. 作成したワークスペースを開く（WorkspaceChanged → MainViewModel が画面遷移）
+        try
+        {
+            _workspace.Open(targetPath);
+        }
+        catch (ArgumentException ex)
+        {
             ErrorMessage = ex.Message;
         }
     }

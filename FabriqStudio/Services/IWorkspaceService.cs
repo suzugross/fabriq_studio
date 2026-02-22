@@ -35,11 +35,25 @@ public interface IWorkspaceService
     void Open(string path);
 
     /// <summary>
+    /// 現在のワークスペースを閉じる。
+    /// RootPath を null にリセットし、永続化データをクリアした上で
+    /// <see cref="WorkspaceChanged"/>（NewPath = null）を発火する。
+    /// </summary>
+    void Close();
+
+    /// <summary>
     /// %LOCALAPPDATA%\FabriqStudio\workspace.json に保存された前回のパスを復元する。
     /// パスが存在しないか検証 NG の場合は無視して未設定のまま。
     /// このメソッドは WorkspaceChanged を発火しない（VM 構築前に呼ばれるため）。
     /// </summary>
     void TryRestorePersisted();
+
+    /// <summary>
+    /// 組み込みテンプレートから新規ワークスペースを作成する。
+    /// </summary>
+    /// <param name="targetPath">作成先ディレクトリの絶対パス（存在しない場合は新規作成される）。</param>
+    /// <returns>null = 成功、string = エラーメッセージ</returns>
+    Task<string?> CreateFromTemplateAsync(string targetPath);
 }
 
 /// <summary>ワークスペース変更イベントの引数。</summary>

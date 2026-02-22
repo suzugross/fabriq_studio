@@ -41,7 +41,11 @@ public partial class HostListViewModel : ObservableObject
     public HostListViewModel(ICsvService csvService, IWorkspaceService workspace)
     {
         _csvService = csvService;
-        workspace.WorkspaceChanged += (_, _) => _ = LoadAsync();
+        workspace.WorkspaceChanged += (_, e) =>
+        {
+            if (e.NewPath is null) { Hosts.Clear(); return; }
+            _ = LoadAsync();
+        };
         if (workspace.IsOpen)
             _ = LoadAsync();
     }

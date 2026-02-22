@@ -101,8 +101,8 @@
                         </StackPanel>
 
                         <Button Grid.Column="1"
-                                Content="変更"
-                                Command="{Binding ChangeWorkspaceCommand}">
+                                Content="閉じる"
+                                Command="{Binding CloseWorkspaceCommand}">
                             <Button.Style>
                                 <Style TargetType="Button">
                                     <Setter Property="Template">
@@ -131,6 +131,46 @@
                             </Button.Style>
                         </Button>
                     </Grid>
+                </Border>
+
+                <!-- 新規作成エリア（ワークスペース未設定時のみ表示）-->
+                <Border DockPanel.Dock="Top"
+                        Background="#1A1A1A"
+                        Padding="12,8"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="#333333"
+                        Visibility="{Binding IsWorkspaceOpen,
+                                     Converter={StaticResource BoolToCollapsedConverter}}">
+                    <Button Content="📋  テンプレートから新規作成"
+                            Command="{Binding CreateNewWorkspaceCommand}">
+                        <Button.Style>
+                            <Style TargetType="Button">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border x:Name="Bd"
+                                                    Background="Transparent"
+                                                    Padding="{TemplateBinding Padding}"
+                                                    CornerRadius="3">
+                                                <ContentPresenter />
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Bd" Property="Background" Value="#3E3E42" />
+                                                    <Setter Property="Foreground" Value="#FFFFFF" />
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter Property="FontSize"   Value="12" />
+                                <Setter Property="Foreground" Value="#888888" />
+                                <Setter Property="Cursor"     Value="Hand" />
+                                <Setter Property="Padding"    Value="4,6" />
+                                <Setter Property="HorizontalAlignment" Value="Left" />
+                            </Style>
+                        </Button.Style>
+                    </Button>
                 </Border>
 
                 <!-- セクションラベル -->
