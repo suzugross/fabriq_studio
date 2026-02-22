@@ -14,4 +14,14 @@ public interface IFileService
     /// ファイルが存在しない場合は空の DataTable を返す。
     /// </summary>
     Task<DataTable> ReadCsvAsDataTableAsync(string absolutePath);
+
+    /// <summary>
+    /// テキストファイルを BOM 付き UTF-8 で書き込む。
+    /// </summary>
+    Task WriteTextAsync(string absolutePath, string content);
+
+    /// <summary>
+    /// DataTable の内容を BOM 付き UTF-8 CSV として書き込む（汎用CSV保存用）。
+    /// </summary>
+    Task WriteCsvFromDataTableAsync(string absolutePath, DataTable table);
 }

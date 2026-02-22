@@ -1,10 +1,12 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+
 namespace FabriqStudio.Models;
 
 /// <summary>
 /// kernel/csv/workers.csv の1行を表すモデル
 /// </summary>
-public class WorkerEntry
+public partial class WorkerEntry : ObservableObject
 {
-    public string ID   { get; set; } = "";
-    public string Name { get; set; } = "";
+    [ObservableProperty] private string _iD   = "";
+    [ObservableProperty] private string _name = "";
 }

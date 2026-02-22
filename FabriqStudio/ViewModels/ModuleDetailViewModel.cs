@@ -10,36 +10,62 @@ using FabriqStudio.Services;
 namespace FabriqStudio.ViewModels;
 
 /// <summary>
-/// モジュール詳細表示
-///   - guide.txt: テキスト表示 + 編集ロック/解除トグル（モック）
-///   - 汎用CSV: module.csv 以外の .csv を DataTable として動的表示
+/// モジュール詳細表示／編集
+///   - guide.txt: テキスト表示 + ロック/解除トグル + Dirty 検知 + 保存
+///   - 汎用CSV: DataTable で動的表示 + DataTable 組み込みの RowChanged で Dirty 検知 + 保存
+///
+/// ロック機構:
+///   IsLocked=true（初期値）→ guide.txt TextBox / DataGrid が読み取り専用
+///   IsLocked=false          → 編集可能
 /// </summary>
 public partial class ModuleDetailViewModel : ObservableObject
 {
     private readonly IFileService        _fileService;
     private readonly IAppSettingsService _settings;
 
+    // ─── モジュール情報 ───────────────────────────────────────────
     [ObservableProperty] private ModuleMasterEntry? _module;
 
+    // ─── ロック ────────────────────────────────────────────────────
+    [ObservableProperty] private bool _isLocked = true;
+
     // ─── guide.txt ───────────────────────────────────────────────
-    [ObservableProperty] private string? _guideText;
-    [ObservableProperty] private bool    _hasGuideText;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsGuideDirty))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private string? _guideText;
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(IsGuideReadOnly))]
-    private bool _isGuideEditable;
+    [NotifyPropertyChangedFor(nameof(IsGuideDirty))]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private string? _originalGuideText;
 
-    /// <summary>TextBox の IsReadOnly バインド用（IsGuideEditable の逆）</summary>
-    public bool IsGuideReadOnly => !IsGuideEditable;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _hasGuideText;
 
-    // ─── 汎用 CSV ────────────────────────────────────────────────
+    /// <summary>guide.txt が元の内容から変更されているか。</summary>
+    public bool IsGuideDirty =>
+        HasGuideText && GuideText != OriginalGuideText;
+
+    // ─── 汎用CSV ─────────────────────────────────────────────────
     [ObservableProperty] private DataTable _configCsvData = new();
     [ObservableProperty] private bool      _hasConfigCsv;
     [ObservableProperty] private string?   _configCsvFileName;
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _hasCsvChanges;
+
     // ─── 状態 ────────────────────────────────────────────────────
     [ObservableProperty] private bool    _isLoading;
+    [ObservableProperty] private string? _saveStatus;
+    [ObservableProperty] private string? _saveError;
     [ObservableProperty] private string? _errorMessage;
+
+    // ファイルパス（保存時に使用）
+    private string? _guidePath;
+    private string? _csvFilePath;
 
     public ModuleDetailViewModel(IFileService fileService, IAppSettingsService settings)
     {
@@ -50,20 +76,26 @@ public partial class ModuleDetailViewModel : ObservableObject
     /// <summary>選択されたモジュールを読み込む。</summary>
     public void Load(ModuleMasterEntry module)
     {
-        Module          = module;
-        IsGuideEditable = false;
+        Module     = module;
+        IsLocked   = true;
+        SaveStatus = null;
+        SaveError  = null;
         _ = LoadFilesAsync(module);
     }
 
     private async Task LoadFilesAsync(ModuleMasterEntry module)
     {
-        IsLoading       = true;
-        ErrorMessage    = null;
-        GuideText       = null;
-        HasGuideText    = false;
-        ConfigCsvData   = new DataTable();
-        HasConfigCsv    = false;
+        IsLoading         = true;
+        ErrorMessage      = null;
+        GuideText         = null;
+        OriginalGuideText = null;
+        HasGuideText      = false;
+        ConfigCsvData     = new DataTable();
+        HasConfigCsv      = false;
+        HasCsvChanges     = false;
         ConfigCsvFileName = null;
+        _guidePath        = null;
+        _csvFilePath      = null;
 
         try
         {
@@ -71,12 +103,13 @@ public partial class ModuleDetailViewModel : ObservableObject
                 _settings.FabriqRootPath, "modules", module.Kind, module.ModuleDir);
 
             // ── guide.txt ──────────────────────────────────────────
-            var guidePath = Path.Combine(moduleDir, "guide.txt");
-            var guideText = await _fileService.ReadTextAsync(guidePath);
-            GuideText    = guideText;
-            HasGuideText = guideText is not null;
+            _guidePath = Path.Combine(moduleDir, "guide.txt");
+            var guideText = await _fileService.ReadTextAsync(_guidePath);
+            GuideText         = guideText;
+            OriginalGuideText = guideText;
+            HasGuideText      = guideText is not null;
 
-            // ── module.csv 以外の CSV（1件目を動的表示対象にする）──
+            // ── module.csv 以外の CSV（1件目を動的表示対象）──────
             if (Directory.Exists(moduleDir))
             {
                 var csvFile = Directory
@@ -89,9 +122,17 @@ public partial class ModuleDetailViewModel : ObservableObject
 
                 if (csvFile is not null)
                 {
-                    ConfigCsvData     = await _fileService.ReadCsvAsDataTableAsync(csvFile);
-                    HasConfigCsv      = ConfigCsvData.Columns.Count > 0;
+                    _csvFilePath      = csvFile;
+                    var table         = await _fileService.ReadCsvAsDataTableAsync(csvFile);
+                    HasConfigCsv      = table.Columns.Count > 0;
                     ConfigCsvFileName = Path.GetFileName(csvFile);
+
+                    // AcceptChanges を先に呼び初期状態をクリーンにしてからイベント購読する。
+                    // 逆順だと AcceptChanges が RowChanged を発火し HasCsvChanges が即 true になる。
+                    table.AcceptChanges();
+                    table.RowChanged += OnCsvRowChanged;
+                    table.RowDeleted += OnCsvRowChanged;
+                    ConfigCsvData = table;
                 }
             }
         }
@@ -105,8 +146,46 @@ public partial class ModuleDetailViewModel : ObservableObject
         }
     }
 
+    private void OnCsvRowChanged(object sender, DataRowChangeEventArgs e)
+        => HasCsvChanges = true;
+
+    // ── ロック切り替え ────────────────────────────────────────────
     [RelayCommand]
-    private void ToggleGuideEdit() => IsGuideEditable = !IsGuideEditable;
+    private void ToggleLock() => IsLocked = !IsLocked;
+
+    // ── 保存コマンド ──────────────────────────────────────────────
+    private bool CanSave() => IsGuideDirty || HasCsvChanges;
+
+    [RelayCommand(CanExecute = nameof(CanSave))]
+    private async Task SaveAsync()
+    {
+        SaveError  = null;
+        SaveStatus = null;
+
+        try
+        {
+            // guide.txt 保存
+            if (IsGuideDirty && _guidePath is not null && GuideText is not null)
+            {
+                await _fileService.WriteTextAsync(_guidePath, GuideText);
+                OriginalGuideText = GuideText;   // スナップショット更新 → ハイライト解除
+            }
+
+            // 汎用CSV 保存
+            if (HasCsvChanges && _csvFilePath is not null)
+            {
+                await _fileService.WriteCsvFromDataTableAsync(_csvFilePath, ConfigCsvData);
+                ConfigCsvData.AcceptChanges();   // RowState リセット → Dirty 解除
+                HasCsvChanges = false;
+            }
+
+            SaveStatus = "✓ 保存しました";
+        }
+        catch (Exception ex)
+        {
+            SaveError = $"保存エラー: {ex.Message}";
+        }
+    }
 
     [RelayCommand]
     private void NavigateBack()

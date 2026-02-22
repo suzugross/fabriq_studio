@@ -21,8 +21,8 @@
 
     <Grid Background="#F3F3F3">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />  <!-- ヘッダーバー -->
-            <RowDefinition Height="*" />     <!-- コンテンツ -->
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <!-- ===== ヘッダーバー ===== -->
@@ -31,28 +31,25 @@
                 BorderBrush="#E0E0E0" BorderThickness="0,0,0,1"
                 Padding="12,8">
             <DockPanel LastChildFill="False">
+
+                <!-- 左 -->
                 <Button DockPanel.Dock="Left"
                         Content="← 戻る"
                         Command="{Binding NavigateBackCommand}"
                         Padding="12,5" FontSize="12"
                         Background="Transparent" BorderBrush="#AAAAAA"
                         Cursor="Hand" />
-
                 <TextBlock DockPanel.Dock="Left"
                            Text="モジュール詳細"
                            FontSize="18" FontWeight="Bold"
                            Foreground="#2D2D30"
                            VerticalAlignment="Center"
                            Margin="16,0,0,0" />
-
-                <!-- モジュール名 -->
                 <TextBlock DockPanel.Dock="Left"
                            Text="{Binding Module.ModuleDir, StringFormat=' [{0}]'}"
                            FontSize="14" Foreground="#007ACC"
                            VerticalAlignment="Center"
                            Margin="4,0,8,0" />
-
-                <!-- 種別バッジ -->
                 <Border DockPanel.Dock="Left"
                         Background="#EEF0FF" CornerRadius="3"
                         Padding="6,2" VerticalAlignment="Center">
@@ -60,30 +57,90 @@
                                FontSize="11" Foreground="#3050CC" />
                 </Border>
 
-                <!-- ローディング -->
+                <!-- 右: ロック / 保存ボタン / ステータス / Dirty -->
+                <ToggleButton DockPanel.Dock="Right"
+                              IsChecked="{Binding IsLocked}"
+                              Padding="10,4" FontSize="12" Cursor="Hand"
+                              Margin="0,0,0,0">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton">
+                            <Setter Property="Content" Value="🔒 ロック中（読み取り専用）" />
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="False">
+                                    <Setter Property="Content" Value="✏️ 編集中" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
+
+                <Button DockPanel.Dock="Right"
+                        Content="💾 保存"
+                        Command="{Binding SaveCommand}"
+                        Padding="14,5" FontSize="12"
+                        Background="#007ACC" Foreground="White"
+                        BorderThickness="0" Cursor="Hand"
+                        Margin="0,0,8,0" />
+
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding SaveStatus}"
+                           Foreground="#107C10" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0"
+                           Visibility="{Binding SaveStatus,
+                               Converter={StaticResource NullToCollapsedConverter}}" />
+
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding SaveError}"
+                           Foreground="Red" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0"
+                           Visibility="{Binding SaveError,
+                               Converter={StaticResource NullToCollapsedConverter}}" />
+
+                <!-- ローディング / エラー / Dirty -->
                 <TextBlock DockPanel.Dock="Right"
                            Text="読み込み中..."
                            Foreground="#888888" FontSize="12"
                            VerticalAlignment="Center"
+                           Margin="0,0,12,0"
                            Visibility="{Binding IsLoading,
                                Converter={StaticResource BoolToVisibilityConverter}}" />
-
-                <!-- エラー -->
                 <TextBlock DockPanel.Dock="Right"
                            Text="{Binding ErrorMessage}"
                            Foreground="Red" FontSize="12"
                            VerticalAlignment="Center"
+                           Margin="0,0,12,0"
                            Visibility="{Binding ErrorMessage,
                                Converter={StaticResource NullToCollapsedConverter}}" />
+                <TextBlock DockPanel.Dock="Right"
+                           Text="● 未保存の変更があります"
+                           Foreground="OrangeRed" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsGuideDirty}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding HasCsvChanges}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
             </DockPanel>
         </Border>
 
         <!-- ===== コンテンツ ===== -->
         <Grid Grid.Row="1" Margin="16">
             <Grid.RowDefinitions>
-                <RowDefinition Height="*" MinHeight="160" />  <!-- guide.txt + module.csv -->
+                <RowDefinition Height="*" MinHeight="160" />
                 <RowDefinition Height="8" />
-                <RowDefinition Height="*" MinHeight="120" />  <!-- 汎用CSV -->
+                <RowDefinition Height="*" MinHeight="120" />
             </Grid.RowDefinitions>
 
             <!-- ─── 上段: guide.txt（左）+ module.csv メタ（右）─── -->
@@ -97,28 +154,21 @@
                 <!-- guide.txt -->
                 <Border Grid.Column="0" Style="{StaticResource SectionBorderStyle}" Margin="0">
                     <DockPanel>
-                        <!-- ヘッダー: タイトル + トグルボタン -->
+                        <!-- ヘッダー: タイトル + Dirty + トグルボタン -->
                         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" LastChildFill="False">
                             <TextBlock DockPanel.Dock="Left"
                                        Text="guide.txt"
                                        Style="{StaticResource SectionHeaderStyle}"
                                        Margin="0" VerticalAlignment="Center" />
 
-                            <ToggleButton DockPanel.Dock="Right"
-                                          IsChecked="{Binding IsGuideEditable}"
-                                          Command="{Binding ToggleGuideEditCommand}"
-                                          Padding="8,3" FontSize="11" Cursor="Hand">
-                                <ToggleButton.Style>
-                                    <Style TargetType="ToggleButton">
-                                        <Setter Property="Content" Value="🔒 ロック中（読み取り専用）" />
-                                        <Style.Triggers>
-                                            <Trigger Property="IsChecked" Value="True">
-                                                <Setter Property="Content" Value="✏️ 編集中" />
-                                            </Trigger>
-                                        </Style.Triggers>
-                                    </Style>
-                                </ToggleButton.Style>
-                            </ToggleButton>
+                            <!-- guide.txt Dirty インジケーター -->
+                            <TextBlock DockPanel.Dock="Left"
+                                       Text="● 未保存"
+                                       Foreground="OrangeRed" FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0"
+                                       Visibility="{Binding IsGuideDirty,
+                                           Converter={StaticResource BoolToVisibilityConverter}}" />
                         </DockPanel>
 
                         <!-- guide.txt が存在しない場合 -->
@@ -130,8 +180,8 @@
                                        Converter={StaticResource BoolToCollapsedConverter}}" />
 
                         <!-- guide.txt の内容 -->
-                        <TextBox Text="{Binding GuideText, Mode=TwoWay}"
-                                 IsReadOnly="{Binding IsGuideReadOnly}"
+                        <TextBox Text="{Binding GuideText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 IsReadOnly="{Binding IsLocked}"
                                  AcceptsReturn="True"
                                  TextWrapping="Wrap"
                                  FontFamily="Consolas" FontSize="12"
@@ -144,7 +194,7 @@
                                     <Setter Property="Background"  Value="#F8F8F8" />
                                     <Setter Property="BorderBrush" Value="#CCCCCC" />
                                     <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsGuideEditable}" Value="True">
+                                        <DataTrigger Binding="{Binding IsLocked}" Value="False">
                                             <Setter Property="Background"  Value="White" />
                                             <Setter Property="BorderBrush" Value="#007ACC" />
                                         </DataTrigger>
@@ -159,37 +209,25 @@
                 <Border Grid.Column="2" Style="{StaticResource SectionBorderStyle}" Margin="0">
                     <StackPanel>
                         <TextBlock Text="module.csv" Style="{StaticResource SectionHeaderStyle}" />
-
                         <DockPanel Margin="0,0,0,6">
-                            <TextBlock DockPanel.Dock="Left" Text="メニュー名:"
-                                       Width="80" FontSize="11" Foreground="#666" />
-                            <TextBox Text="{Binding Module.MenuName}" IsReadOnly="True"
-                                     FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
+                            <TextBlock DockPanel.Dock="Left" Text="メニュー名:" Width="80" FontSize="11" Foreground="#666" />
+                            <TextBox Text="{Binding Module.MenuName}" IsReadOnly="True" FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
                         </DockPanel>
                         <DockPanel Margin="0,0,0,6">
-                            <TextBlock DockPanel.Dock="Left" Text="カテゴリ:"
-                                       Width="80" FontSize="11" Foreground="#666" />
-                            <TextBox Text="{Binding Module.Category}" IsReadOnly="True"
-                                     FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
+                            <TextBlock DockPanel.Dock="Left" Text="カテゴリ:" Width="80" FontSize="11" Foreground="#666" />
+                            <TextBox Text="{Binding Module.Category}" IsReadOnly="True" FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
                         </DockPanel>
                         <DockPanel Margin="0,0,0,6">
-                            <TextBlock DockPanel.Dock="Left" Text="スクリプト:"
-                                       Width="80" FontSize="11" Foreground="#666" />
-                            <TextBox Text="{Binding Module.Script}" IsReadOnly="True"
-                                     FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8"
-                                     TextWrapping="Wrap" />
+                            <TextBlock DockPanel.Dock="Left" Text="スクリプト:" Width="80" FontSize="11" Foreground="#666" />
+                            <TextBox Text="{Binding Module.Script}" IsReadOnly="True" FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" TextWrapping="Wrap" />
                         </DockPanel>
                         <DockPanel Margin="0,0,0,6">
-                            <TextBlock DockPanel.Dock="Left" Text="順序:"
-                                       Width="80" FontSize="11" Foreground="#666" />
-                            <TextBox Text="{Binding Module.Order}" IsReadOnly="True"
-                                     FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
+                            <TextBlock DockPanel.Dock="Left" Text="順序:" Width="80" FontSize="11" Foreground="#666" />
+                            <TextBox Text="{Binding Module.Order}" IsReadOnly="True" FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
                         </DockPanel>
                         <DockPanel>
-                            <TextBlock DockPanel.Dock="Left" Text="有効:"
-                                       Width="80" FontSize="11" Foreground="#666" />
-                            <TextBox Text="{Binding Module.Enabled}" IsReadOnly="True"
-                                     FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
+                            <TextBlock DockPanel.Dock="Left" Text="有効:" Width="80" FontSize="11" Foreground="#666" />
+                            <TextBox Text="{Binding Module.Enabled}" IsReadOnly="True" FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
                         </DockPanel>
                     </StackPanel>
                 </Border>
@@ -209,6 +247,15 @@
                                    VerticalAlignment="Center"
                                    Visibility="{Binding HasConfigCsv,
                                        Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                        <!-- CSV Dirty インジケーター -->
+                        <TextBlock DockPanel.Dock="Left"
+                                   Text="● 未保存"
+                                   Foreground="OrangeRed" FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   Visibility="{Binding HasCsvChanges,
+                                       Converter={StaticResource BoolToVisibilityConverter}}" />
                     </DockPanel>
 
                     <!-- 設定CSVなし -->
@@ -218,10 +265,10 @@
                                Visibility="{Binding HasConfigCsv,
                                    Converter={StaticResource BoolToCollapsedConverter}}" />
 
-                    <!-- 汎用CSV DataGrid（AutoGenerateColumns） -->
+                    <!-- 汎用CSV DataGrid: IsReadOnly を IsLocked に連動 -->
                     <DataGrid ItemsSource="{Binding ConfigCsvData.DefaultView}"
                               AutoGenerateColumns="True"
-                              IsReadOnly="True"
+                              IsReadOnly="{Binding IsLocked}"
                               CanUserAddRows="False"
                               CanUserDeleteRows="False"
                               CanUserReorderColumns="True"
