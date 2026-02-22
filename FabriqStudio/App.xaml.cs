@@ -10,7 +10,7 @@ public partial class App : Application
 {
     private IServiceProvider? _services;
 
-    protected override void OnStartup(StartupEventArgs e)
+    protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
@@ -22,6 +22,9 @@ public partial class App : Application
         // VM 構築前に実行することで、各 VM コンストラクタが IsOpen=true を確認して
         // 直接データロードを行える。WorkspaceChanged は発火しない。
         _services.GetRequiredService<IWorkspaceService>().TryRestorePersisted();
+
+        // ── レジストリ辞書カタログの初期化 ──────────────────────────────
+        await _services.GetRequiredService<IRegistryCollectionService>().EnsureInitializedAsync();
 
         var mainWindow = _services.GetRequiredService<MainWindow>();
         mainWindow.Show();
@@ -38,6 +41,7 @@ public partial class App : Application
         services.AddSingleton<IModuleService, ModuleService>();
         services.AddSingleton<IFileService, FileService>();
         services.AddSingleton<IAutokeyService, AutokeyService>();
+        services.AddSingleton<IRegistryCollectionService, RegistryCollectionService>();
 
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();
@@ -48,6 +52,7 @@ public partial class App : Application
         services.AddSingleton<ProfileDetailViewModel>();
         services.AddSingleton<AutokeyRecipeEditorViewModel>();
         services.AddSingleton<WelcomeViewModel>();
+        services.AddSingleton<RegistryCollectionViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // --- Views ---

@@ -23,6 +23,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ProfileDetailViewModel        _profileDetailVm;
     private readonly AutokeyRecipeEditorViewModel  _autokeyEditorVm;
     private readonly WelcomeViewModel              _welcomeVm;
+    private readonly RegistryCollectionViewModel   _registryCollectionVm;
     private readonly IWorkspaceService             _workspace;
 
     [ObservableProperty]
@@ -43,17 +44,19 @@ public partial class MainViewModel : ObservableObject
         ProfileDetailViewModel        profileDetailVm,
         AutokeyRecipeEditorViewModel  autokeyEditorVm,
         WelcomeViewModel              welcomeVm,
+        RegistryCollectionViewModel   registryCollectionVm,
         IWorkspaceService             workspace)
     {
-        _basicParamsVm   = basicParamsVm;
-        _moduleEditVm    = moduleEditVm;
-        _hostListVm      = hostListVm;
-        _hostDetailVm    = hostDetailVm;
-        _moduleDetailVm  = moduleDetailVm;
-        _profileDetailVm = profileDetailVm;
-        _autokeyEditorVm = autokeyEditorVm;
-        _welcomeVm       = welcomeVm;
-        _workspace       = workspace;
+        _basicParamsVm        = basicParamsVm;
+        _moduleEditVm         = moduleEditVm;
+        _hostListVm           = hostListVm;
+        _hostDetailVm         = hostDetailVm;
+        _moduleDetailVm       = moduleDetailVm;
+        _profileDetailVm      = profileDetailVm;
+        _autokeyEditorVm      = autokeyEditorVm;
+        _welcomeVm            = welcomeVm;
+        _registryCollectionVm = registryCollectionVm;
+        _workspace            = workspace;
 
         // ── 初期表示: ワークスペースが開いていればメイン画面、未設定なら WelcomeView ──
         IsWorkspaceOpen = workspace.IsOpen;
@@ -121,11 +124,12 @@ public partial class MainViewModel : ObservableObject
     {
         CurrentPage = page switch
         {
-            "BasicParams"   => (object)_basicParamsVm,
-            "ModuleEdit"    => _moduleEditVm,
-            "HostList"      => _hostListVm,
-            "AutokeyEditor" => _autokeyEditorVm,
-            _               => CurrentPage
+            "BasicParams"        => (object)_basicParamsVm,
+            "ModuleEdit"         => _moduleEditVm,
+            "HostList"           => _hostListVm,
+            "AutokeyEditor"      => _autokeyEditorVm,
+            "RegistryCollection" => _registryCollectionVm,
+            _                    => CurrentPage
         };
     }
 
