@@ -1,0 +1,118 @@
+<UserControl x:Class="FabriqStudio.Views.HostListView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- タイトル -->
+        <TextBlock Grid.Row="0"
+                   Text="端末一覧"
+                   FontSize="20" FontWeight="Bold"
+                   Foreground="#2D2D30"
+                   Margin="0,0,0,4" />
+
+        <TextBlock Grid.Row="0"
+                   Text="kernel/csv/hostlist.csv"
+                   FontSize="11" Foreground="#888888"
+                   VerticalAlignment="Bottom"
+                   HorizontalAlignment="Right" />
+
+        <!-- エラー表示 -->
+        <TextBlock Grid.Row="1"
+                   Text="{Binding ErrorMessage}"
+                   Foreground="Red"
+                   Margin="0,8,0,8"
+                   Visibility="{Binding ErrorMessage,
+                       Converter={StaticResource NullToCollapsedConverter}}" />
+
+        <!-- ローディング -->
+        <TextBlock Grid.Row="1"
+                   Text="読み込み中..."
+                   Foreground="#888888"
+                   Margin="0,8,0,8"
+                   Visibility="{Binding IsLoading,
+                       Converter={StaticResource BoolToVisibilityConverter}}" />
+
+        <!-- データグリッド（43カラム、先頭3列フリーズ） -->
+        <DataGrid Grid.Row="2"
+                  ItemsSource="{Binding Hosts}"
+                  IsReadOnly="True"
+                  AutoGenerateColumns="False"
+                  CanUserReorderColumns="True"
+                  CanUserResizeColumns="True"
+                  HorizontalScrollBarVisibility="Auto"
+                  FrozenColumnCount="3"
+                  GridLinesVisibility="Horizontal"
+                  AlternatingRowBackground="#F7F7F7"
+                  BorderBrush="#DDDDDD" BorderThickness="1"
+                  Margin="0,8,0,0">
+            <DataGrid.Columns>
+                <!-- 基本情報（フリーズ対象 3列） -->
+                <DataGridTextColumn Header="AdminID"    Binding="{Binding AdminID}"   Width="70" />
+                <DataGridTextColumn Header="旧PC名"     Binding="{Binding OldPCName}" Width="120" />
+                <DataGridTextColumn Header="新PC名"     Binding="{Binding NewPCName}" Width="120" />
+
+                <!-- 有線LAN -->
+                <DataGridTextColumn Header="EthernetIP"      Binding="{Binding EthernetIP}"      Width="130" />
+                <DataGridTextColumn Header="EthernetSubnet"  Binding="{Binding EthernetSubnet}"  Width="130" />
+                <DataGridTextColumn Header="EthernetGateway" Binding="{Binding EthernetGateway}" Width="130" />
+
+                <!-- 無線LAN -->
+                <DataGridTextColumn Header="WifiIP"      Binding="{Binding WifiIP}"      Width="130" />
+                <DataGridTextColumn Header="WifiSubnet"  Binding="{Binding WifiSubnet}"  Width="130" />
+                <DataGridTextColumn Header="WifiGateway" Binding="{Binding WifiGateway}" Width="130" />
+
+                <!-- DNS -->
+                <DataGridTextColumn Header="DNS1" Binding="{Binding DNS1}" Width="120" />
+                <DataGridTextColumn Header="DNS2" Binding="{Binding DNS2}" Width="120" />
+                <DataGridTextColumn Header="DNS3" Binding="{Binding DNS3}" Width="120" />
+                <DataGridTextColumn Header="DNS4" Binding="{Binding DNS4}" Width="120" />
+
+                <!-- プリンター 1〜10 -->
+                <DataGridTextColumn Header="Printer1 Name"   Binding="{Binding Printer1Name}"   Width="160" />
+                <DataGridTextColumn Header="Printer1 Driver" Binding="{Binding Printer1Driver}" Width="200" />
+                <DataGridTextColumn Header="Printer1 Port"   Binding="{Binding Printer1Port}"   Width="120" />
+
+                <DataGridTextColumn Header="Printer2 Name"   Binding="{Binding Printer2Name}"   Width="160" />
+                <DataGridTextColumn Header="Printer2 Driver" Binding="{Binding Printer2Driver}" Width="200" />
+                <DataGridTextColumn Header="Printer2 Port"   Binding="{Binding Printer2Port}"   Width="120" />
+
+                <DataGridTextColumn Header="Printer3 Name"   Binding="{Binding Printer3Name}"   Width="160" />
+                <DataGridTextColumn Header="Printer3 Driver" Binding="{Binding Printer3Driver}" Width="200" />
+                <DataGridTextColumn Header="Printer3 Port"   Binding="{Binding Printer3Port}"   Width="120" />
+
+                <DataGridTextColumn Header="Printer4 Name"   Binding="{Binding Printer4Name}"   Width="160" />
+                <DataGridTextColumn Header="Printer4 Driver" Binding="{Binding Printer4Driver}" Width="200" />
+                <DataGridTextColumn Header="Printer4 Port"   Binding="{Binding Printer4Port}"   Width="120" />
+
+                <DataGridTextColumn Header="Printer5 Name"   Binding="{Binding Printer5Name}"   Width="160" />
+                <DataGridTextColumn Header="Printer5 Driver" Binding="{Binding Printer5Driver}" Width="200" />
+                <DataGridTextColumn Header="Printer5 Port"   Binding="{Binding Printer5Port}"   Width="120" />
+
+                <DataGridTextColumn Header="Printer6 Name"   Binding="{Binding Printer6Name}"   Width="160" />
+                <DataGridTextColumn Header="Printer6 Driver" Binding="{Binding Printer6Driver}" Width="200" />
+                <DataGridTextColumn Header="Printer6 Port"   Binding="{Binding Printer6Port}"   Width="120" />
+
+                <DataGridTextColumn Header="Printer7 Name"   Binding="{Binding Printer7Name}"   Width="160" />
+                <DataGridTextColumn Header="Printer7 Driver" Binding="{Binding Printer7Driver}" Width="200" />
+                <DataGridTextColumn Header="Printer7 Port"   Binding="{Binding Printer7Port}"   Width="120" />
+
+                <DataGridTextColumn Header="Printer8 Name"   Binding="{Binding Printer8Name}"   Width="160" />
+                <DataGridTextColumn Header="Printer8 Driver" Binding="{Binding Printer8Driver}" Width="200" />
+                <DataGridTextColumn Header="Printer8 Port"   Binding="{Binding Printer8Port}"   Width="120" />
+
+                <DataGridTextColumn Header="Printer9 Name"   Binding="{Binding Printer9Name}"   Width="160" />
+                <DataGridTextColumn Header="Printer9 Driver" Binding="{Binding Printer9Driver}" Width="200" />
+                <DataGridTextColumn Header="Printer9 Port"   Binding="{Binding Printer9Port}"   Width="120" />
+
+                <DataGridTextColumn Header="Printer10 Name"   Binding="{Binding Printer10Name}"   Width="160" />
+                <DataGridTextColumn Header="Printer10 Driver" Binding="{Binding Printer10Driver}" Width="200" />
+                <DataGridTextColumn Header="Printer10 Port"   Binding="{Binding Printer10Port}"   Width="120" />
+            </DataGrid.Columns>
+        </DataGrid>
+    </Grid>
+</UserControl>
