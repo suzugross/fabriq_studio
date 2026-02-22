@@ -49,7 +49,7 @@ public interface IWorkspaceService
     void Reload();
 
     /// <summary>
-    /// %LOCALAPPDATA%\FabriqStudio\workspace.json に保存された前回のパスを復元する。
+    /// &lt;exe と同じフォルダ&gt;\config\workspace.json に保存された前回のパスを復元する。
     /// パスが存在しないか検証 NG の場合は無視して未設定のまま。
     /// このメソッドは WorkspaceChanged を発火しない（VM 構築前に呼ばれるため）。
     /// </summary>

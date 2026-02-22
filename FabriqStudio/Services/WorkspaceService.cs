@@ -7,7 +7,8 @@ namespace FabriqStudio.Services;
 /// <summary>
 /// fabriq ワークスペース（ルートディレクトリ）の管理実装。
 /// <para>
-/// 永続化先: %LOCALAPPDATA%\FabriqStudio\workspace.json
+/// 永続化先: &lt;exe と同じフォルダ&gt;\config\workspace.json
+/// （ポータブル運用対応: AppDomain.CurrentDomain.BaseDirectory を起点とする）
 /// </para>
 /// </summary>
 public class WorkspaceService : IWorkspaceService
@@ -15,8 +16,8 @@ public class WorkspaceService : IWorkspaceService
     // ── 永続化パス ────────────────────────────────────────────────────────────
 
     private static readonly string PersistPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-        "FabriqStudio",
+        AppDomain.CurrentDomain.BaseDirectory,
+        "config",
         "workspace.json");
 
     // ── 状態 ─────────────────────────────────────────────────────────────────
