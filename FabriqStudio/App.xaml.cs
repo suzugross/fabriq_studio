@@ -36,6 +36,7 @@ public partial class App : Application
         // --- Services ---
         services.AddSingleton<IAppSettingsService, AppSettingsService>();
         services.AddSingleton<ICsvService, CsvService>();
+        services.AddSingleton<IProfileService, ProfileService>();
 
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();
