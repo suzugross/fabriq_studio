@@ -1,0 +1,16 @@
+<UserControl x:Class="FabriqStudio.Views.BasicParamsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock Text="基本パラメータモード"
+                       FontSize="22" FontWeight="Bold"
+                       Foreground="#555555"
+                       HorizontalAlignment="Center" />
+            <TextBlock Text="{Binding Message}"
+                       FontSize="14" Foreground="#888888"
+                       Margin="0,12,0,0"
+                       HorizontalAlignment="Center" />
+        </StackPanel>
+    </Grid>
+</UserControl>

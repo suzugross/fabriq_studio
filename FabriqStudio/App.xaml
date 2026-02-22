@@ -1,0 +1,30 @@
+<Application x:Class="FabriqStudio.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:FabriqStudio.ViewModels"
+             xmlns:views="clr-namespace:FabriqStudio.Views"
+             xmlns:converters="clr-namespace:FabriqStudio.Converters">
+    <!-- StartupUri は使用しない。OnStartup で DI 経由で起動する。 -->
+    <Application.Resources>
+        <ResourceDictionary>
+
+            <!-- Converters -->
+            <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+            <converters:NullOrEmptyToVisibilityConverter x:Key="NullToCollapsedConverter" />
+
+            <!-- ViewModel → View の DataTemplate マッピング -->
+            <DataTemplate DataType="{x:Type vm:BasicParamsViewModel}">
+                <views:BasicParamsView />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vm:ModuleEditViewModel}">
+                <views:ModuleEditView />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vm:HostListViewModel}">
+                <views:HostListView />
+            </DataTemplate>
+
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>
