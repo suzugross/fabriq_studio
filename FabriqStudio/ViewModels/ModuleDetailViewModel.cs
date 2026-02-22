@@ -23,8 +23,8 @@ namespace FabriqStudio.ViewModels;
 /// </summary>
 public partial class ModuleDetailViewModel : ObservableObject
 {
-    private readonly IFileService        _fileService;
-    private readonly IAppSettingsService _settings;
+    private readonly IFileService      _fileService;
+    private readonly IWorkspaceService _workspace;
 
     // ─── モジュール情報 ───────────────────────────────────────────
     [ObservableProperty] private ModuleMasterEntry? _module;
@@ -80,10 +80,10 @@ public partial class ModuleDetailViewModel : ObservableObject
     private string? _guidePath;
     private string? _csvFilePath;
 
-    public ModuleDetailViewModel(IFileService fileService, IAppSettingsService settings)
+    public ModuleDetailViewModel(IFileService fileService, IWorkspaceService workspace)
     {
         _fileService = fileService;
-        _settings    = settings;
+        _workspace   = workspace;
     }
 
     /// <summary>選択されたモジュールを読み込む。</summary>
@@ -112,8 +112,10 @@ public partial class ModuleDetailViewModel : ObservableObject
 
         try
         {
-            var moduleDir = Path.Combine(
-                _settings.FabriqRootPath, "modules", module.Kind, module.ModuleDir);
+            var root      = _workspace.RootPath
+                ?? throw new InvalidOperationException(
+                    "ワークスペースが開かれていません。fabriq フォルダを選択してください。");
+            var moduleDir = Path.Combine(root, "modules", module.Kind, module.ModuleDir);
 
             // ── guide.txt ──────────────────────────────────────────
             _guidePath = Path.Combine(moduleDir, "guide.txt");

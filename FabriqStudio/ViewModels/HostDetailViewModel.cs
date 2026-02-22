@@ -28,8 +28,7 @@ namespace FabriqStudio.ViewModels;
 /// </summary>
 public partial class HostDetailViewModel : ObservableObject
 {
-    private readonly ICsvService         _csvService;
-    private readonly IAppSettingsService _settings;
+    private readonly ICsvService _csvService;
 
     // ─── 表示データ ────────────────────────────────────────────────
     [ObservableProperty] private HostEntry?                        _host;
@@ -48,10 +47,9 @@ public partial class HostDetailViewModel : ObservableObject
     [ObservableProperty] private string? _saveStatus;
     [ObservableProperty] private string? _saveError;
 
-    public HostDetailViewModel(ICsvService csvService, IAppSettingsService settings)
+    public HostDetailViewModel(ICsvService csvService)
     {
         _csvService = csvService;
-        _settings   = settings;
     }
 
     /// <summary>選択された端末を読み込み、スナップショットを作成する。</summary>

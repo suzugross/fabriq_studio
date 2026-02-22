@@ -5,23 +5,27 @@ namespace FabriqStudio.Services;
 
 public class ModuleService : IModuleService
 {
-    private readonly IAppSettingsService _settings;
-    private readonly ICsvService         _csvService;
+    private readonly IWorkspaceService _workspace;
+    private readonly ICsvService       _csvService;
 
-    public ModuleService(IAppSettingsService settings, ICsvService csvService)
+    public ModuleService(IWorkspaceService workspace, ICsvService csvService)
     {
-        _settings   = settings;
+        _workspace  = workspace;
         _csvService = csvService;
     }
 
     public async Task<IReadOnlyList<ModuleMasterEntry>> GetAllModulesAsync()
     {
+        var root = _workspace.RootPath
+            ?? throw new InvalidOperationException(
+                "ワークスペースが開かれていません。fabriq フォルダを選択してください。");
+
         var kinds  = new[] { "standard", "extended" };
         var result = new List<ModuleMasterEntry>();
 
         foreach (var kind in kinds)
         {
-            var kindDir = Path.Combine(_settings.FabriqRootPath, "modules", kind);
+            var kindDir = Path.Combine(root, "modules", kind);
             if (!Directory.Exists(kindDir))
                 continue;
 
@@ -31,7 +35,7 @@ public class ModuleService : IModuleService
                 if (!File.Exists(moduleCsvPath))
                     continue;
 
-                var relativePath = Path.GetRelativePath(_settings.FabriqRootPath, moduleCsvPath);
+                var relativePath = Path.GetRelativePath(root, moduleCsvPath);
                 var entries      = await _csvService.ReadAsync<ModuleMasterEntry>(relativePath);
                 var moduleName   = Path.GetFileName(moduleDir);
 
