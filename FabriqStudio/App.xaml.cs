@@ -1,5 +1,4 @@
 using System.Windows;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using FabriqStudio.Services;
 using FabriqStudio.ViewModels;
@@ -19,22 +18,21 @@ public partial class App : Application
         ConfigureServices(services);
         _services = services.BuildServiceProvider();
 
+        // ── ワークスペースの永続化復元 ───────────────────────────────────
+        // VM 構築前に実行することで、各 VM コンストラクタが IsOpen=true を確認して
+        // 直接データロードを行える。WorkspaceChanged は発火しない。
+        _services.GetRequiredService<IWorkspaceService>().TryRestorePersisted();
+
         var mainWindow = _services.GetRequiredService<MainWindow>();
         mainWindow.Show();
     }
 
     private static void ConfigureServices(IServiceCollection services)
     {
-        // --- Configuration ---
-        var config = new ConfigurationBuilder()
-            .SetBasePath(AppContext.BaseDirectory)
-            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: false)
-            .Build();
-
-        services.AddSingleton<IConfiguration>(config);
-
         // --- Services ---
-        services.AddSingleton<IAppSettingsService, AppSettingsService>();
+        // IWorkspaceService: fabriq ルートパスの動的管理（永続化 / バリデーション / 変更通知）
+        services.AddSingleton<IWorkspaceService, WorkspaceService>();
+
         services.AddSingleton<ICsvService, CsvService>();
         services.AddSingleton<IProfileService, ProfileService>();
         services.AddSingleton<IModuleService, ModuleService>();
@@ -49,6 +47,7 @@ public partial class App : Application
         services.AddSingleton<ModuleDetailViewModel>();
         services.AddSingleton<ProfileDetailViewModel>();
         services.AddSingleton<AutokeyRecipeEditorViewModel>();
+        services.AddSingleton<WelcomeViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // --- Views ---
