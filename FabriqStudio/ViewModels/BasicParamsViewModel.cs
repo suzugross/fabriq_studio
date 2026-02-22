@@ -7,24 +7,11 @@ using FabriqStudio.Services;
 
 namespace FabriqStudio.ViewModels;
 
-/// <summary>
-/// 基本パラメータモード
-///   - 作業者管理       (kernel/csv/workers.csv)
-///   - ログ出力先管理   (kernel/csv/log_destinations.csv)
-///   - プロファイル選択 (profiles/*.csv)
-///
-/// ロック機構 / Dirty 検知 / 保存 は HostDetailViewModel / ModuleDetailViewModel と統一。
-///   IsLocked=true（初期値）→ DataGrid が読み取り専用・行追加削除不可
-///   IsLocked=false          → 編集可能
-///   Dirty: CollectionChanged（行追加/削除）＋ 各アイテムの PropertyChanged（セル編集）で検知
-///   SaveCommand: CanExecute = IsDirty のとき有効（ボタンが青くなる）
-/// </summary>
 public partial class BasicParamsViewModel : ObservableObject
 {
     private readonly ICsvService     _csvService;
     private readonly IProfileService _profileService;
 
-    // ─── 作業者 ────────────────────────────────────────────────────
     [ObservableProperty] private ObservableCollection<WorkerEntry> _workers         = [];
     [ObservableProperty] private bool                              _isWorkersLoading;
     [ObservableProperty] private string?                           _workersError;
@@ -32,16 +19,15 @@ public partial class BasicParamsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsWorkersEditable))]
+    [NotifyCanExecuteChangedFor(nameof(SaveWorkersCommand))]
     private bool _isWorkersLocked = true;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveWorkersCommand))]
     private bool _isWorkersDirty;
 
-    /// <summary>IsWorkersLocked の逆数。DataGrid の CanUserAddRows/CanUserDeleteRows にバインド。</summary>
     public bool IsWorkersEditable => !IsWorkersLocked;
 
-    // ─── ログ出力先 ────────────────────────────────────────────────
     [ObservableProperty] private ObservableCollection<LogDestination> _logDestinations = [];
     [ObservableProperty] private bool                                 _isLogDestLoading;
     [ObservableProperty] private string?                              _logDestError;
@@ -49,22 +35,20 @@ public partial class BasicParamsViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(IsLogDestEditable))]
+    [NotifyCanExecuteChangedFor(nameof(SaveLogDestCommand))]
     private bool _isLogDestLocked = true;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveLogDestCommand))]
     private bool _isLogDestDirty;
 
-    /// <summary>IsLogDestLocked の逆数。DataGrid の CanUserAddRows/CanUserDeleteRows にバインド。</summary>
     public bool IsLogDestEditable => !IsLogDestLocked;
 
-    // ─── プロファイル ──────────────────────────────────────────────
     [ObservableProperty] private ObservableCollection<ProfileEntry>       _profiles        = [];
     [ObservableProperty] private ProfileEntry?                            _selectedProfile;
     [ObservableProperty] private bool                                     _isProfilesLoading;
     [ObservableProperty] private string?                                  _profilesError;
 
-    // ─── プロファイル モジュールリスト ─────────────────────────────
     [ObservableProperty] private ObservableCollection<ProfileScriptEntry> _profileModules  = [];
     [ObservableProperty] private bool                                     _isModulesLoading;
     [ObservableProperty] private string?                                  _modulesError;
@@ -76,11 +60,9 @@ public partial class BasicParamsViewModel : ObservableObject
         _ = LoadAllAsync();
     }
 
-    // ── 初期ロード（全セクション並列）─────────────────────────────────
     private Task LoadAllAsync()
         => Task.WhenAll(LoadWorkersAsync(), LoadLogDestAsync(), LoadProfilesAsync());
 
-    // ── 作業者: 読み込み ────────────────────────────────────────────
     private async Task LoadWorkersAsync()
     {
         IsWorkersLoading = true;
@@ -105,11 +87,9 @@ public partial class BasicParamsViewModel : ObservableObject
 
     private void SubscribeWorkersDirty(ObservableCollection<WorkerEntry> collection)
     {
-        // 既存アイテムのセル編集を検知
         foreach (var item in collection)
             item.PropertyChanged += OnWorkerItemChanged;
 
-        // 行追加・削除を検知し、追加アイテムにも購読を付ける
         collection.CollectionChanged += (_, e) =>
         {
             IsWorkersDirty = true;
@@ -122,8 +102,7 @@ public partial class BasicParamsViewModel : ObservableObject
     private void OnWorkerItemChanged(object? sender, PropertyChangedEventArgs e)
         => IsWorkersDirty = true;
 
-    // ── 作業者: 保存 ────────────────────────────────────────────────
-    private bool CanSaveWorkers() => IsWorkersDirty;
+    private bool CanSaveWorkers() => IsWorkersDirty && !IsWorkersLocked;
 
     [RelayCommand(CanExecute = nameof(CanSaveWorkers))]
     private async Task SaveWorkersAsync()
@@ -142,7 +121,6 @@ public partial class BasicParamsViewModel : ObservableObject
         }
     }
 
-    // ── ログ出力先: 読み込み ────────────────────────────────────────
     private async Task LoadLogDestAsync()
     {
         IsLogDestLoading = true;
@@ -182,8 +160,7 @@ public partial class BasicParamsViewModel : ObservableObject
     private void OnLogDestItemChanged(object? sender, PropertyChangedEventArgs e)
         => IsLogDestDirty = true;
 
-    // ── ログ出力先: 保存 ────────────────────────────────────────────
-    private bool CanSaveLogDest() => IsLogDestDirty;
+    private bool CanSaveLogDest() => IsLogDestDirty && !IsLogDestLocked;
 
     [RelayCommand(CanExecute = nameof(CanSaveLogDest))]
     private async Task SaveLogDestAsync()
@@ -202,7 +179,6 @@ public partial class BasicParamsViewModel : ObservableObject
         }
     }
 
-    // ── プロファイル一覧: 読み込み ──────────────────────────────────
     private async Task LoadProfilesAsync()
     {
         IsProfilesLoading = true;
@@ -212,8 +188,6 @@ public partial class BasicParamsViewModel : ObservableObject
             var items = await _profileService.GetProfilesAsync();
             Profiles        = new ObservableCollection<ProfileEntry>(items);
             SelectedProfile = Profiles.FirstOrDefault();
-            // SelectedProfile のセットが OnSelectedProfileChanged を発火し
-            // モジュールリストの読み込みが自動的に開始される
         }
         catch (Exception ex)
         {
@@ -225,7 +199,6 @@ public partial class BasicParamsViewModel : ObservableObject
         }
     }
 
-    // ── プロファイル選択変更時: モジュールリストを自動更新 ──────────
     partial void OnSelectedProfileChanged(ProfileEntry? value)
     {
         ProfileModules.Clear();
@@ -234,7 +207,6 @@ public partial class BasicParamsViewModel : ObservableObject
             _ = LoadProfileModulesAsync(value);
     }
 
-    // ── プロファイル モジュールリスト: 読み込み ─────────────────────
     private async Task LoadProfileModulesAsync(ProfileEntry profile)
     {
         IsModulesLoading = true;

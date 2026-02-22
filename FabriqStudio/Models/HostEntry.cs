@@ -72,57 +72,16 @@ public partial class HostEntry : ObservableObject
     [ObservableProperty] private string _printer10Port   = "";
 
     // ────────────────────────────────────────────────────────────
+    // JSON シリアライズを使うことで、フィールド追加時に Clone/ContentEquals を修正不要にする。
+    // System.Text.Json は [ObservableProperty] が生成した public プロパティを自動で対象にする。
+
     /// <summary>全フィールドのディープコピーを返す（Dirty 検知スナップショット用）。</summary>
-    public HostEntry Clone() => new()
-    {
-        AdminID         = AdminID,
-        OldPCName       = OldPCName,
-        NewPCName       = NewPCName,
-        EthernetIP      = EthernetIP,
-        EthernetSubnet  = EthernetSubnet,
-        EthernetGateway = EthernetGateway,
-        WifiIP          = WifiIP,
-        WifiSubnet      = WifiSubnet,
-        WifiGateway     = WifiGateway,
-        DNS1            = DNS1,
-        DNS2            = DNS2,
-        DNS3            = DNS3,
-        DNS4            = DNS4,
-        Printer1Name    = Printer1Name,  Printer1Driver  = Printer1Driver,  Printer1Port  = Printer1Port,
-        Printer2Name    = Printer2Name,  Printer2Driver  = Printer2Driver,  Printer2Port  = Printer2Port,
-        Printer3Name    = Printer3Name,  Printer3Driver  = Printer3Driver,  Printer3Port  = Printer3Port,
-        Printer4Name    = Printer4Name,  Printer4Driver  = Printer4Driver,  Printer4Port  = Printer4Port,
-        Printer5Name    = Printer5Name,  Printer5Driver  = Printer5Driver,  Printer5Port  = Printer5Port,
-        Printer6Name    = Printer6Name,  Printer6Driver  = Printer6Driver,  Printer6Port  = Printer6Port,
-        Printer7Name    = Printer7Name,  Printer7Driver  = Printer7Driver,  Printer7Port  = Printer7Port,
-        Printer8Name    = Printer8Name,  Printer8Driver  = Printer8Driver,  Printer8Port  = Printer8Port,
-        Printer9Name    = Printer9Name,  Printer9Driver  = Printer9Driver,  Printer9Port  = Printer9Port,
-        Printer10Name   = Printer10Name, Printer10Driver = Printer10Driver, Printer10Port = Printer10Port,
-    };
+    public HostEntry Clone() =>
+        System.Text.Json.JsonSerializer.Deserialize<HostEntry>(
+            System.Text.Json.JsonSerializer.Serialize(this))!;
 
     /// <summary>全フィールドの値が等しいか比較する（Dirty リセット判定用）。</summary>
     public bool ContentEquals(HostEntry other) =>
-        AdminID         == other.AdminID         &&
-        OldPCName       == other.OldPCName       &&
-        NewPCName       == other.NewPCName       &&
-        EthernetIP      == other.EthernetIP      &&
-        EthernetSubnet  == other.EthernetSubnet  &&
-        EthernetGateway == other.EthernetGateway &&
-        WifiIP          == other.WifiIP          &&
-        WifiSubnet      == other.WifiSubnet      &&
-        WifiGateway     == other.WifiGateway     &&
-        DNS1            == other.DNS1            &&
-        DNS2            == other.DNS2            &&
-        DNS3            == other.DNS3            &&
-        DNS4            == other.DNS4            &&
-        Printer1Name  == other.Printer1Name  && Printer1Driver  == other.Printer1Driver  && Printer1Port  == other.Printer1Port  &&
-        Printer2Name  == other.Printer2Name  && Printer2Driver  == other.Printer2Driver  && Printer2Port  == other.Printer2Port  &&
-        Printer3Name  == other.Printer3Name  && Printer3Driver  == other.Printer3Driver  && Printer3Port  == other.Printer3Port  &&
-        Printer4Name  == other.Printer4Name  && Printer4Driver  == other.Printer4Driver  && Printer4Port  == other.Printer4Port  &&
-        Printer5Name  == other.Printer5Name  && Printer5Driver  == other.Printer5Driver  && Printer5Port  == other.Printer5Port  &&
-        Printer6Name  == other.Printer6Name  && Printer6Driver  == other.Printer6Driver  && Printer6Port  == other.Printer6Port  &&
-        Printer7Name  == other.Printer7Name  && Printer7Driver  == other.Printer7Driver  && Printer7Port  == other.Printer7Port  &&
-        Printer8Name  == other.Printer8Name  && Printer8Driver  == other.Printer8Driver  && Printer8Port  == other.Printer8Port  &&
-        Printer9Name  == other.Printer9Name  && Printer9Driver  == other.Printer9Driver  && Printer9Port  == other.Printer9Port  &&
-        Printer10Name == other.Printer10Name && Printer10Driver == other.Printer10Driver && Printer10Port == other.Printer10Port;
+        System.Text.Json.JsonSerializer.Serialize(this) ==
+        System.Text.Json.JsonSerializer.Serialize(other);
 }
