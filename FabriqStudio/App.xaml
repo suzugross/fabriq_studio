@@ -40,6 +40,10 @@
                 <views:ProfileDetailView />
             </DataTemplate>
 
+            <DataTemplate DataType="{x:Type vm:AutokeyRecipeEditorViewModel}">
+                <views:AutokeyRecipeEditorView />
+            </DataTemplate>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>
