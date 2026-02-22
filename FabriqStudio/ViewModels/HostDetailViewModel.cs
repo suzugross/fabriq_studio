@@ -17,11 +17,12 @@ namespace FabriqStudio.ViewModels;
 ///   IsLocked=false          → 編集可能（TwoWay バインド経由で Host を直接更新）
 ///
 /// Dirty 検知:
-///   Load() 時に OriginalHost スナップショットを作成。
-///   Host.PropertyChanged を購読し、変更のたびに ContentEquals で IsDirty を更新。
+///   Load() 時に OriginalHost スナップショットを作成（JSON Clone）。
+///   Host.PropertyChanged を購読し、変更のたびに ContentEquals（JSON 比較）で IsDirty を更新。
 ///   View 側は DirtyToForegroundConverter（MultiBinding）でフィールド単位にハイライト。
 ///
 /// 保存:
+///   CanExecute = IsDirty &amp;&amp; !IsLocked（未変更またはロック中は保存ボタンを無効化）。
 ///   hostlist.csv 全行を read-modify-write（元のAdminIDで行を特定）。
 ///   保存後にスナップショットを更新して Dirty をリセット。
 /// </summary>
@@ -40,7 +41,10 @@ public partial class HostDetailViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private bool _isDirty;
 
-    [ObservableProperty] private bool    _isLocked = true;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _isLocked = true;
+
     [ObservableProperty] private string? _saveStatus;
     [ObservableProperty] private string? _saveError;
 
@@ -80,7 +84,9 @@ public partial class HostDetailViewModel : ObservableObject
     }
 
     // ── 保存コマンド ──────────────────────────────────────────────
-    [RelayCommand(CanExecute = nameof(IsDirty))]
+    private bool CanSave() => IsDirty && !IsLocked;
+
+    [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task SaveAsync()
     {
         if (Host is null || OriginalHost is null) return;

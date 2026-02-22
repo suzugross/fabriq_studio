@@ -17,6 +17,9 @@ namespace FabriqStudio.ViewModels;
 /// ロック機構:
 ///   IsLocked=true（初期値）→ guide.txt TextBox / DataGrid が読み取り専用
 ///   IsLocked=false          → 編集可能
+///
+/// 保存:
+///   CanExecute = (IsGuideDirty || HasCsvChanges) &amp;&amp; !IsLocked
 /// </summary>
 public partial class ModuleDetailViewModel : ObservableObject
 {
@@ -27,7 +30,9 @@ public partial class ModuleDetailViewModel : ObservableObject
     [ObservableProperty] private ModuleMasterEntry? _module;
 
     // ─── ロック ────────────────────────────────────────────────────
-    [ObservableProperty] private bool _isLocked = true;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _isLocked = true;
 
     // ─── guide.txt ───────────────────────────────────────────────
     [ObservableProperty]
@@ -154,7 +159,7 @@ public partial class ModuleDetailViewModel : ObservableObject
     private void ToggleLock() => IsLocked = !IsLocked;
 
     // ── 保存コマンド ──────────────────────────────────────────────
-    private bool CanSave() => IsGuideDirty || HasCsvChanges;
+    private bool CanSave() => (IsGuideDirty || HasCsvChanges) && !IsLocked;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task SaveAsync()
