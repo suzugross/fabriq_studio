@@ -44,6 +44,10 @@
                 <views:AutokeyRecipeEditorView />
             </DataTemplate>
 
+            <DataTemplate DataType="{x:Type vm:WelcomeViewModel}">
+                <views:WelcomeView />
+            </DataTemplate>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>
