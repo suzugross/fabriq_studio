@@ -1,0 +1,315 @@
+<UserControl x:Class="FabriqStudio.Views.ProfileDetailView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <UserControl.Resources>
+        <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#444444" />
+            <Setter Property="Margin"     Value="0,0,0,6" />
+        </Style>
+        <Style x:Key="SectionBorderStyle" TargetType="Border">
+            <Setter Property="Background"      Value="White" />
+            <Setter Property="BorderBrush"     Value="#E0E0E0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius"    Value="4" />
+            <Setter Property="Padding"         Value="12" />
+            <Setter Property="Margin"          Value="0" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="#F3F3F3">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- ===== ヘッダーバー ===== -->
+        <Border Grid.Row="0"
+                Background="White"
+                BorderBrush="#E0E0E0" BorderThickness="0,0,0,1"
+                Padding="12,8">
+            <DockPanel LastChildFill="False">
+
+                <!-- 左: 戻る / タイトル / プロファイル名 -->
+                <Button DockPanel.Dock="Left"
+                        Content="← 戻る"
+                        Command="{Binding NavigateBackCommand}"
+                        Padding="12,5" FontSize="12"
+                        Background="Transparent" BorderBrush="#AAAAAA"
+                        Cursor="Hand" />
+                <TextBlock DockPanel.Dock="Left"
+                           Text="プロファイル編集"
+                           FontSize="18" FontWeight="Bold"
+                           Foreground="#2D2D30"
+                           VerticalAlignment="Center"
+                           Margin="16,0,0,0" />
+                <TextBlock DockPanel.Dock="Left"
+                           Text="{Binding Profile.Name, StringFormat=' [{0}]'}"
+                           FontSize="14" Foreground="#007ACC"
+                           VerticalAlignment="Center"
+                           Margin="4,0,8,0" />
+
+                <!-- 右: ロック / 保存 / Dirty / ステータス -->
+                <ToggleButton DockPanel.Dock="Right"
+                              IsChecked="{Binding IsLocked}"
+                              Padding="10,4" FontSize="12" Cursor="Hand">
+                    <ToggleButton.Style>
+                        <Style TargetType="ToggleButton">
+                            <Setter Property="Content" Value="🔒 ロック中（読み取り専用）" />
+                            <Style.Triggers>
+                                <Trigger Property="IsChecked" Value="False">
+                                    <Setter Property="Content" Value="✏️ 編集中" />
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ToggleButton.Style>
+                </ToggleButton>
+
+                <Button DockPanel.Dock="Right"
+                        Content="💾 保存"
+                        Command="{Binding SaveCommand}"
+                        Padding="14,5" FontSize="12"
+                        Background="#007ACC" Foreground="White"
+                        BorderThickness="0" Cursor="Hand"
+                        Margin="0,0,8,0" />
+
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding SaveStatus}"
+                           Foreground="#107C10" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0"
+                           Visibility="{Binding SaveStatus,
+                               Converter={StaticResource NullToCollapsedConverter}}" />
+
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding SaveError}"
+                           Foreground="Red" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0"
+                           Visibility="{Binding SaveError,
+                               Converter={StaticResource NullToCollapsedConverter}}" />
+
+                <TextBlock DockPanel.Dock="Right"
+                           Text="● 未保存の変更があります"
+                           Foreground="OrangeRed" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDirty}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+
+                <TextBlock DockPanel.Dock="Right"
+                           Text="読み込み中..."
+                           Foreground="#888888" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0"
+                           Visibility="{Binding IsLoading,
+                               Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding ErrorMessage}"
+                           Foreground="Red" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0"
+                           Visibility="{Binding ErrorMessage,
+                               Converter={StaticResource NullToCollapsedConverter}}" />
+            </DockPanel>
+        </Border>
+
+        <!-- ===== コンテンツ: 左右 2ペイン ===== -->
+        <Grid Grid.Row="1" Margin="16">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" MinWidth="180" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="*" MinWidth="300" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ─── 左ペイン: 利用可能モジュール ─── -->
+            <Border Grid.Column="0" Style="{StaticResource SectionBorderStyle}">
+                <DockPanel>
+
+                    <!-- タイトル -->
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="利用可能モジュール"
+                               Style="{StaticResource SectionHeaderStyle}" />
+
+                    <!-- フィルター TextBox -->
+                    <TextBox DockPanel.Dock="Top"
+                             Text="{Binding FilterText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="11"
+                             Padding="5,4"
+                             BorderBrush="#CCCCCC"
+                             Margin="0,0,0,6">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox">
+                                <Style.Triggers>
+                                    <Trigger Property="Text" Value="">
+                                        <!-- プレースホルダー代替: 空のときは薄いヒント文字 -->
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+
+                    <!-- フィルターヒント -->
+                    <TextBlock DockPanel.Dock="Top"
+                               Text="（名前 / カテゴリ / フォルダ名でフィルター）"
+                               FontSize="9" Foreground="#AAAAAA"
+                               Margin="0,0,0,6" />
+
+                    <!-- 追加ボタン -->
+                    <Button DockPanel.Dock="Bottom"
+                            Content="→ プロファイルに追加"
+                            Command="{Binding AddModuleCommand}"
+                            Padding="8,5" FontSize="11" Cursor="Hand"
+                            HorizontalAlignment="Stretch"
+                            Background="#107C10" Foreground="White"
+                            BorderThickness="0"
+                            Margin="0,6,0,0" />
+
+                    <!-- 件数表示 -->
+                    <TextBlock DockPanel.Dock="Bottom"
+                               FontSize="10" Foreground="#888888"
+                               Margin="0,4,0,0" HorizontalAlignment="Right">
+                        <TextBlock.Text>
+                            <MultiBinding StringFormat="{}{0} 件">
+                                <Binding Path="FilteredModules.Count" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+
+                    <!-- モジュール ListBox -->
+                    <ListBox ItemsSource="{Binding FilteredModules}"
+                             SelectedItem="{Binding SelectedAvailable, Mode=TwoWay}"
+                             BorderBrush="#DDDDDD" BorderThickness="1"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="2,3">
+                                    <TextBlock Text="{Binding MenuName}"
+                                               FontSize="11" FontWeight="SemiBold"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding Kind}"
+                                                   FontSize="9" Foreground="#5C2D91"
+                                                   Margin="0,0,6,0" />
+                                        <TextBlock Text="{Binding Category}"
+                                                   FontSize="9" Foreground="#888888"
+                                                   Margin="0,0,6,0" />
+                                        <TextBlock Text="{Binding ModuleDir}"
+                                                   FontSize="9" Foreground="#AAAAAA" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
+            </Border>
+
+            <!-- ─── 右ペイン: プロファイル構成 ─── -->
+            <Border Grid.Column="2" Style="{StaticResource SectionBorderStyle}">
+                <DockPanel>
+
+                    <!-- ヘッダー行: タイトル + 操作ボタン群 -->
+                    <DockPanel DockPanel.Dock="Top" Margin="0,0,0,8" LastChildFill="False">
+                        <TextBlock DockPanel.Dock="Left"
+                                   Text="モジュール構成"
+                                   Style="{StaticResource SectionHeaderStyle}"
+                                   Margin="0" VerticalAlignment="Center" />
+                        <TextBlock DockPanel.Dock="Left"
+                                   Text="● 未保存"
+                                   Foreground="OrangeRed" FontSize="11"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   Visibility="{Binding IsDirty,
+                                       Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                        <!-- 右: 特殊コマンド ComboBox + 追加ボタン -->
+                        <ComboBox DockPanel.Dock="Right"
+                                  ItemsSource="{Binding SpecialCommands}"
+                                  SelectedItem="{Binding SelectedSpecialCommand, Mode=TwoWay}"
+                                  DisplayMemberPath="Command"
+                                  Width="160" FontSize="11"
+                                  Margin="0,0,0,0" />
+                        <Button DockPanel.Dock="Right"
+                                Content="特殊コマンド追加"
+                                Command="{Binding AddSpecialCommandCommand}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                Margin="0,0,6,0" />
+
+                        <!-- 右: 削除 / 上 / 下 -->
+                        <Button DockPanel.Dock="Right"
+                                Content="🗑 削除"
+                                Command="{Binding RemoveModuleCommand}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                Margin="0,0,6,0" />
+                        <Button DockPanel.Dock="Right"
+                                Content="↓"
+                                Command="{Binding MoveDownCommand}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                Margin="0,0,4,0" />
+                        <Button DockPanel.Dock="Right"
+                                Content="↑"
+                                Command="{Binding MoveUpCommand}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                Margin="0,0,6,0" />
+                    </DockPanel>
+
+                    <!-- プロファイル DataGrid -->
+                    <DataGrid ItemsSource="{Binding Modules}"
+                              SelectedItem="{Binding SelectedModule, Mode=TwoWay}"
+                              IsReadOnly="{Binding IsLocked}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              BorderBrush="#DDDDDD" BorderThickness="1"
+                              SelectionMode="Single">
+                        <!-- AlternatingRowBackground は SpecialMarkerToBackgroundConverter と競合するため使用しない -->
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <!-- Background: ScriptPath を Converter に渡し種別ごとに色分け -->
+                                <Setter Property="Background"
+                                        Value="{Binding ScriptPath,
+                                            Converter={StaticResource SpecialMarkerToBackgroundConverter}}" />
+                                <Style.Triggers>
+                                    <!-- FontStyle: 特殊マーカー行すべてにイタリックを適用 -->
+                                    <DataTrigger Binding="{Binding IsSystemCommand}" Value="True">
+                                        <Setter Property="FontStyle" Value="Italic" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="順序"
+                                                Binding="{Binding Order}"
+                                                Width="55" />
+                            <DataGridTextColumn Header="有効(0/1)"
+                                                Binding="{Binding Enabled}"
+                                                Width="70" />
+                            <DataGridTextColumn Header="スクリプト / コマンド"
+                                                Binding="{Binding ScriptPath}"
+                                                Width="*" />
+                            <DataGridTextColumn Header="説明"
+                                                Binding="{Binding Description}"
+                                                Width="200" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>

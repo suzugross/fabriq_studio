@@ -15,7 +15,13 @@ public class ShowModuleDetailMessage : ValueChangedMessage<ModuleMasterEntry>
     public ShowModuleDetailMessage(ModuleMasterEntry module) : base(module) { }
 }
 
-/// <summary>一覧画面への戻り要求（targetPage: "HostList" / "ModuleEdit"）</summary>
+/// <summary>プロファイル詳細（編集）画面への遷移要求</summary>
+public class ShowProfileDetailMessage : ValueChangedMessage<ProfileEntry>
+{
+    public ShowProfileDetailMessage(ProfileEntry profile) : base(profile) { }
+}
+
+/// <summary>一覧画面への戻り要求（targetPage: "HostList" / "ModuleEdit" / "BasicParams"）</summary>
 public class NavigateBackMessage : ValueChangedMessage<string>
 {
     public NavigateBackMessage(string targetPage) : base(targetPage) { }

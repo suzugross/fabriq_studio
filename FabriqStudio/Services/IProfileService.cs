@@ -15,4 +15,10 @@ public interface IProfileService
     /// </summary>
     /// <param name="profile">対象プロファイル（FilePath を使用）</param>
     Task<IReadOnlyList<ProfileScriptEntry>> GetProfileModulesAsync(ProfileEntry profile);
+
+    /// <summary>
+    /// 指定プロファイルのモジュールリストをCSVに上書き保存する。
+    /// 渡した順番で Order を 10 刻みで振り直してから書き込む。
+    /// </summary>
+    Task SaveProfileModulesAsync(ProfileEntry profile, IEnumerable<ProfileScriptEntry> modules);
 }

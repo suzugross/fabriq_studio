@@ -47,4 +47,15 @@ public class ProfileService : IProfileService
         // ファイルの記述順ではなく Order カラムで確実にソートして返す
         return modules.OrderBy(m => m.Order).ToList();
     }
+
+    public async Task SaveProfileModulesAsync(ProfileEntry profile, IEnumerable<ProfileScriptEntry> modules)
+    {
+        // 渡された表示順で Order を 10 刻みで振り直し、その順番で書き込む
+        var ordered = modules.ToList();
+        for (int i = 0; i < ordered.Count; i++)
+            ordered[i].Order = (i + 1) * 10;
+
+        var relativePath = Path.GetRelativePath(_settings.FabriqRootPath, profile.FilePath);
+        await _csvService.WriteAsync(relativePath, ordered);
+    }
 }
