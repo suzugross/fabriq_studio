@@ -39,6 +39,7 @@ public partial class App : Application
         services.AddSingleton<IProfileService, ProfileService>();
         services.AddSingleton<IModuleService, ModuleService>();
         services.AddSingleton<IFileService, FileService>();
+        services.AddSingleton<IAutokeyService, AutokeyService>();
 
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();
@@ -47,6 +48,7 @@ public partial class App : Application
         services.AddSingleton<HostDetailViewModel>();
         services.AddSingleton<ModuleDetailViewModel>();
         services.AddSingleton<ProfileDetailViewModel>();
+        services.AddSingleton<AutokeyRecipeEditorViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // --- Views ---

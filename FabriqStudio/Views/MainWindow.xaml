@@ -39,6 +39,14 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <!-- アプリ子項目ボタン: NavButtonStyle よりインデント深め・フォント小さめ -->
+        <Style x:Key="NavChildButtonStyle" TargetType="Button"
+               BasedOn="{StaticResource NavButtonStyle}">
+            <Setter Property="Padding" Value="32,0,0,0" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Height"   Value="38" />
+        </Style>
     </Window.Resources>
 
     <Grid>
@@ -72,7 +80,7 @@
                            Margin="16,16,0,4"
                            FontWeight="SemiBold" />
 
-                <!-- ナビゲーションボタン -->
+                <!-- ナビゲーションボタン: メインメニュー -->
                 <StackPanel DockPanel.Dock="Top">
                     <Button Content="⚙  基本パラメータ"
                             Style="{StaticResource NavButtonStyle}"
@@ -88,6 +96,21 @@
                             Style="{StaticResource NavButtonStyle}"
                             Command="{Binding NavigateCommand}"
                             CommandParameter="HostList" />
+                </StackPanel>
+
+                <!-- セクションラベル: アプリ -->
+                <TextBlock DockPanel.Dock="Top"
+                           Text="アプリ"
+                           FontSize="10" Foreground="#666666"
+                           Margin="16,16,0,4"
+                           FontWeight="SemiBold" />
+
+                <!-- ナビゲーションボタン: アプリ子項目 -->
+                <StackPanel DockPanel.Dock="Top">
+                    <Button Content="⌨  Autokey レシピ"
+                            Style="{StaticResource NavChildButtonStyle}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="AutokeyEditor" />
                 </StackPanel>
 
                 <!-- 下部スペーサー -->

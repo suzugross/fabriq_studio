@@ -11,23 +11,25 @@ namespace FabriqStudio.ViewModels;
 /// </summary>
 public partial class MainViewModel : ObservableObject
 {
-    private readonly BasicParamsViewModel   _basicParamsVm;
-    private readonly ModuleEditViewModel    _moduleEditVm;
-    private readonly HostListViewModel      _hostListVm;
-    private readonly HostDetailViewModel    _hostDetailVm;
-    private readonly ModuleDetailViewModel  _moduleDetailVm;
-    private readonly ProfileDetailViewModel _profileDetailVm;
+    private readonly BasicParamsViewModel          _basicParamsVm;
+    private readonly ModuleEditViewModel           _moduleEditVm;
+    private readonly HostListViewModel             _hostListVm;
+    private readonly HostDetailViewModel           _hostDetailVm;
+    private readonly ModuleDetailViewModel         _moduleDetailVm;
+    private readonly ProfileDetailViewModel        _profileDetailVm;
+    private readonly AutokeyRecipeEditorViewModel  _autokeyEditorVm;
 
     [ObservableProperty]
     private object _currentPage;
 
     public MainViewModel(
-        BasicParamsViewModel   basicParamsVm,
-        ModuleEditViewModel    moduleEditVm,
-        HostListViewModel      hostListVm,
-        HostDetailViewModel    hostDetailVm,
-        ModuleDetailViewModel  moduleDetailVm,
-        ProfileDetailViewModel profileDetailVm)
+        BasicParamsViewModel          basicParamsVm,
+        ModuleEditViewModel           moduleEditVm,
+        HostListViewModel             hostListVm,
+        HostDetailViewModel           hostDetailVm,
+        ModuleDetailViewModel         moduleDetailVm,
+        ProfileDetailViewModel        profileDetailVm,
+        AutokeyRecipeEditorViewModel  autokeyEditorVm)
     {
         _basicParamsVm   = basicParamsVm;
         _moduleEditVm    = moduleEditVm;
@@ -35,6 +37,7 @@ public partial class MainViewModel : ObservableObject
         _hostDetailVm    = hostDetailVm;
         _moduleDetailVm  = moduleDetailVm;
         _profileDetailVm = profileDetailVm;
+        _autokeyEditorVm = autokeyEditorVm;
 
         _currentPage = _basicParamsVm;
 
@@ -75,10 +78,11 @@ public partial class MainViewModel : ObservableObject
     {
         CurrentPage = page switch
         {
-            "BasicParams" => (object)_basicParamsVm,
-            "ModuleEdit"  => _moduleEditVm,
-            "HostList"    => _hostListVm,
-            _             => CurrentPage
+            "BasicParams"   => (object)_basicParamsVm,
+            "ModuleEdit"    => _moduleEditVm,
+            "HostList"      => _hostListVm,
+            "AutokeyEditor" => _autokeyEditorVm,
+            _               => CurrentPage
         };
     }
 }

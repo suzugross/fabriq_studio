@@ -1,0 +1,320 @@
+<UserControl x:Class="FabriqStudio.Views.AutokeyRecipeEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:models="clr-namespace:FabriqStudio.Models">
+
+    <UserControl.InputBindings>
+        <!-- Ctrl+E: エクスポート, Delete: 行削除 -->
+        <KeyBinding Key="E" Modifiers="Control" Command="{Binding ExportCommand}" />
+        <KeyBinding Key="Delete" Command="{Binding DeleteRowCommand}" />
+    </UserControl.InputBindings>
+
+    <UserControl.Resources>
+        <Style x:Key="ToolbarButtonStyle" TargetType="Button">
+            <Setter Property="Padding"      Value="12,5" />
+            <Setter Property="FontSize"     Value="12" />
+            <Setter Property="Cursor"       Value="Hand" />
+            <Setter Property="Background"   Value="#F0F0F0" />
+            <Setter Property="BorderBrush"  Value="#CCCCCC" />
+            <Setter Property="Margin"       Value="0,0,6,0" />
+        </Style>
+        <Style x:Key="AccentButtonStyle" TargetType="Button"
+               BasedOn="{StaticResource ToolbarButtonStyle}">
+            <Setter Property="Background" Value="#007ACC" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style x:Key="DangerButtonStyle" TargetType="Button"
+               BasedOn="{StaticResource ToolbarButtonStyle}">
+            <Setter Property="Background" Value="#C85000" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+        <Style x:Key="RowOpButtonStyle" TargetType="Button">
+            <Setter Property="Padding"      Value="10,4" />
+            <Setter Property="FontSize"     Value="11" />
+            <Setter Property="Cursor"       Value="Hand" />
+            <Setter Property="Background"   Value="#F5F5F5" />
+            <Setter Property="BorderBrush"  Value="#CCCCCC" />
+            <Setter Property="Margin"       Value="0,0,4,0" />
+        </Style>
+        <Style x:Key="RefSectionStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="#5C2D91" />
+            <Setter Property="Margin"     Value="0,10,0,2" />
+        </Style>
+        <Style x:Key="RefBodyStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"     Value="10" />
+            <Setter Property="Foreground"   Value="#555555" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin"       Value="4,0,0,0" />
+        </Style>
+        <Style x:Key="RefKeyStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"     Value="10" />
+            <Setter Property="FontFamily"   Value="Consolas" />
+            <Setter Property="Foreground"   Value="#107C10" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin"       Value="4,0,0,0" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid Background="#F3F3F3">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />  <!-- ツールバー -->
+            <RowDefinition Height="Auto" />  <!-- モジュール名バー -->
+            <RowDefinition Height="*" />     <!-- メインコンテンツ -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== ツールバー ===== -->
+        <Border Grid.Row="0"
+                Background="White"
+                BorderBrush="#E0E0E0" BorderThickness="0,0,0,1"
+                Padding="10,7">
+            <DockPanel LastChildFill="False">
+
+                <!-- 左: 操作ボタン -->
+                <Button DockPanel.Dock="Left"
+                        Content="📄 新規"
+                        Command="{Binding NewCommand}"
+                        Style="{StaticResource ToolbarButtonStyle}" />
+                <Button DockPanel.Dock="Left"
+                        Content="📂 読み込み"
+                        Command="{Binding LoadCommand}"
+                        Style="{StaticResource ToolbarButtonStyle}" />
+                <Button DockPanel.Dock="Left"
+                        Content="📤 エクスポート"
+                        Command="{Binding ExportCommand}"
+                        Style="{StaticResource AccentButtonStyle}" />
+                <Button DockPanel.Dock="Left"
+                        Content="▶ テスト実行"
+                        Command="{Binding TestRunCommand}"
+                        Style="{StaticResource DangerButtonStyle}"
+                        IsEnabled="False"
+                        ToolTip="テスト実行は現在未対応です。エクスポート後に fabriq 環境から動作確認してください。" />
+
+                <!-- 右: ステータス / エラー / Dirty インジケータ -->
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding ErrorMessage}"
+                           Foreground="Red" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0"
+                           Visibility="{Binding ErrorMessage,
+                               Converter={StaticResource NullToCollapsedConverter}}" />
+                <TextBlock DockPanel.Dock="Right"
+                           Text="{Binding StatusMessage}"
+                           Foreground="#107C10" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0"
+                           Visibility="{Binding StatusMessage,
+                               Converter={StaticResource NullToCollapsedConverter}}" />
+                <TextBlock DockPanel.Dock="Right"
+                           Text="● 未保存の変更があります"
+                           Foreground="OrangeRed" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsDirty}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+                <TextBlock DockPanel.Dock="Right"
+                           Text="実行中..."
+                           Foreground="#888888" FontSize="12"
+                           VerticalAlignment="Center"
+                           Margin="0,0,12,0"
+                           Visibility="{Binding IsRunning,
+                               Converter={StaticResource BoolToVisibilityConverter}}" />
+            </DockPanel>
+        </Border>
+
+        <!-- ===== モジュール名バー ===== -->
+        <Border Grid.Row="1"
+                Background="White"
+                BorderBrush="#E0E0E0" BorderThickness="0,0,0,1"
+                Padding="12,8">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left"
+                           Text="モジュール名:"
+                           FontSize="12" FontWeight="SemiBold"
+                           VerticalAlignment="Center"
+                           Margin="0,0,10,0" />
+                <TextBlock DockPanel.Dock="Right"
+                           Text="（エクスポート時のフォルダ名・スクリプト名・メニュー表示名）"
+                           FontSize="10" Foreground="#AAAAAA"
+                           VerticalAlignment="Center"
+                           Margin="8,0,0,0" />
+                <TextBox Text="{Binding ModuleName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="13"
+                         Padding="6,4"
+                         BorderBrush="#CCCCCC"
+                         MaxWidth="320"
+                         HorizontalAlignment="Left" />
+            </DockPanel>
+        </Border>
+
+        <!-- ===== メインコンテンツ: DataGrid + リファレンス ===== -->
+        <Grid Grid.Row="2" Margin="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"   MinWidth="400" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="220" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ─── 左: レシピ DataGrid ─── -->
+            <Border Grid.Column="0"
+                    Background="White"
+                    BorderBrush="#E0E0E0" BorderThickness="1"
+                    CornerRadius="4" Padding="10">
+                <DockPanel>
+
+                    <!-- 行操作ボタン (下部) -->
+                    <StackPanel DockPanel.Dock="Bottom"
+                                Orientation="Horizontal"
+                                Margin="0,8,0,0">
+                        <Button Content="＋ 行追加"
+                                Command="{Binding AddRowCommand}"
+                                Style="{StaticResource RowOpButtonStyle}" />
+                        <Button Content="挿入"
+                                Command="{Binding InsertRowCommand}"
+                                Style="{StaticResource RowOpButtonStyle}" />
+                        <Button Content="🗑 削除"
+                                Command="{Binding DeleteRowCommand}"
+                                Style="{StaticResource RowOpButtonStyle}" />
+                        <Button Content="↑"
+                                Command="{Binding MoveUpCommand}"
+                                Style="{StaticResource RowOpButtonStyle}" />
+                        <Button Content="↓"
+                                Command="{Binding MoveDownCommand}"
+                                Style="{StaticResource RowOpButtonStyle}" />
+                        <TextBlock Text="{Binding Rows.Count, StringFormat={}{0} ステップ}"
+                                   FontSize="10" Foreground="#AAAAAA"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0" />
+                    </StackPanel>
+
+                    <!-- DataGrid -->
+                    <DataGrid x:Name="RecipeDataGrid"
+                              ItemsSource="{Binding Rows}"
+                              SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+                              AutoGenerateColumns="False"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
+                              CanUserReorderColumns="False"
+                              CanUserResizeColumns="True"
+                              CanUserSortColumns="False"
+                              GridLinesVisibility="Horizontal"
+                              BorderBrush="#DDDDDD" BorderThickness="1"
+                              SelectionMode="Single"
+                              PreviewMouseDoubleClick="DataGrid_PreviewMouseDoubleClick">
+                        <DataGrid.Columns>
+
+                            <!-- # (Step, 読み取り専用) -->
+                            <DataGridTextColumn Header="#"
+                                                Binding="{Binding Step, Mode=OneWay}"
+                                                Width="40"
+                                                IsReadOnly="True">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Center" />
+                                        <Setter Property="Foreground"          Value="#888888" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Action (ComboBox) -->
+                            <DataGridComboBoxColumn Header="Action"
+                                                    SelectedItemBinding="{Binding Action, UpdateSourceTrigger=LostFocus}"
+                                                    ItemsSource="{x:Static models:ActionType.All}"
+                                                    Width="110" />
+
+                            <!-- Value -->
+                            <DataGridTextColumn Header="Value / パラメータ"
+                                                Binding="{Binding Value, UpdateSourceTrigger=LostFocus}"
+                                                Width="*" />
+
+                            <!-- Wait -->
+                            <DataGridTextColumn Header="Wait (ms)"
+                                                Binding="{Binding Wait, UpdateSourceTrigger=LostFocus}"
+                                                Width="80">
+                                <DataGridTextColumn.ElementStyle>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="HorizontalAlignment" Value="Right" />
+                                        <Setter Property="Padding"             Value="0,0,4,0" />
+                                    </Style>
+                                </DataGridTextColumn.ElementStyle>
+                            </DataGridTextColumn>
+
+                            <!-- Note -->
+                            <DataGridTextColumn Header="Note"
+                                                Binding="{Binding Note, UpdateSourceTrigger=LostFocus}"
+                                                Width="200" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </Border>
+
+            <!-- ─── 右: アクションリファレンス ─── -->
+            <Border Grid.Column="2"
+                    Background="White"
+                    BorderBrush="#E0E0E0" BorderThickness="1"
+                    CornerRadius="4" Padding="12">
+                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel>
+                        <TextBlock Text="アクション リファレンス"
+                                   FontSize="11" FontWeight="Bold"
+                                   Foreground="#2D2D30"
+                                   Margin="0,0,0,4" />
+                        <Separator Margin="0,0,0,4" />
+
+                        <!-- Open -->
+                        <TextBlock Text="Open" Style="{StaticResource RefSectionStyle}" />
+                        <TextBlock Style="{StaticResource RefBodyStyle}"
+                                   Text="アプリ・ファイル・URLを開く&#x0a;Value: パスまたはURL&#x0a;Wait: 起動後の待機(ms)&#x0a;&#x0a;💡 Valueセルをダブルクリックで&#x0a;ファイルダイアログを開く" />
+
+                        <!-- WaitWin -->
+                        <TextBlock Text="WaitWin" Style="{StaticResource RefSectionStyle}" />
+                        <TextBlock Style="{StaticResource RefBodyStyle}"
+                                   Text="ウィンドウの出現を待機&#x0a;Value: タイトル（部分一致）&#x0a;Wait: タイムアウト(ms) ※既定10000" />
+
+                        <!-- AppFocus -->
+                        <TextBlock Text="AppFocus" Style="{StaticResource RefSectionStyle}" />
+                        <TextBlock Style="{StaticResource RefBodyStyle}"
+                                   Text="ウィンドウを前面に表示&#x0a;Value: ウィンドウタイトル&#x0a;Wait: フォーカス後の待機(ms)" />
+
+                        <!-- Type -->
+                        <TextBlock Text="Type" Style="{StaticResource RefSectionStyle}" />
+                        <TextBlock Style="{StaticResource RefBodyStyle}"
+                                   Text="テキストをキーボード送信&#x0a;Value: 入力するテキスト&#x0a;Wait: 入力後の待機(ms)" />
+
+                        <!-- Key -->
+                        <TextBlock Text="Key" Style="{StaticResource RefSectionStyle}" />
+                        <TextBlock Style="{StaticResource RefBodyStyle}"
+                                   Text="キー操作を送信（SendKeys記法）&#x0a;Wait: 送信後の待機(ms)" />
+                        <TextBlock Style="{StaticResource RefKeyStyle}"
+                                   Text="{}{ENTER}  {TAB}  {ESC}&#x0a;{F1}〜{F12}&#x0a;{UP} {DOWN} {LEFT} {RIGHT}&#x0a;{BACKSPACE}  {DELETE}&#x0a;% = Alt  ^ = Ctrl  + = Shift&#x0a;例: %{F4} = Alt+F4&#x0a;    ^a    = Ctrl+A" />
+
+                        <!-- Wait -->
+                        <TextBlock Text="Wait" Style="{StaticResource RefSectionStyle}" />
+                        <TextBlock Style="{StaticResource RefBodyStyle}"
+                                   Text="指定時間だけ待機&#x0a;Value: 待機時間(ms)&#x0a;※Waitカラムは使用しない" />
+
+                        <Separator Margin="0,10,0,4" />
+                        <TextBlock Text="ショートカット"
+                                   FontSize="10" FontWeight="SemiBold"
+                                   Foreground="#888888" Margin="0,0,0,2" />
+                        <TextBlock Style="{StaticResource RefBodyStyle}"
+                                   Text="Ctrl+E: エクスポート&#x0a;Delete: 選択行を削除" />
+                    </StackPanel>
+                </ScrollViewer>
+            </Border>
+        </Grid>
+    </Grid>
+</UserControl>
