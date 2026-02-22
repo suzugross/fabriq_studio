@@ -38,10 +38,12 @@ public partial class HostListViewModel : ObservableObject
     [ObservableProperty] private bool    _isLoading;
     [ObservableProperty] private string? _errorMessage;
 
-    public HostListViewModel(ICsvService csvService)
+    public HostListViewModel(ICsvService csvService, IWorkspaceService workspace)
     {
         _csvService = csvService;
-        _ = LoadAsync();
+        workspace.WorkspaceChanged += (_, _) => _ = LoadAsync();
+        if (workspace.IsOpen)
+            _ = LoadAsync();
     }
 
     private async Task LoadAsync()

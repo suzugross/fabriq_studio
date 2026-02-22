@@ -34,6 +34,11 @@
                                 <Setter TargetName="Border" Property="Background" Value="#007ACC" />
                                 <Setter Property="Foreground" Value="#FFFFFF" />
                             </Trigger>
+                            <!-- 非活性時: 文字をグレーアウトしカーソルをデフォルトに戻す -->
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#444444" />
+                                <Setter Property="Cursor"     Value="Arrow" />
+                            </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -73,6 +78,61 @@
                     </StackPanel>
                 </Border>
 
+                <!-- ワークスペース情報バー (開いている場合のみ表示) -->
+                <Border DockPanel.Dock="Top"
+                        Background="#1A1A1A"
+                        Padding="12,7"
+                        BorderThickness="0,1,0,1"
+                        BorderBrush="#333333"
+                        Visibility="{Binding IsWorkspaceOpen,
+                                     Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Text="ワークスペース"
+                                       FontSize="9" Foreground="#555555" />
+                            <TextBlock Text="{Binding WorkspaceName}"
+                                       FontSize="11" Foreground="#AAAAAA"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <Button Grid.Column="1"
+                                Content="変更"
+                                Command="{Binding ChangeWorkspaceCommand}">
+                            <Button.Style>
+                                <Style TargetType="Button">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border x:Name="Bd"
+                                                        Background="Transparent"
+                                                        Padding="{TemplateBinding Padding}"
+                                                        CornerRadius="3">
+                                                    <ContentPresenter />
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Bd" Property="Background" Value="#3E3E42" />
+                                                        <Setter Property="Foreground" Value="#CCCCCC" />
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                    <Setter Property="FontSize"   Value="10" />
+                                    <Setter Property="Foreground" Value="#666666" />
+                                    <Setter Property="Cursor"     Value="Hand" />
+                                    <Setter Property="Padding"    Value="6,2" />
+                                </Style>
+                            </Button.Style>
+                        </Button>
+                    </Grid>
+                </Border>
+
                 <!-- セクションラベル -->
                 <TextBlock DockPanel.Dock="Top"
                            Text="メニュー"
@@ -85,17 +145,20 @@
                     <Button Content="⚙  基本パラメータ"
                             Style="{StaticResource NavButtonStyle}"
                             Command="{Binding NavigateCommand}"
-                            CommandParameter="BasicParams" />
+                            CommandParameter="BasicParams"
+                            IsEnabled="{Binding IsWorkspaceOpen}" />
 
                     <Button Content="🧩  モジュール編集"
                             Style="{StaticResource NavButtonStyle}"
                             Command="{Binding NavigateCommand}"
-                            CommandParameter="ModuleEdit" />
+                            CommandParameter="ModuleEdit"
+                            IsEnabled="{Binding IsWorkspaceOpen}" />
 
                     <Button Content="🖥  端末一覧"
                             Style="{StaticResource NavButtonStyle}"
                             Command="{Binding NavigateCommand}"
-                            CommandParameter="HostList" />
+                            CommandParameter="HostList"
+                            IsEnabled="{Binding IsWorkspaceOpen}" />
                 </StackPanel>
 
                 <!-- セクションラベル: アプリ -->
@@ -110,7 +173,8 @@
                     <Button Content="⌨  Autokey レシピ"
                             Style="{StaticResource NavChildButtonStyle}"
                             Command="{Binding NavigateCommand}"
-                            CommandParameter="AutokeyEditor" />
+                            CommandParameter="AutokeyEditor"
+                            IsEnabled="{Binding IsWorkspaceOpen}" />
                 </StackPanel>
 
                 <!-- 下部スペーサー -->

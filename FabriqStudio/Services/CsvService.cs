@@ -7,23 +7,28 @@ namespace FabriqStudio.Services;
 
 public class CsvService : ICsvService
 {
-    private readonly IAppSettingsService _settings;
+    private readonly IWorkspaceService _workspace;
 
-    public CsvService(IAppSettingsService settings)
+    public CsvService(IWorkspaceService workspace)
     {
-        _settings = settings;
+        _workspace = workspace;
     }
+
+    private string GetRoot() =>
+        _workspace.RootPath
+            ?? throw new InvalidOperationException(
+                "ワークスペースが開かれていません。fabriq フォルダを選択してください。");
 
     public async Task<IReadOnlyList<T>> ReadAsync<T>(string relativePath)
     {
-        var fullPath = Path.Combine(_settings.FabriqRootPath, relativePath);
+        var fullPath = Path.Combine(GetRoot(), relativePath);
 
         return await Task.Run(() =>
         {
             // _wpftmp ビルドプロジェクトでの IReaderConfiguration オーバーロード解決問題を回避するため
             // CultureInfo を直接渡す（CsvHelper デフォルト設定で動作）
             using var reader = new StreamReader(fullPath, Encoding.UTF8);
-            using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
+            using var csv    = new CsvReader(reader, CultureInfo.InvariantCulture);
 
             return (IReadOnlyList<T>)csv.GetRecords<T>().ToList();
         });
@@ -31,7 +36,7 @@ public class CsvService : ICsvService
 
     public async Task WriteAsync<T>(string relativePath, IEnumerable<T> records)
     {
-        var fullPath = Path.Combine(_settings.FabriqRootPath, relativePath);
+        var fullPath = Path.Combine(GetRoot(), relativePath);
 
         await Task.Run(() =>
         {

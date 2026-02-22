@@ -37,11 +37,13 @@ public partial class ModuleEditViewModel : ObservableObject
     [ObservableProperty] private bool    _isLoading;
     [ObservableProperty] private string? _errorMessage;
 
-    public ModuleEditViewModel(IModuleService moduleService, ICsvService csvService)
+    public ModuleEditViewModel(IModuleService moduleService, ICsvService csvService, IWorkspaceService workspace)
     {
         _moduleService = moduleService;
         _csvService    = csvService;
-        _ = LoadAsync();
+        workspace.WorkspaceChanged += (_, _) => _ = LoadAsync();
+        if (workspace.IsOpen)
+            _ = LoadAsync();
     }
 
     private async Task LoadAsync()
