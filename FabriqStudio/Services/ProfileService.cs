@@ -8,20 +8,25 @@ namespace FabriqStudio.Services;
 
 public class ProfileService : IProfileService
 {
-    private readonly IAppSettingsService _settings;
-    private readonly ICsvService         _csvService;
+    private readonly IWorkspaceService _workspace;
+    private readonly ICsvService       _csvService;
 
-    public ProfileService(IAppSettingsService settings, ICsvService csvService)
+    public ProfileService(IWorkspaceService workspace, ICsvService csvService)
     {
-        _settings   = settings;
-        _csvService  = csvService;
+        _workspace  = workspace;
+        _csvService = csvService;
     }
+
+    private string GetRoot() =>
+        _workspace.RootPath
+            ?? throw new InvalidOperationException(
+                "ワークスペースが開かれていません。fabriq フォルダを選択してください。");
 
     public Task<IReadOnlyList<ProfileEntry>> GetProfilesAsync()
     {
         // ディレクトリスキャンは高速（数ms以下）なため Task.Run は不要。
         // Task.Run を使うと _wpftmp ビルドプロジェクトで戻り型推論が失敗するため避ける。
-        var profilesDir = Path.Combine(_settings.FabriqRootPath, "profiles");
+        var profilesDir = Path.Combine(GetRoot(), "profiles");
 
         if (!Directory.Exists(profilesDir))
             return Task.FromResult<IReadOnlyList<ProfileEntry>>(Array.Empty<ProfileEntry>());
@@ -42,9 +47,9 @@ public class ProfileService : IProfileService
 
     public async Task<IReadOnlyList<ProfileScriptEntry>> GetProfileModulesAsync(ProfileEntry profile)
     {
-        // ProfileEntry.FilePath は絶対パスのため、FabriqRootPath からの相対パスに変換して
+        // ProfileEntry.FilePath は絶対パスのため、RootPath からの相対パスに変換して
         // 既存の ICsvService.ReadAsync を再利用する。
-        var relativePath = Path.GetRelativePath(_settings.FabriqRootPath, profile.FilePath);
+        var relativePath = Path.GetRelativePath(GetRoot(), profile.FilePath);
         var modules      = await _csvService.ReadAsync<ProfileScriptEntry>(relativePath);
 
         // ファイルの記述順ではなく Order カラムで確実にソートして返す
@@ -58,7 +63,7 @@ public class ProfileService : IProfileService
         for (int i = 0; i < ordered.Count; i++)
             ordered[i].Order = (i + 1) * 10;
 
-        var relativePath = Path.GetRelativePath(_settings.FabriqRootPath, profile.FilePath);
+        var relativePath = Path.GetRelativePath(GetRoot(), profile.FilePath);
         await _csvService.WriteAsync(relativePath, ordered);
     }
 
@@ -78,7 +83,7 @@ public class ProfileService : IProfileService
             ? profileName
             : profileName + ".csv";
 
-        var profilesDir = Path.Combine(_settings.FabriqRootPath, "profiles");
+        var profilesDir = Path.Combine(GetRoot(), "profiles");
         var fullPath    = Path.Combine(profilesDir, fileName);
 
         if (File.Exists(fullPath))
