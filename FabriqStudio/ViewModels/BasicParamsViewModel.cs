@@ -64,8 +64,17 @@ public partial class BasicParamsViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(OpenProfileEditorCommand))]
     private ProfileEntry? _selectedProfile;
 
-    [ObservableProperty] private bool                                     _isProfilesLoading;
-    [ObservableProperty] private string?                                  _profilesError;
+    [ObservableProperty] private bool    _isProfilesLoading;
+    [ObservableProperty] private string? _profilesError;
+
+    // ─── プロファイル新規作成 ─────────────────────────────────────
+    [ObservableProperty] private bool    _isCreatingProfile;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ConfirmCreateProfileCommand))]
+    private string _newProfileName = "";
+
+    [ObservableProperty] private string? _createProfileError;
 
     [ObservableProperty] private ObservableCollection<ProfileScriptEntry> _profileModules  = [];
     [ObservableProperty] private bool                                     _isModulesLoading;
@@ -282,5 +291,55 @@ public partial class BasicParamsViewModel : ObservableObject
     {
         if (SelectedProfile is null) return;
         WeakReferenceMessenger.Default.Send(new ShowProfileDetailMessage(SelectedProfile));
+    }
+
+    // ─── プロファイル新規作成 ─────────────────────────────────────
+
+    /// <summary>入力フォームを表示してテキストをクリアする。</summary>
+    [RelayCommand]
+    private void BeginCreateProfile()
+    {
+        CreateProfileError = null;
+        NewProfileName     = "";
+        IsCreatingProfile  = true;
+    }
+
+    /// <summary>入力フォームを非表示にしてテキストをクリアする。</summary>
+    [RelayCommand]
+    private void CancelCreateProfile()
+    {
+        IsCreatingProfile  = false;
+        NewProfileName     = "";
+        CreateProfileError = null;
+    }
+
+    private bool CanConfirmCreateProfile() => !string.IsNullOrWhiteSpace(NewProfileName);
+
+    /// <summary>プロファイルを作成し、一覧をリフレッシュして新しいプロファイルを自動選択する。</summary>
+    [RelayCommand(CanExecute = nameof(CanConfirmCreateProfile))]
+    private async Task ConfirmCreateProfileAsync()
+    {
+        CreateProfileError = null;
+        try
+        {
+            // ファイル作成（バリデーション含む）
+            var newProfile = await _profileService.CreateProfileAsync(NewProfileName.Trim());
+
+            // プロファイル一覧をリフレッシュ
+            var items = await _profileService.GetProfilesAsync();
+            Profiles = new ObservableCollection<ProfileEntry>(items);
+
+            // 作成したばかりのプロファイルを自動選択
+            SelectedProfile = Profiles.FirstOrDefault(p => p.Name == newProfile.Name);
+
+            // フォームを閉じる
+            IsCreatingProfile = false;
+            NewProfileName    = "";
+        }
+        catch (Exception ex)
+        {
+            // バリデーション失敗・同名ファイル存在・IO エラーをフォーム内に表示
+            CreateProfileError = ex.Message;
+        }
     }
 }

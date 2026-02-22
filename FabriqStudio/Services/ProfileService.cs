@@ -1,4 +1,7 @@
+using System.Globalization;
 using System.IO;
+using System.Text;
+using CsvHelper;
 using FabriqStudio.Models;
 
 namespace FabriqStudio.Services;
@@ -57,5 +60,52 @@ public class ProfileService : IProfileService
 
         var relativePath = Path.GetRelativePath(_settings.FabriqRootPath, profile.FilePath);
         await _csvService.WriteAsync(relativePath, ordered);
+    }
+
+    public async Task<ProfileEntry> CreateProfileAsync(string profileName)
+    {
+        // ─── バリデーション ──────────────────────────────────────────
+        if (string.IsNullOrWhiteSpace(profileName))
+            throw new ArgumentException("プロファイル名を入力してください。", nameof(profileName));
+
+        // OS のファイル名禁則文字チェック
+        if (profileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            throw new ArgumentException(
+                "ファイル名に使用できない文字が含まれています。", nameof(profileName));
+
+        // .csv 拡張子を自動付与（大文字小文字問わず既にあればそのまま）
+        var fileName = profileName.EndsWith(".csv", StringComparison.OrdinalIgnoreCase)
+            ? profileName
+            : profileName + ".csv";
+
+        var profilesDir = Path.Combine(_settings.FabriqRootPath, "profiles");
+        var fullPath    = Path.Combine(profilesDir, fileName);
+
+        if (File.Exists(fullPath))
+            throw new InvalidOperationException(
+                $"プロファイル「{Path.GetFileNameWithoutExtension(fileName)}」は既に存在します。");
+
+        // ─── ファイル作成: ヘッダー行のみの空プロファイル ────────────
+        // profiles/ ディレクトリが存在しない場合も作成する
+        Directory.CreateDirectory(profilesDir);
+
+        await Task.Run(() =>
+        {
+            // CsvService と同様に BOM 付き UTF-8 で書き込む
+            using var writer = new StreamWriter(
+                fullPath, append: false,
+                encoding: new UTF8Encoding(encoderShouldEmitUTF8Identifier: true));
+            using var csv = new CsvWriter(writer, CultureInfo.InvariantCulture);
+
+            // ヘッダー行だけを書き込む（Order,ScriptPath,Enabled,Description）
+            csv.WriteHeader<ProfileScriptEntry>();
+            csv.NextRecord();
+        });
+
+        return new ProfileEntry
+        {
+            Name     = Path.GetFileNameWithoutExtension(fileName),
+            FilePath = fullPath
+        };
     }
 }
