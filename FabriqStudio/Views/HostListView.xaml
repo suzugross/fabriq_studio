@@ -37,9 +37,11 @@
                    Visibility="{Binding IsLoading,
                        Converter={StaticResource BoolToVisibilityConverter}}" />
 
-        <!-- データグリッド（43カラム、先頭3列フリーズ） -->
+        <!-- データグリッド（43カラム、先頭3列フリーズ）
+             行をダブルクリックで端末詳細へ遷移 -->
         <DataGrid Grid.Row="2"
                   ItemsSource="{Binding Hosts}"
+                  SelectedItem="{Binding SelectedHost}"
                   IsReadOnly="True"
                   AutoGenerateColumns="False"
                   CanUserReorderColumns="True"
@@ -50,6 +52,11 @@
                   AlternatingRowBackground="#F7F7F7"
                   BorderBrush="#DDDDDD" BorderThickness="1"
                   Margin="0,8,0,0">
+            <DataGrid.InputBindings>
+                <MouseBinding MouseAction="LeftDoubleClick"
+                              Command="{Binding ViewDetailCommand}"
+                              CommandParameter="{Binding SelectedHost}" />
+            </DataGrid.InputBindings>
             <DataGrid.Columns>
                 <!-- 基本情報（フリーズ対象 3列） -->
                 <DataGridTextColumn Header="AdminID"    Binding="{Binding AdminID}"   Width="70" />

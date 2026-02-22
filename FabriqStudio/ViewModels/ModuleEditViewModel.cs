@@ -1,5 +1,8 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using CommunityToolkit.Mvvm.Messaging;
+using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
 
@@ -10,6 +13,7 @@ namespace FabriqStudio.ViewModels;
 ///   - 左ペイン: カテゴリ一覧（kernel/csv/categories.csv）
 ///   - 右ペイン: カテゴリでフィルタしたモジュールマスターリスト
 ///              （modules/standard/**/module.csv + modules/extended/**/module.csv）
+/// 行をダブルクリックすると ShowModuleDetailMessage を送信して詳細画面へ遷移する。
 /// </summary>
 public partial class ModuleEditViewModel : ObservableObject
 {
@@ -25,6 +29,9 @@ public partial class ModuleEditViewModel : ObservableObject
     // ─── カテゴリ一覧（左ペイン）─────────────────────────────────
     [ObservableProperty] private ObservableCollection<string> _categoryNames = [];
     [ObservableProperty] private string?                      _selectedCategoryName;
+
+    // ─── 選択中モジュール（ダブルクリックで詳細遷移）─────────────
+    [ObservableProperty] private ModuleMasterEntry? _selectedModule;
 
     // ─── 状態 ─────────────────────────────────────────────────────
     [ObservableProperty] private bool    _isLoading;
@@ -81,5 +88,13 @@ public partial class ModuleEditViewModel : ObservableObject
     partial void OnAllModulesChanged(ObservableCollection<ModuleMasterEntry> value)
     {
         OnSelectedCategoryNameChanged(SelectedCategoryName);
+    }
+
+    /// <summary>DataGrid 行のダブルクリック時に呼び出す（CommandParameter = SelectedModule）</summary>
+    [RelayCommand]
+    private void ViewDetail(ModuleMasterEntry? module)
+    {
+        if (module is null) return;
+        WeakReferenceMessenger.Default.Send(new ShowModuleDetailMessage(module));
     }
 }
