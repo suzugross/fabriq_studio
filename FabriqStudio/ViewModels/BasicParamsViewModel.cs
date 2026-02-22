@@ -30,10 +30,15 @@ public partial class BasicParamsViewModel : ObservableObject
     [ObservableProperty] private string?                              _logDestSaveStatus;
 
     // ─── プロファイル ──────────────────────────────────────────
-    [ObservableProperty] private ObservableCollection<ProfileEntry> _profiles        = [];
-    [ObservableProperty] private ProfileEntry?                      _selectedProfile;
-    [ObservableProperty] private bool                               _isProfilesLoading;
-    [ObservableProperty] private string?                            _profilesError;
+    [ObservableProperty] private ObservableCollection<ProfileEntry>       _profiles        = [];
+    [ObservableProperty] private ProfileEntry?                            _selectedProfile;
+    [ObservableProperty] private bool                                     _isProfilesLoading;
+    [ObservableProperty] private string?                                  _profilesError;
+
+    // ─── プロファイル モジュールリスト ─────────────────────────
+    [ObservableProperty] private ObservableCollection<ProfileScriptEntry> _profileModules  = [];
+    [ObservableProperty] private bool                                     _isModulesLoading;
+    [ObservableProperty] private string?                                  _modulesError;
 
     public BasicParamsViewModel(ICsvService csvService, IProfileService profileService)
     {
@@ -120,7 +125,7 @@ public partial class BasicParamsViewModel : ObservableObject
         }
     }
 
-    // ── プロファイル: 読み込み ────────────────────────────────────
+    // ── プロファイル一覧: 読み込み ────────────────────────────────
     private async Task LoadProfilesAsync()
     {
         IsProfilesLoading = true;
@@ -130,6 +135,8 @@ public partial class BasicParamsViewModel : ObservableObject
             var items = await _profileService.GetProfilesAsync();
             Profiles        = new ObservableCollection<ProfileEntry>(items);
             SelectedProfile = Profiles.FirstOrDefault();
+            // SelectedProfile のセットが OnSelectedProfileChanged を発火し
+            // モジュールリストの読み込みが自動的に開始される
         }
         catch (Exception ex)
         {
@@ -138,6 +145,36 @@ public partial class BasicParamsViewModel : ObservableObject
         finally
         {
             IsProfilesLoading = false;
+        }
+    }
+
+    // ── プロファイル選択変更時: モジュールリストを自動更新 ─────────
+    // CommunityToolkit.Mvvm が [ObservableProperty] から自動生成する partial メソッドを実装
+    partial void OnSelectedProfileChanged(ProfileEntry? value)
+    {
+        ProfileModules.Clear();
+        ModulesError = null;
+        if (value is not null)
+            _ = LoadProfileModulesAsync(value);
+    }
+
+    // ── プロファイル モジュールリスト: 読み込み ───────────────────
+    private async Task LoadProfileModulesAsync(ProfileEntry profile)
+    {
+        IsModulesLoading = true;
+        ModulesError     = null;
+        try
+        {
+            var items = await _profileService.GetProfileModulesAsync(profile);
+            ProfileModules = new ObservableCollection<ProfileScriptEntry>(items);
+        }
+        catch (Exception ex)
+        {
+            ModulesError = $"モジュールリストの読み込みに失敗: {ex.Message}";
+        }
+        finally
+        {
+            IsModulesLoading = false;
         }
     }
 }
