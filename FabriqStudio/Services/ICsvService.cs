@@ -8,4 +8,12 @@ public interface ICsvService
     /// <typeparam name="T">CSVの各行にマッピングするモデル型</typeparam>
     /// <param name="relativePath">fabriqRootPath からの相対パス (例: "kernel/csv/hostlist.csv")</param>
     Task<IReadOnlyList<T>> ReadAsync<T>(string relativePath);
+
+    /// <summary>
+    /// fabriqRootPath からの相対パスで CSV にレコード群を書き込む（上書き）。
+    /// </summary>
+    /// <typeparam name="T">書き込むモデル型</typeparam>
+    /// <param name="relativePath">fabriqRootPath からの相対パス</param>
+    /// <param name="records">書き込むレコード一覧</param>
+    Task WriteAsync<T>(string relativePath, IEnumerable<T> records);
 }
