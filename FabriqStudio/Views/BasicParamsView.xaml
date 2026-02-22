@@ -166,6 +166,20 @@
                             </ToggleButton.Style>
                         </ToggleButton>
 
+                        <!-- 右: 追加ボタン -->
+                        <Button DockPanel.Dock="Right"
+                                Content="＋ 追加"
+                                Command="{Binding AddWorkerCommand}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                Margin="0,0,6,0" />
+
+                        <!-- 右: 削除ボタン -->
+                        <Button DockPanel.Dock="Right"
+                                Content="🗑 削除"
+                                Command="{Binding DeleteWorkerCommand}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                Margin="0,0,6,0" />
+
                         <!-- 右: 未保存インジケーター -->
                         <TextBlock DockPanel.Dock="Right"
                                    Text="● 未保存"
@@ -201,10 +215,11 @@
 
                     <!-- DataGrid: IsReadOnly / CanUserAddRows / CanUserDeleteRows をロックに連動 -->
                     <DataGrid ItemsSource="{Binding Workers}"
+                              SelectedItem="{Binding SelectedWorker, Mode=TwoWay}"
                               IsReadOnly="{Binding IsWorkersLocked}"
                               AutoGenerateColumns="False"
-                              CanUserAddRows="{Binding IsWorkersEditable}"
-                              CanUserDeleteRows="{Binding IsWorkersEditable}"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
                               CanUserReorderColumns="False"
                               CanUserResizeColumns="True"
                               GridLinesVisibility="Horizontal"
@@ -249,6 +264,20 @@
                             </ToggleButton.Style>
                         </ToggleButton>
 
+                        <!-- 右: 追加ボタン -->
+                        <Button DockPanel.Dock="Right"
+                                Content="＋ 追加"
+                                Command="{Binding AddLogDestCommand}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                Margin="0,0,6,0" />
+
+                        <!-- 右: 削除ボタン -->
+                        <Button DockPanel.Dock="Right"
+                                Content="🗑 削除"
+                                Command="{Binding DeleteLogDestinationCommand}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                Margin="0,0,6,0" />
+
                         <!-- 右: 未保存インジケーター -->
                         <TextBlock DockPanel.Dock="Right"
                                    Text="● 未保存"
@@ -289,10 +318,11 @@
 
                     <!-- DataGrid: IsReadOnly / CanUserAddRows / CanUserDeleteRows をロックに連動 -->
                     <DataGrid ItemsSource="{Binding LogDestinations}"
+                              SelectedItem="{Binding SelectedLogDest, Mode=TwoWay}"
                               IsReadOnly="{Binding IsLogDestLocked}"
                               AutoGenerateColumns="False"
-                              CanUserAddRows="{Binding IsLogDestEditable}"
-                              CanUserDeleteRows="{Binding IsLogDestEditable}"
+                              CanUserAddRows="False"
+                              CanUserDeleteRows="False"
                               CanUserReorderColumns="False"
                               CanUserResizeColumns="True"
                               GridLinesVisibility="Horizontal"

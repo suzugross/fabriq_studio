@@ -256,6 +256,21 @@
                                    Margin="8,0,0,0"
                                    Visibility="{Binding HasCsvChanges,
                                        Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                        <!-- 右: 行追加ボタン -->
+                        <Button DockPanel.Dock="Right"
+                                Content="＋ 行追加"
+                                Command="{Binding AddCsvRowCommand}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                VerticalAlignment="Center" />
+
+                        <!-- 右: 行削除ボタン -->
+                        <Button DockPanel.Dock="Right"
+                                Content="🗑 行削除"
+                                Command="{Binding DeleteCsvRowCommand}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                VerticalAlignment="Center"
+                                Margin="0,0,6,0" />
                     </DockPanel>
 
                     <!-- 設定CSVなし -->
@@ -267,6 +282,7 @@
 
                     <!-- 汎用CSV DataGrid: IsReadOnly を IsLocked に連動 -->
                     <DataGrid ItemsSource="{Binding ConfigCsvData.DefaultView}"
+                              SelectedItem="{Binding SelectedCsvRow, Mode=TwoWay}"
                               AutoGenerateColumns="True"
                               IsReadOnly="{Binding IsLocked}"
                               CanUserAddRows="False"

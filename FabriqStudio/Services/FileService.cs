@@ -61,9 +61,10 @@ public class FileService : IFileService
             csv.WriteField(col.ColumnName);
         await csv.NextRecordAsync();
 
-        // データ行
+        // データ行（DataRowState.Deleted の行はスキップ — row.Delete() 後に保存しても例外にならない）
         foreach (DataRow row in table.Rows)
         {
+            if (row.RowState == DataRowState.Deleted) continue;
             foreach (DataColumn col in table.Columns)
                 csv.WriteField(row[col]?.ToString() ?? "");
             await csv.NextRecordAsync();
