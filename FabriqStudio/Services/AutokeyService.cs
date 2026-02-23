@@ -11,10 +11,15 @@ public class AutokeyService : IAutokeyService
 {
     private readonly IWorkspaceService _workspace;
 
-    /// <summary>テンプレートベースパス（WorkspaceService.TemplateFabriqPath と同等）。</summary>
+    /// <summary>テンプレートベースパス（ワークスペーステンプレート内の fabriq）。カーネル解決用。</summary>
     private static readonly string TemplateFabriqPath = Path.Combine(
         AppDomain.CurrentDomain.BaseDirectory,
         "template", "template_fabriq", "fabriq");
+
+    /// <summary>ツール専用テンプレートベースパス（autokey_template 等を格納）。</summary>
+    private static readonly string StudioTemplatesPath = Path.Combine(
+        AppDomain.CurrentDomain.BaseDirectory,
+        "template", "template_fabriq");
 
     public AutokeyService(IWorkspaceService workspace)
     {
@@ -88,8 +93,7 @@ public class AutokeyService : IAutokeyService
         await Task.Run(() => Directory.CreateDirectory(destDir));
 
         // 4. autokey_config.ps1 テンプレートをコピー（リネーム）
-        var templateDir    = Path.Combine(fabriqRoot, "apps", "autokey_recipe_editor", "autokey_template");
-        var templateScript = Path.Combine(templateDir, "autokey_config.ps1");
+        var templateScript = ResolveAutokeyTemplatePath();
         var destScriptName = $"{sanitized}_autokey_config.ps1";
         var destScript     = Path.Combine(destDir, destScriptName);
         await Task.Run(() => File.Copy(templateScript, destScript, overwrite: true));
@@ -261,27 +265,17 @@ public class AutokeyService : IAutokeyService
     }
 
     /// <summary>
-    /// autokey_config.ps1 テンプレートのパスを解決する（Dual Resolution）。
-    /// 1. ワークスペース内 apps/autokey_recipe_editor/autokey_template/autokey_config.ps1
-    /// 2. フォールバック: アプリ同梱テンプレート
+    /// autokey_config.ps1 テンプレートのパスを解決する。
+    /// 常にアプリ同梱の StudioTemplatesPath/autokey_template/ を参照する。
     /// </summary>
-    private string ResolveAutokeyTemplatePath()
+    private static string ResolveAutokeyTemplatePath()
     {
-        const string relativePath = @"apps\autokey_recipe_editor\autokey_template\autokey_config.ps1";
-
-        if (_workspace.RootPath is not null)
-        {
-            var workspacePath = Path.Combine(_workspace.RootPath, relativePath);
-            if (File.Exists(workspacePath))
-                return workspacePath;
-        }
-
-        var templatePath = Path.Combine(TemplateFabriqPath, relativePath);
-        if (File.Exists(templatePath))
-            return templatePath;
+        var path = Path.Combine(StudioTemplatesPath, "autokey_template", "autokey_config.ps1");
+        if (File.Exists(path))
+            return path;
 
         throw new FileNotFoundException(
             "Autokey テンプレート (autokey_config.ps1) が見つかりません。\n" +
-            "ワークスペースまたはアプリテンプレートにテンプレートが存在することを確認してください。");
+            "アプリ同梱テンプレートに autokey_template/autokey_config.ps1 が存在することを確認してください。");
     }
 }
