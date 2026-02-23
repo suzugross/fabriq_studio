@@ -20,6 +20,7 @@ public partial class MainViewModel : ObservableObject
     private readonly HostListViewModel             _hostListVm;
     private readonly HostDetailViewModel           _hostDetailVm;
     private readonly ModuleDetailViewModel         _moduleDetailVm;
+    private readonly AppConfigViewModel            _appConfigVm;
     private readonly ProfileDetailViewModel        _profileDetailVm;
     private readonly AutokeyRecipeEditorViewModel  _autokeyEditorVm;
     private readonly WelcomeViewModel              _welcomeVm;
@@ -41,6 +42,7 @@ public partial class MainViewModel : ObservableObject
         HostListViewModel             hostListVm,
         HostDetailViewModel           hostDetailVm,
         ModuleDetailViewModel         moduleDetailVm,
+        AppConfigViewModel            appConfigVm,
         ProfileDetailViewModel        profileDetailVm,
         AutokeyRecipeEditorViewModel  autokeyEditorVm,
         WelcomeViewModel              welcomeVm,
@@ -52,6 +54,7 @@ public partial class MainViewModel : ObservableObject
         _hostListVm           = hostListVm;
         _hostDetailVm         = hostDetailVm;
         _moduleDetailVm       = moduleDetailVm;
+        _appConfigVm          = appConfigVm;
         _profileDetailVm      = profileDetailVm;
         _autokeyEditorVm      = autokeyEditorVm;
         _welcomeVm            = welcomeVm;
@@ -96,8 +99,17 @@ public partial class MainViewModel : ObservableObject
 
         WeakReferenceMessenger.Default.Register<ShowModuleDetailMessage>(this, (_, msg) =>
         {
-            _moduleDetailVm.Load(msg.Value);
-            CurrentPage = _moduleDetailVm;
+            var dir = msg.Value.ModuleDir ?? "";
+            if (dir.Contains("app_config", StringComparison.OrdinalIgnoreCase))
+            {
+                _appConfigVm.Load(msg.Value);
+                CurrentPage = _appConfigVm;
+            }
+            else
+            {
+                _moduleDetailVm.Load(msg.Value);
+                CurrentPage = _moduleDetailVm;
+            }
         });
 
         WeakReferenceMessenger.Default.Register<ShowProfileDetailMessage>(this, (_, msg) =>

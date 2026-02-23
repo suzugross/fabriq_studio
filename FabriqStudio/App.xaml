@@ -37,6 +37,10 @@
                 <views:ModuleDetailView />
             </DataTemplate>
 
+            <DataTemplate DataType="{x:Type vm:AppConfigViewModel}">
+                <views:AppConfigView />
+            </DataTemplate>
+
             <DataTemplate DataType="{x:Type vm:ProfileDetailViewModel}">
                 <views:ProfileDetailView />
             </DataTemplate>

@@ -10,26 +10,39 @@ namespace FabriqStudio.Views;
 
 public partial class ModuleSettingsDialog : Window
 {
-    private readonly ModuleDetailViewModel _vm;
-
     private ModuleSettingsDialog(ModuleMasterEntry module)
     {
-        // DI コンテナからサービスを取得し、Singleton とは別の VM インスタンスを生成
-        var sp = App.Services;
-        _vm = new ModuleDetailViewModel(
-            sp.GetRequiredService<IFileService>(),
-            sp.GetRequiredService<IWorkspaceService>(),
-            sp.GetRequiredService<IRegistryCollectionService>());
+        var sp  = App.Services;
+        var dir = module.ModuleDir ?? "";
+
+        // モジュール種別に応じた VM インスタンスを生成
+        // App.xaml の DataTemplate が VM 型に応じて自動的に正しい View をレンダリングする
+        object vm;
+        if (dir.Contains("app_config", StringComparison.OrdinalIgnoreCase))
+        {
+            var appVm = new AppConfigViewModel(
+                sp.GetRequiredService<IFileService>(),
+                sp.GetRequiredService<IWorkspaceService>());
+            appVm.Load(module);
+            vm = appVm;
+        }
+        else
+        {
+            var detailVm = new ModuleDetailViewModel(
+                sp.GetRequiredService<IFileService>(),
+                sp.GetRequiredService<IWorkspaceService>(),
+                sp.GetRequiredService<IRegistryCollectionService>());
+            detailVm.Load(module);
+            vm = detailVm;
+        }
 
         InitializeComponent();
-        DetailView.DataContext = _vm;
+        DetailContent.Content = vm;
 
         // NavigateBackMessage をインターセプトしてダイアログを閉じる
         // （MainViewModel への伝播を防止）
         Loaded   += (_, _) => WeakReferenceMessenger.Default.Register<NavigateBackMessage>(this, OnNavigateBack);
         Unloaded += (_, _) => WeakReferenceMessenger.Default.Unregister<NavigateBackMessage>(this);
-
-        _vm.Load(module);
     }
 
     private void OnNavigateBack(object recipient, NavigateBackMessage msg)
