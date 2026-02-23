@@ -235,6 +235,14 @@
                             </ToggleButton.Style>
                         </ToggleButton>
 
+                        <!-- 右: インポートボタン -->
+                        <Button DockPanel.Dock="Right"
+                                Content="📥 インポート"
+                                Command="{Binding ImportWorkersCommand}"
+                                ToolTip="ファイルからインポート"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                Margin="0,0,6,0" />
+
                         <!-- 右: 追加ボタン -->
                         <Button DockPanel.Dock="Right"
                                 Content="＋ 追加"

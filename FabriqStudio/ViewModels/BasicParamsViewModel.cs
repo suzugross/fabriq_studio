@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -12,6 +13,7 @@ namespace FabriqStudio.ViewModels;
 public partial class BasicParamsViewModel : ObservableObject
 {
     private readonly ICsvService     _csvService;
+    private readonly IFileService    _fileService;
     private readonly IProfileService _profileService;
 
     [ObservableProperty] private ObservableCollection<WorkerEntry> _workers         = [];
@@ -24,6 +26,7 @@ public partial class BasicParamsViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(SaveWorkersCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddWorkerCommand))]
     [NotifyCanExecuteChangedFor(nameof(DeleteWorkerCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ImportWorkersCommand))]
     private bool _isWorkersLocked = true;
 
     [ObservableProperty]
@@ -80,9 +83,10 @@ public partial class BasicParamsViewModel : ObservableObject
     [ObservableProperty] private bool                                     _isModulesLoading;
     [ObservableProperty] private string?                                  _modulesError;
 
-    public BasicParamsViewModel(ICsvService csvService, IProfileService profileService, IWorkspaceService workspace)
+    public BasicParamsViewModel(ICsvService csvService, IFileService fileService, IProfileService profileService, IWorkspaceService workspace)
     {
         _csvService     = csvService;
+        _fileService    = fileService;
         _profileService = profileService;
         workspace.WorkspaceChanged += (_, e) =>
         {
@@ -189,6 +193,63 @@ public partial class BasicParamsViewModel : ObservableObject
         if (SelectedWorker is null) return;
         Workers.Remove(SelectedWorker);
         SelectedWorker = null;
+    }
+
+    // ── 作業者リスト インポート ──────────────────────────────────
+    private bool CanImportWorkers() => !IsWorkersLocked;
+
+    [RelayCommand(CanExecute = nameof(CanImportWorkers))]
+    private async Task ImportWorkersAsync()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "作業者リストをインポート",
+            Filter = "テキスト/CSV (*.txt;*.csv)|*.txt;*.csv|すべてのファイル (*.*)|*.*"
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        List<string> lines;
+        try
+        {
+            lines = await _fileService.LoadLinesFromFileAsync(dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"ファイルの読み込みに失敗しました:\n{ex.Message}",
+                "インポートエラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return;
+        }
+
+        if (lines.Count == 0)
+        {
+            MessageBox.Show("インポート可能なデータがありませんでした。", "インポート", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var msg = $"ファイルから {lines.Count} 件のデータを読み込みました。\n" +
+                  "インポートするデータを既存のリストに【追加】しますか？\n\n" +
+                  "[はい] : 既存のリストの末尾に追加する（重複はスキップ）\n" +
+                  "[いいえ] : 既存のリストをすべて消去して【上書き】する\n" +
+                  "[キャンセル] : インポートを取りやめる";
+        var result = MessageBox.Show(msg, "インポート方法の選択", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+        if (result == MessageBoxResult.Cancel) return;
+
+        if (result == MessageBoxResult.No)
+            Workers.Clear();
+
+        var existing = Workers.Select(w => w.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in lines)
+        {
+            // CSV でカンマが含まれている場合は最初のカラムを名前として取り出す
+            var name = line.Contains(',') ? line.Split(',')[0].Trim() : line;
+            if (string.IsNullOrWhiteSpace(name)) continue;
+            if (existing.Contains(name)) continue;
+            Workers.Add(new WorkerEntry { Name = name });
+            existing.Add(name);
+        }
     }
 
     private bool CanSaveWorkers() => IsWorkersDirty && !IsWorkersLocked;

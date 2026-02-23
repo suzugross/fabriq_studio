@@ -24,4 +24,16 @@ public interface IFileService
     /// DataTable の内容を BOM 付き UTF-8 CSV として書き込む（汎用CSV保存用）。
     /// </summary>
     Task WriteCsvFromDataTableAsync(string absolutePath, DataTable table);
+
+    /// <summary>
+    /// テキストファイルを1行1項目として読み込み、空行・重複を除外したリストを返す。
+    /// ファイルインポート用。絶対パスを受け取る。
+    /// </summary>
+    Task<List<string>> LoadLinesFromFileAsync(string absolutePath);
+
+    /// <summary>
+    /// CSV ファイルを CsvHelper でモデルにマッピングして読み込む（絶対パス）。
+    /// 外部ファイルインポート用。
+    /// </summary>
+    Task<List<T>> LoadCsvAsModelAsync<T>(string absolutePath);
 }

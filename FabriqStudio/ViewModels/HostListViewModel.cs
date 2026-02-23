@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -15,7 +17,8 @@ namespace FabriqStudio.ViewModels;
 /// </summary>
 public partial class HostListViewModel : ObservableObject
 {
-    private readonly ICsvService _csvService;
+    private readonly ICsvService  _csvService;
+    private readonly IFileService _fileService;
 
     [ObservableProperty] private ObservableCollection<HostEntry> _hosts        = [];
 
@@ -27,6 +30,7 @@ public partial class HostListViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(AddHostCommand))]
     [NotifyCanExecuteChangedFor(nameof(DeleteHostCommand))]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ImportHostListCommand))]
     private bool _isLocked = true;
 
     [ObservableProperty]
@@ -38,9 +42,10 @@ public partial class HostListViewModel : ObservableObject
     [ObservableProperty] private bool    _isLoading;
     [ObservableProperty] private string? _errorMessage;
 
-    public HostListViewModel(ICsvService csvService, IWorkspaceService workspace)
+    public HostListViewModel(ICsvService csvService, IFileService fileService, IWorkspaceService workspace)
     {
-        _csvService = csvService;
+        _csvService  = csvService;
+        _fileService = fileService;
         workspace.WorkspaceChanged += (_, e) =>
         {
             if (e.NewPath is null) { Hosts.Clear(); return; }
@@ -99,6 +104,77 @@ public partial class HostListViewModel : ObservableObject
         Hosts.Remove(SelectedHost);
         SelectedHost = next;
         IsDirty      = true;
+    }
+
+    // ── 端末リスト インポート ───────────────────────────────────
+    private bool CanImportHostList() => !IsLocked;
+
+    [RelayCommand(CanExecute = nameof(CanImportHostList))]
+    private async Task ImportHostListAsync()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "端末リストをインポート",
+            Filter = "CSV (*.csv)|*.csv|テキスト (*.txt)|*.txt|すべてのファイル (*.*)|*.*"
+        };
+        if (dialog.ShowDialog() != true) return;
+
+        var filePath  = dialog.FileName;
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+
+        // 拡張子に応じてパース方式を分岐
+        List<HostEntry> imported;
+        try
+        {
+            if (extension == ".csv")
+            {
+                // CSV → CsvHelper で HostEntry にマッピング
+                imported = await _fileService.LoadCsvAsModelAsync<HostEntry>(filePath);
+            }
+            else
+            {
+                // TXT 等 → 1行1端末名として読み込み
+                var lines = await _fileService.LoadLinesFromFileAsync(filePath);
+                imported = lines.Select(l => new HostEntry { NewPCName = l }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"ファイルの読み込みに失敗しました:\n{ex.Message}",
+                "インポートエラー",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+            return;
+        }
+
+        if (imported.Count == 0)
+        {
+            MessageBox.Show("インポート可能なデータがありませんでした。", "インポート", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var msg = $"ファイルから {imported.Count} 件のデータを読み込みました。\n" +
+                  "インポートするデータを既存のリストに【追加】しますか？\n\n" +
+                  "[はい] : 既存のリストの末尾に追加する（重複はスキップ）\n" +
+                  "[いいえ] : 既存のリストをすべて消去して【上書き】する\n" +
+                  "[キャンセル] : インポートを取りやめる";
+        var result = MessageBox.Show(msg, "インポート方法の選択", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+        if (result == MessageBoxResult.Cancel) return;
+
+        if (result == MessageBoxResult.No)
+            Hosts.Clear();
+
+        var existing = Hosts.Select(h => h.NewPCName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in imported)
+        {
+            if (string.IsNullOrWhiteSpace(entry.NewPCName)) continue;
+            if (existing.Contains(entry.NewPCName)) continue;
+            Hosts.Add(entry);
+            existing.Add(entry.NewPCName);
+        }
+
+        IsDirty = true;
     }
 
     private bool CanSave() => IsDirty && !IsLocked;

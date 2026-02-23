@@ -78,6 +78,16 @@
                     BorderThickness="0" Cursor="Hand"
                     Margin="0,0,8,0" />
 
+            <!-- 右: インポートボタン -->
+            <Button DockPanel.Dock="Right"
+                    Content="📥 インポート"
+                    Command="{Binding ImportHostListCommand}"
+                    ToolTip="ファイルからインポート"
+                    Padding="12,4" FontSize="11"
+                    Background="#1976D2" Foreground="White"
+                    BorderThickness="0" Cursor="Hand"
+                    Margin="0,0,8,0" />
+
             <!-- 右: 追加ボタン -->
             <Button DockPanel.Dock="Right"
                     Content="＋ 端末追加"

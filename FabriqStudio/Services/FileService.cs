@@ -51,6 +51,26 @@ public class FileService : IFileService
     public async Task WriteTextAsync(string absolutePath, string content)
         => await File.WriteAllTextAsync(absolutePath, content, Utf8Bom);
 
+    public async Task<List<string>> LoadLinesFromFileAsync(string absolutePath)
+    {
+        var lines = await File.ReadAllLinesAsync(absolutePath);
+        return lines
+            .Where(l => !string.IsNullOrWhiteSpace(l))
+            .Select(l => l.Trim())
+            .Distinct()
+            .ToList();
+    }
+
+    public Task<List<T>> LoadCsvAsModelAsync<T>(string absolutePath)
+    {
+        return Task.Run(() =>
+        {
+            using var reader = new StreamReader(absolutePath, Encoding.UTF8);
+            using var csv    = new CsvReader(reader, CultureInfo.InvariantCulture);
+            return csv.GetRecords<T>().ToList();
+        });
+    }
+
     public async Task WriteCsvFromDataTableAsync(string absolutePath, DataTable table)
     {
         using var writer = new StreamWriter(absolutePath, append: false, encoding: Utf8Bom);
