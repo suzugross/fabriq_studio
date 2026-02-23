@@ -128,6 +128,9 @@
                                 <DataTrigger Binding="{Binding HasCsvChanges}" Value="True">
                                     <Setter Property="Visibility" Value="Visible" />
                                 </DataTrigger>
+                                <DataTrigger Binding="{Binding HasModuleCsvChanges}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
                             </Style.Triggers>
                         </Style>
                     </TextBlock.Style>
@@ -208,26 +211,119 @@
                 <!-- module.csv メタ情報 -->
                 <Border Grid.Column="2" Style="{StaticResource SectionBorderStyle}" Margin="0">
                     <StackPanel>
-                        <TextBlock Text="module.csv" Style="{StaticResource SectionHeaderStyle}" />
+                        <DockPanel Margin="0,0,0,6" LastChildFill="False">
+                            <TextBlock DockPanel.Dock="Left"
+                                       Text="module.csv"
+                                       Style="{StaticResource SectionHeaderStyle}"
+                                       Margin="0" VerticalAlignment="Center" />
+                            <!-- module.csv Dirty インジケーター -->
+                            <TextBlock DockPanel.Dock="Left"
+                                       Text="● 未保存"
+                                       Foreground="OrangeRed" FontSize="11"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0"
+                                       Visibility="{Binding HasModuleCsvChanges,
+                                           Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </DockPanel>
                         <DockPanel Margin="0,0,0,6">
                             <TextBlock DockPanel.Dock="Left" Text="メニュー名:" Width="80" FontSize="11" Foreground="#666" />
-                            <TextBox Text="{Binding Module.MenuName}" IsReadOnly="True" FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
+                            <TextBox Text="{Binding Module.MenuName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsReadOnly="{Binding IsLocked}"
+                                     TextChanged="OnModuleCsvChanged"
+                                     FontSize="11" Padding="3,2">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="Background"  Value="#F8F8F8" />
+                                        <Setter Property="BorderBrush" Value="#CCC" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLocked}" Value="False">
+                                                <Setter Property="Background"  Value="White" />
+                                                <Setter Property="BorderBrush" Value="#007ACC" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
                         </DockPanel>
                         <DockPanel Margin="0,0,0,6">
                             <TextBlock DockPanel.Dock="Left" Text="カテゴリ:" Width="80" FontSize="11" Foreground="#666" />
-                            <TextBox Text="{Binding Module.Category}" IsReadOnly="True" FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
+                            <TextBox Text="{Binding Module.Category, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsReadOnly="{Binding IsLocked}"
+                                     TextChanged="OnModuleCsvChanged"
+                                     FontSize="11" Padding="3,2">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="Background"  Value="#F8F8F8" />
+                                        <Setter Property="BorderBrush" Value="#CCC" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLocked}" Value="False">
+                                                <Setter Property="Background"  Value="White" />
+                                                <Setter Property="BorderBrush" Value="#007ACC" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
                         </DockPanel>
                         <DockPanel Margin="0,0,0,6">
                             <TextBlock DockPanel.Dock="Left" Text="スクリプト:" Width="80" FontSize="11" Foreground="#666" />
-                            <TextBox Text="{Binding Module.Script}" IsReadOnly="True" FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" TextWrapping="Wrap" />
+                            <TextBox Text="{Binding Module.Script, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsReadOnly="{Binding IsLocked}"
+                                     TextChanged="OnModuleCsvChanged"
+                                     FontSize="11" Padding="3,2" TextWrapping="Wrap">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="Background"  Value="#F8F8F8" />
+                                        <Setter Property="BorderBrush" Value="#CCC" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLocked}" Value="False">
+                                                <Setter Property="Background"  Value="White" />
+                                                <Setter Property="BorderBrush" Value="#007ACC" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
                         </DockPanel>
                         <DockPanel Margin="0,0,0,6">
                             <TextBlock DockPanel.Dock="Left" Text="順序:" Width="80" FontSize="11" Foreground="#666" />
-                            <TextBox Text="{Binding Module.Order}" IsReadOnly="True" FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
+                            <TextBox Text="{Binding Module.Order, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsReadOnly="{Binding IsLocked}"
+                                     TextChanged="OnModuleCsvChanged"
+                                     FontSize="11" Padding="3,2">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="Background"  Value="#F8F8F8" />
+                                        <Setter Property="BorderBrush" Value="#CCC" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLocked}" Value="False">
+                                                <Setter Property="Background"  Value="White" />
+                                                <Setter Property="BorderBrush" Value="#007ACC" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
                         </DockPanel>
                         <DockPanel>
                             <TextBlock DockPanel.Dock="Left" Text="有効:" Width="80" FontSize="11" Foreground="#666" />
-                            <TextBox Text="{Binding Module.Enabled}" IsReadOnly="True" FontSize="11" Padding="3,2" BorderBrush="#CCC" Background="#F8F8F8" />
+                            <TextBox Text="{Binding Module.Enabled, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     IsReadOnly="{Binding IsLocked}"
+                                     TextChanged="OnModuleCsvChanged"
+                                     FontSize="11" Padding="3,2">
+                                <TextBox.Style>
+                                    <Style TargetType="TextBox">
+                                        <Setter Property="Background"  Value="#F8F8F8" />
+                                        <Setter Property="BorderBrush" Value="#CCC" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsLocked}" Value="False">
+                                                <Setter Property="Background"  Value="White" />
+                                                <Setter Property="BorderBrush" Value="#007ACC" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
                         </DockPanel>
                     </StackPanel>
                 </Border>
