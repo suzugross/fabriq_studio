@@ -9,5 +9,5 @@
         WindowStartupLocation="CenterOwner"
         ShowInTaskbar="False">
 
-    <views:ModuleDetailView x:Name="DetailView" />
+    <ContentControl x:Name="DetailContent" />
 </Window>

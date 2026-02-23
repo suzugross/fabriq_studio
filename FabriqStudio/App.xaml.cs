@@ -54,6 +54,7 @@ public partial class App : Application
         services.AddSingleton<HostListViewModel>();
         services.AddSingleton<HostDetailViewModel>();
         services.AddSingleton<ModuleDetailViewModel>();
+        services.AddSingleton<AppConfigViewModel>();
         services.AddSingleton<ProfileDetailViewModel>();
         services.AddSingleton<AutokeyRecipeEditorViewModel>();
         services.AddSingleton<WelcomeViewModel>();
