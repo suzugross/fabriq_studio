@@ -14,8 +14,21 @@ public partial class ProfileScriptEntry : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsSystemCommand))]
     [NotifyPropertyChangedFor(nameof(DisplayName))]
     private string _scriptPath  = "";
-    [ObservableProperty] private string _enabled     = "0";
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsEnabled))]
+    private string _enabled     = "0";
     [ObservableProperty] private string _description = "";
+
+    /// <summary>
+    /// Enabled ("0"/"1") の bool ラッパー。CheckBox バインド用。
+    /// setter は Enabled を更新するため、既存の Dirty 追跡がそのまま発火する。
+    /// </summary>
+    [Ignore]
+    public bool IsEnabled
+    {
+        get => Enabled != "0";
+        set => Enabled = value ? "1" : "0";
+    }
 
     /// <summary>
     /// __RESTART__ / __AUTOPILOT__ 等のシステム組み込みコマンドかどうか。
