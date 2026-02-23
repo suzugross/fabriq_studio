@@ -1,11 +1,13 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
 using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
+using FabriqStudio.Views;
 
 namespace FabriqStudio.ViewModels;
 
@@ -317,6 +319,42 @@ public partial class ProfileDetailViewModel : ObservableObject
         {
             _isInitializing = false;
         }
+    }
+
+    // ─── モジュール設定を開く ────────────────────────────────────
+    [RelayCommand]
+    private void OpenModuleSettings(ProfileScriptEntry? entry)
+    {
+        if (entry is null || entry.IsSystemCommand) return;
+
+        var moduleDir = ExtractModuleDirectory(entry.ScriptPath);
+        if (moduleDir is null) return;
+
+        var module = AvailableModules.FirstOrDefault(m =>
+            string.Equals(m.ModuleDir, moduleDir, StringComparison.OrdinalIgnoreCase));
+
+        if (module is null)
+        {
+            MessageBox.Show(
+                $"モジュール '{moduleDir}' が見つかりません。\n" +
+                "プロファイルの情報が古いか、モジュールが削除された可能性があります。",
+                "モジュール設定",
+                MessageBoxButton.OK,
+                MessageBoxImage.Warning);
+            return;
+        }
+
+        ModuleSettingsDialog.Show(module, Application.Current.MainWindow);
+    }
+
+    /// <summary>
+    /// ScriptPath ("kind/moduleDir/script.ps1" 等) からモジュールディレクトリ名を抽出する。
+    /// フォーマット混在（"/" / "\" / "modules\" プレフィクス付き）に対応。
+    /// </summary>
+    private static string? ExtractModuleDirectory(string scriptPath)
+    {
+        var parts = scriptPath.Split(new[] { '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2 ? parts[^2] : null;
     }
 
     // ─── 戻る ────────────────────────────────────────────────────
