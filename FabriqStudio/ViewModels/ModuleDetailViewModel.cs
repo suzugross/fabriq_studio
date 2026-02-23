@@ -13,19 +13,21 @@ namespace FabriqStudio.ViewModels;
 
 /// <summary>
 /// モジュール詳細表示／編集
+///   - module.csv: メニュー名・カテゴリ等のメタ情報 + ロック/解除トグル + Dirty 検知 + 保存
 ///   - guide.txt: テキスト表示 + ロック/解除トグル + Dirty 検知 + 保存
 ///   - 汎用CSV: DataTable で動的表示 + DataTable 組み込みの RowChanged で Dirty 検知 + 保存
 ///
 /// ロック機構:
-///   IsLocked=true（初期値）→ guide.txt TextBox / DataGrid が読み取り専用
+///   IsLocked=true（初期値）→ module.csv / guide.txt TextBox / DataGrid が読み取り専用
 ///   IsLocked=false          → 編集可能
 ///
 /// 保存:
-///   CanExecute = (IsGuideDirty || HasCsvChanges) &amp;&amp; !IsLocked
+///   CanExecute = (IsGuideDirty || HasCsvChanges || HasModuleCsvChanges) &amp;&amp; !IsLocked
 /// </summary>
 public partial class ModuleDetailViewModel : ObservableObject
 {
     private readonly IFileService                _fileService;
+    private readonly ICsvService                 _csvService;
     private readonly IWorkspaceService            _workspace;
     private readonly IRegistryCollectionService   _registryCollection;
 
@@ -79,6 +81,14 @@ public partial class ModuleDetailViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private bool _hasCsvChanges;
 
+    // ─── module.csv メタ情報 ──────────────────────────────────────
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _hasModuleCsvChanges;
+
+    /// <summary>Load 中の TextChanged による誤検知を抑制するフラグ。</summary>
+    private bool _suppressModuleCsvDirty;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(DeleteCsvRowCommand))]
     private System.Data.DataRowView? _selectedCsvRow;
@@ -95,21 +105,32 @@ public partial class ModuleDetailViewModel : ObservableObject
 
     public ModuleDetailViewModel(
         IFileService              fileService,
+        ICsvService               csvService,
         IWorkspaceService         workspace,
         IRegistryCollectionService registryCollection)
     {
         _fileService        = fileService;
+        _csvService         = csvService;
         _workspace          = workspace;
         _registryCollection = registryCollection;
+    }
+
+    /// <summary>View の TextChanged から呼ばれ、module.csv 変更フラグを立てる。</summary>
+    public void MarkModuleCsvDirty()
+    {
+        if (!_suppressModuleCsvDirty)
+            HasModuleCsvChanges = true;
     }
 
     /// <summary>選択されたモジュールを読み込む。</summary>
     public void Load(ModuleMasterEntry module)
     {
+        _suppressModuleCsvDirty = true;
         Module     = module;
         IsLocked   = true;
         SaveStatus = null;
         SaveError  = null;
+        HasModuleCsvChanges = false;
 
         // レジストリモジュール判定
         var dir = module.ModuleDir ?? "";
@@ -194,6 +215,11 @@ public partial class ModuleDetailViewModel : ObservableObject
         finally
         {
             IsLoading = false;
+            // Load() で立てた抑制フラグを非同期ロード完了後に解除。
+            // View の DataTemplate 生成・バインディング初期評価による
+            // TextChanged の誤検知がここまでに完了していることを保証する。
+            _suppressModuleCsvDirty = false;
+            HasModuleCsvChanges = false;
         }
     }
 
@@ -228,7 +254,7 @@ public partial class ModuleDetailViewModel : ObservableObject
     }
 
     // ── 保存コマンド ──────────────────────────────────────────────
-    private bool CanSave() => (IsGuideDirty || HasCsvChanges) && !IsLocked;
+    private bool CanSave() => (IsGuideDirty || HasCsvChanges || HasModuleCsvChanges) && !IsLocked;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task SaveAsync()
@@ -243,6 +269,14 @@ public partial class ModuleDetailViewModel : ObservableObject
             {
                 await _fileService.WriteTextAsync(_guidePath, GuideText);
                 OriginalGuideText = GuideText;   // スナップショット更新 → ハイライト解除
+            }
+
+            // module.csv 保存
+            if (HasModuleCsvChanges && Module is not null)
+            {
+                var relativePath = Path.Combine("modules", Module.Kind, Module.ModuleDir, "module.csv");
+                await _csvService.WriteAsync(relativePath, new[] { Module });
+                HasModuleCsvChanges = false;
             }
 
             // 汎用CSV 保存

@@ -30,6 +30,7 @@ public partial class ModuleSettingsDialog : Window
         {
             var detailVm = new ModuleDetailViewModel(
                 sp.GetRequiredService<IFileService>(),
+                sp.GetRequiredService<ICsvService>(),
                 sp.GetRequiredService<IWorkspaceService>(),
                 sp.GetRequiredService<IRegistryCollectionService>());
             detailVm.Load(module);
