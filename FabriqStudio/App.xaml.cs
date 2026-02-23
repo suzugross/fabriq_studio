@@ -10,6 +10,11 @@ public partial class App : Application
 {
     private IServiceProvider? _services;
 
+    /// <summary>DI コンテナ。ダイアログ等から直接サービスを取得する場合に使用。</summary>
+    public static IServiceProvider Services
+        => ((App)Current)._services
+           ?? throw new InvalidOperationException("ServiceProvider is not initialized.");
+
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
