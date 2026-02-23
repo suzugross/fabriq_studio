@@ -11,13 +11,20 @@
             <Setter Property="Margin"     Value="0,10,0,3" />
         </Style>
 
-        <!-- フォーム入力ボックス -->
+        <!-- フォーム入力ボックス: IsReadOnly / Background を IsLocked に連動 -->
         <Style x:Key="FormInput" TargetType="TextBox">
-            <Setter Property="FontSize"                  Value="12" />
-            <Setter Property="Padding"                   Value="6,5" />
-            <Setter Property="BorderBrush"               Value="#CCCCCC" />
-            <Setter Property="BorderThickness"           Value="1" />
-            <Setter Property="VerticalContentAlignment"  Value="Center" />
+            <Setter Property="IsReadOnly"              Value="{Binding IsLocked}" />
+            <Setter Property="FontSize"                Value="12" />
+            <Setter Property="Padding"                 Value="6,5" />
+            <Setter Property="BorderBrush"             Value="#CCCCCC" />
+            <Setter Property="BorderThickness"         Value="1" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="Background"              Value="White" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLocked}" Value="True">
+                    <Setter Property="Background" Value="#F8F8F8" />
+                </DataTrigger>
+            </Style.Triggers>
         </Style>
 
         <!-- プライマリボタン（保存・エクスポート） -->
@@ -259,6 +266,29 @@
                 <DockPanel Visibility="{Binding IsEntrySelected,
                                Converter={StaticResource BoolToVisibilityConverter}}">
 
+                    <!-- ロックトグル（上部固定） -->
+                    <Border DockPanel.Dock="Top"
+                            Padding="16,6"
+                            Background="#FAFAFA"
+                            BorderBrush="#EEEEEE" BorderThickness="0,0,0,1">
+                        <DockPanel LastChildFill="False">
+                            <ToggleButton DockPanel.Dock="Right"
+                                          IsChecked="{Binding IsLocked}"
+                                          Padding="10,4" FontSize="12" Cursor="Hand">
+                                <ToggleButton.Style>
+                                    <Style TargetType="ToggleButton">
+                                        <Setter Property="Content" Value="🔒 ロック中（読み取り専用）" />
+                                        <Style.Triggers>
+                                            <Trigger Property="IsChecked" Value="False">
+                                                <Setter Property="Content" Value="✏️ 編集中" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ToggleButton.Style>
+                            </ToggleButton>
+                        </DockPanel>
+                    </Border>
+
                     <!-- アクションバー（下部固定） -->
                     <Border DockPanel.Dock="Bottom"
                             Padding="16,10"
@@ -333,6 +363,7 @@
                                     <TextBlock Text="Hive" Style="{StaticResource FieldLabel}" />
                                     <ComboBox ItemsSource="{Binding HiveFormOptions}"
                                               SelectedItem="{Binding EditHive}"
+                                              IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBooleanConverter}}"
                                               FontSize="12" Height="28" />
                                 </StackPanel>
                             </Grid>
@@ -360,6 +391,7 @@
                                     <TextBlock Text="型 (Type)" Style="{StaticResource FieldLabel}" />
                                     <ComboBox ItemsSource="{Binding TypeOptions}"
                                               SelectedItem="{Binding EditType}"
+                                              IsEnabled="{Binding IsLocked, Converter={StaticResource InverseBooleanConverter}}"
                                               FontSize="12" Height="28" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="4">

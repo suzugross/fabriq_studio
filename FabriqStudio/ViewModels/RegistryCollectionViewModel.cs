@@ -50,6 +50,11 @@ public partial class RegistryCollectionViewModel : ObservableObject
 
     // ── 状態 ─────────────────────────────────────────────────────────────
 
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveEntryCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DeleteEntryCommand))]
+    private bool _isLocked = true;
+
     [ObservableProperty] private bool   _isEntrySelected;
     [ObservableProperty] private bool   _isWorkspaceOpen;
     [ObservableProperty] private string _statusMessage = "";
@@ -86,6 +91,7 @@ public partial class RegistryCollectionViewModel : ObservableObject
         if (_suppressFormRefill) return;
 
         IsEntrySelected = value is not null;
+        IsLocked        = true;
         StatusMessage   = "";
 
         if (value is null) { ClearEditForm(); return; }
@@ -108,12 +114,15 @@ public partial class RegistryCollectionViewModel : ObservableObject
         EditType = "REG_DWORD";
 
         IsEntrySelected = true; // フォームを有効化（一覧の選択なし）
+        IsLocked        = false; // 新規エントリは即編集可能
         StatusMessage   = "新規エントリを入力後、「保存」を押してください。";
     }
 
     // ── コマンド: 保存 ────────────────────────────────────────────────────
 
-    [RelayCommand]
+    private bool CanSaveEntry() => !IsLocked;
+
+    [RelayCommand(CanExecute = nameof(CanSaveEntry))]
     private async Task SaveEntryAsync()
     {
         if (string.IsNullOrWhiteSpace(EditTitle))
@@ -151,7 +160,9 @@ public partial class RegistryCollectionViewModel : ObservableObject
 
     // ── コマンド: 削除 ────────────────────────────────────────────────────
 
-    [RelayCommand]
+    private bool CanDeleteEntry() => !IsLocked;
+
+    [RelayCommand(CanExecute = nameof(CanDeleteEntry))]
     private async Task DeleteEntryAsync()
     {
         if (!IsEntrySelected || string.IsNullOrEmpty(EditId)) return;

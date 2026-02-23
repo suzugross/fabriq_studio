@@ -271,6 +271,16 @@
                                 Padding="8,3" FontSize="11" Cursor="Hand"
                                 VerticalAlignment="Center"
                                 Margin="0,0,6,0" />
+
+                        <!-- 右: 辞書から追加ボタン（レジストリモジュールのみ表示） -->
+                        <Button DockPanel.Dock="Right"
+                                Content="📋 辞書から追加"
+                                Command="{Binding AddFromCollectionCommand}"
+                                Visibility="{Binding IsRegistryModule,
+                                    Converter={StaticResource BoolToVisibilityConverter}}"
+                                Padding="8,3" FontSize="11" Cursor="Hand"
+                                VerticalAlignment="Center"
+                                Margin="0,0,6,0" />
                     </DockPanel>
 
                     <!-- 設定CSVなし -->

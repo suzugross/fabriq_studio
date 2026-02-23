@@ -14,6 +14,7 @@
             <converters:BoolToCollapsedConverter               x:Key="BoolToCollapsedConverter" />
             <converters:DirtyToForegroundConverter             x:Key="DirtyToForegroundConverter" />
             <converters:SpecialMarkerToBackgroundConverter     x:Key="SpecialMarkerToBackgroundConverter" />
+            <converters:InverseBooleanConverter               x:Key="InverseBooleanConverter" />
 
             <!-- ViewModel → View の DataTemplate マッピング -->
             <DataTemplate DataType="{x:Type vm:BasicParamsViewModel}">
