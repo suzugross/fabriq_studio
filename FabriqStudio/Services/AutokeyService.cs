@@ -11,6 +11,11 @@ public class AutokeyService : IAutokeyService
 {
     private readonly IWorkspaceService _workspace;
 
+    /// <summary>テンプレートベースパス（WorkspaceService.TemplateFabriqPath と同等）。</summary>
+    private static readonly string TemplateFabriqPath = Path.Combine(
+        AppDomain.CurrentDomain.BaseDirectory,
+        "template", "template_fabriq", "fabriq");
+
     public AutokeyService(IWorkspaceService workspace)
     {
         _workspace = workspace;
@@ -107,13 +112,176 @@ public class AutokeyService : IAutokeyService
     }
 
     // ── Test Run ─────────────────────────────────────────────────────────────
-    // TODO: autokey_config.ps1 は fabriq カーネル関数（New-ModuleResult 等）に依存しており、
-    //       fabriq 基盤外では単独実行できない。将来的にカーネル統合後に実装する。
 
-    public Task TestRunAsync(IEnumerable<RecipeRow> rows)
+    public async Task<string> TestRunAsync(IEnumerable<RecipeRow> rows)
     {
-        throw new NotSupportedException(
-            "テスト実行は現在未対応です。\n" +
-            "エクスポート後、fabriq 環境からモジュールを実行して動作確認してください。");
+        // 1. 一時ディレクトリ作成
+        var tempDir = Path.Combine(Path.GetTempPath(), $"fabriq_autokey_test_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            // 2. recipe.csv を一時ディレクトリに保存
+            var recipePath = Path.Combine(tempDir, "recipe.csv");
+            await SaveRecipeAsync(recipePath, rows);
+
+            // 3. autokey_config.ps1 テンプレートを一時ディレクトリにコピー
+            //    $PSScriptRoot が tempDir に解決され、同ディレクトリの recipe.csv を読み込む
+            var templateScript = ResolveAutokeyTemplatePath();
+            var tempScript     = Path.Combine(tempDir, "autokey_config.ps1");
+            File.Copy(templateScript, tempScript, overwrite: true);
+
+            // 4. カーネル common.ps1 のパスを Dual Resolution で解決
+            var kernelPath = ResolveKernelCommonPath();
+
+            // 5. PowerShell コマンド構築
+            //    実行順序:
+            //    (a) UTF-8 エンコーディング強制
+            //    (b) AutoPilotMode + Read-Host モック（dot-source 前に配置 → 読み込み中の対話を防止）
+            //    (c) common.ps1 をドットソースで読み込み（カーネル関数群を取得）
+            //    (d) Confirm-Execution / Wait-KeyPress をモック上書き（dot-source 後に再定義）
+            //    (e) autokey_config.ps1 を実行
+            var command =
+                "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; " +
+                "$ProgressPreference = 'SilentlyContinue'; " +
+                "$InformationPreference = 'SilentlyContinue'; " +
+                "$global:AutoPilotMode = $true; " +
+                "function Read-Host { return 'Y' }; " +
+                $". '{kernelPath}'; " +
+                "function Confirm-Execution { param([string]$Message) return $true }; " +
+                "function Wait-KeyPress { param([string]$Message) return }; " +
+                $"& '{tempScript}'";
+
+            // 6. PowerShell プロセス起動
+            //    -EncodedCommand: Base64(UTF-16LE) でコマンドを渡し、引用符のエスケープ問題を完全回避
+            //    -NonInteractive: 対話プロンプトを完全抑止
+            //    RedirectStandardInput: stdin を閉じて万一の入力待ちを防止
+            var encodedCommand = Convert.ToBase64String(Encoding.Unicode.GetBytes(command));
+            var psi = new ProcessStartInfo
+            {
+                FileName               = "powershell.exe",
+                Arguments              = $"-NoProfile -NonInteractive -ExecutionPolicy Bypass -EncodedCommand {encodedCommand}",
+                UseShellExecute        = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError  = true,
+                RedirectStandardInput  = true,
+                CreateNoWindow         = true,
+                StandardOutputEncoding = Encoding.UTF8,
+                StandardErrorEncoding  = Encoding.UTF8,
+            };
+
+            using var process = new Process { StartInfo = psi };
+            var stdout = new StringBuilder();
+            var stderr = new StringBuilder();
+
+            // TaskCompletionSource でストリーム終端（Data == null）を検知
+            // → プロセス終了後のバッファフラッシュを確実に待機しデッドロックを回避
+            var stdoutDone = new TaskCompletionSource<bool>();
+            var stderrDone = new TaskCompletionSource<bool>();
+
+            process.OutputDataReceived += (_, e) =>
+            {
+                if (e.Data is not null)
+                    stdout.AppendLine(e.Data);
+                else
+                    stdoutDone.TrySetResult(true);   // null = ストリーム終端
+            };
+            process.ErrorDataReceived += (_, e) =>
+            {
+                if (e.Data is not null)
+                    stderr.AppendLine(e.Data);
+                else
+                    stderrDone.TrySetResult(true);   // null = ストリーム終端
+            };
+
+            process.Start();
+
+            // stdin を即座に閉じる（PowerShell の Read-Host 等による入力待ちを防止）
+            process.StandardInput.Close();
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            // 7. タイムアウト 5 分（WaitForExitAsync で UI スレッドをブロックしない）
+            using var cts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+            try
+            {
+                await process.WaitForExitAsync(cts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                process.Kill(entireProcessTree: true);
+                throw new TimeoutException("テスト実行がタイムアウトしました（5分）。");
+            }
+
+            // 8. ストリーム読み取り完了を待機（プロセス終了後のバッファフラッシュ）
+            await Task.WhenAll(stdoutDone.Task, stderrDone.Task);
+
+            // 9. ログ結合（stdout + CLIXML フィルタ済み stderr）
+            var log = stdout.ToString();
+            var stderrText = stderr.ToString();
+
+            // CLIXML ブロック（Write-Progress/Write-Information の XML シリアライズ）を除去
+            if (!string.IsNullOrWhiteSpace(stderrText) && !stderrText.Contains("#< CLIXML"))
+                log += "\n--- stderr ---\n" + stderrText;
+
+            return log;
+        }
+        finally
+        {
+            // 10. 一時ディレクトリ削除（クリーンアップ失敗は無視）
+            try { Directory.Delete(tempDir, recursive: true); }
+            catch { /* best effort */ }
+        }
+    }
+
+    // ── パス解決ヘルパー ─────────────────────────────────────────────────────
+
+    /// <summary>
+    /// カーネル common.ps1 のパスを解決する（Dual Kernel Resolution）。
+    /// 1. ワークスペース内 kernel/common.ps1
+    /// 2. フォールバック: アプリ同梱テンプレート
+    /// </summary>
+    private string ResolveKernelCommonPath()
+    {
+        if (_workspace.RootPath is not null)
+        {
+            var workspacePath = Path.Combine(_workspace.RootPath, "kernel", "common.ps1");
+            if (File.Exists(workspacePath))
+                return workspacePath;
+        }
+
+        var templatePath = Path.Combine(TemplateFabriqPath, "kernel", "common.ps1");
+        if (File.Exists(templatePath))
+            return templatePath;
+
+        throw new FileNotFoundException(
+            "カーネル (kernel/common.ps1) が見つかりません。\n" +
+            "ワークスペースまたはアプリテンプレートにカーネルが存在することを確認してください。");
+    }
+
+    /// <summary>
+    /// autokey_config.ps1 テンプレートのパスを解決する（Dual Resolution）。
+    /// 1. ワークスペース内 apps/autokey_recipe_editor/autokey_template/autokey_config.ps1
+    /// 2. フォールバック: アプリ同梱テンプレート
+    /// </summary>
+    private string ResolveAutokeyTemplatePath()
+    {
+        const string relativePath = @"apps\autokey_recipe_editor\autokey_template\autokey_config.ps1";
+
+        if (_workspace.RootPath is not null)
+        {
+            var workspacePath = Path.Combine(_workspace.RootPath, relativePath);
+            if (File.Exists(workspacePath))
+                return workspacePath;
+        }
+
+        var templatePath = Path.Combine(TemplateFabriqPath, relativePath);
+        if (File.Exists(templatePath))
+            return templatePath;
+
+        throw new FileNotFoundException(
+            "Autokey テンプレート (autokey_config.ps1) が見つかりません。\n" +
+            "ワークスペースまたはアプリテンプレートにテンプレートが存在することを確認してください。");
     }
 }

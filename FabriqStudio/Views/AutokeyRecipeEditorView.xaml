@@ -89,9 +89,7 @@
                 <Button DockPanel.Dock="Left"
                         Content="▶ テスト実行"
                         Command="{Binding TestRunCommand}"
-                        Style="{StaticResource DangerButtonStyle}"
-                        IsEnabled="False"
-                        ToolTip="テスト実行は現在未対応です。エクスポート後に fabriq 環境から動作確認してください。" />
+                        Style="{StaticResource DangerButtonStyle}" />
 
                 <!-- 右: ステータス / エラー / Dirty インジケータ -->
                 <TextBlock DockPanel.Dock="Right"

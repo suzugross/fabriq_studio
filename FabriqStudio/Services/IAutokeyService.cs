@@ -37,7 +37,9 @@ public interface IAutokeyService
     Task<string> ExportModuleAsync(string moduleName, IEnumerable<RecipeRow> rows, bool overwrite = false);
 
     /// <summary>
-    /// レシピを一時ディレクトリにコピーして別 PowerShell プロセスでテスト実行する。
+    /// レシピを一時ディレクトリにコピーし、カーネルをドットソースした PowerShell プロセスでテスト実行する。
+    /// カーネルは Dual Resolution（ワークスペース → テンプレートフォールバック）で解決する。
     /// </summary>
-    Task TestRunAsync(IEnumerable<RecipeRow> rows);
+    /// <returns>実行ログ（標準出力 + 標準エラー出力）</returns>
+    Task<string> TestRunAsync(IEnumerable<RecipeRow> rows);
 }

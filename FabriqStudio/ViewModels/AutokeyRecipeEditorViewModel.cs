@@ -35,8 +35,9 @@ public partial class AutokeyRecipeEditorViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(ExportCommand))]
     private bool _isExporting;
 
-    // TODO: テスト実行は fabriq 基盤統合後に有効化する
-    [ObservableProperty] private bool _isRunning;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(TestRunCommand))]
+    private bool _isRunning;
 
     // ── UI 用定数 ───────────────────────────────────────────────────────────
     /// <summary>Action 列 ComboBox の選択肢。</summary>
@@ -143,13 +144,33 @@ public partial class AutokeyRecipeEditorViewModel : ObservableObject
         }
     }
 
-    // ── テスト実行（将来実装）────────────────────────────────────────────────
-    // View 側で IsEnabled=False に固定済み。CanExecute は常に false を返す。
+    // ── テスト実行 ──────────────────────────────────────────────────────────
 
-    private bool CanTestRun() => false;
+    private bool CanTestRun() => !IsRunning && Rows.Count > 0;
 
     [RelayCommand(CanExecute = nameof(CanTestRun))]
-    private Task TestRunAsync() => Task.CompletedTask;
+    private async Task TestRunAsync()
+    {
+        IsRunning     = true;
+        ErrorMessage  = null;
+        StatusMessage = null;
+        try
+        {
+            var log = await _autokeyService.TestRunAsync(Rows);
+
+            Views.LogViewerDialog.ShowLog("テスト実行結果", log);
+
+            StatusMessage = "✓ テスト実行完了";
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"テスト実行エラー: {ex.Message}";
+        }
+        finally
+        {
+            IsRunning = false;
+        }
+    }
 
     // ── 行操作 ────────────────────────────────────────────────────────────────
 
