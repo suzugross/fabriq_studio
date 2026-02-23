@@ -111,6 +111,7 @@ public partial class HostDetailViewModel : ObservableObject
             OriginalHost = Host.Clone();
             IsDirty      = false;
             SaveStatus   = "✓ 保存しました";
+            WeakReferenceMessenger.Default.Send(new WorkspaceDataUpdatedMessage("HostDetail"));
         }
         catch (Exception ex)
         {

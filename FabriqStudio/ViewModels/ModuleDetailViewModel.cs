@@ -254,6 +254,7 @@ public partial class ModuleDetailViewModel : ObservableObject
             }
 
             SaveStatus = "✓ 保存しました";
+            WeakReferenceMessenger.Default.Send(new WorkspaceDataUpdatedMessage("ModuleDetail"));
         }
         catch (Exception ex)
         {
