@@ -22,10 +22,11 @@ public partial class MainViewModel : ObservableObject
     private readonly ModuleDetailViewModel         _moduleDetailVm;
     private readonly AppConfigViewModel            _appConfigVm;
     private readonly ProfileDetailViewModel        _profileDetailVm;
-    private readonly AutokeyRecipeEditorViewModel  _autokeyEditorVm;
-    private readonly WelcomeViewModel              _welcomeVm;
-    private readonly RegistryCollectionViewModel   _registryCollectionVm;
-    private readonly IWorkspaceService             _workspace;
+    private readonly AutokeyRecipeEditorViewModel      _autokeyEditorVm;
+    private readonly DigitalGyotaqEditorViewModel     _gyotaqEditorVm;
+    private readonly WelcomeViewModel                 _welcomeVm;
+    private readonly RegistryCollectionViewModel      _registryCollectionVm;
+    private readonly IWorkspaceService                _workspace;
 
     [ObservableProperty]
     private object _currentPage;
@@ -37,17 +38,18 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty] private string _workspaceName = "";
 
     public MainViewModel(
-        BasicParamsViewModel          basicParamsVm,
-        ModuleEditViewModel           moduleEditVm,
-        HostListViewModel             hostListVm,
-        HostDetailViewModel           hostDetailVm,
-        ModuleDetailViewModel         moduleDetailVm,
-        AppConfigViewModel            appConfigVm,
-        ProfileDetailViewModel        profileDetailVm,
-        AutokeyRecipeEditorViewModel  autokeyEditorVm,
-        WelcomeViewModel              welcomeVm,
-        RegistryCollectionViewModel   registryCollectionVm,
-        IWorkspaceService             workspace)
+        BasicParamsViewModel              basicParamsVm,
+        ModuleEditViewModel               moduleEditVm,
+        HostListViewModel                 hostListVm,
+        HostDetailViewModel               hostDetailVm,
+        ModuleDetailViewModel             moduleDetailVm,
+        AppConfigViewModel                appConfigVm,
+        ProfileDetailViewModel            profileDetailVm,
+        AutokeyRecipeEditorViewModel      autokeyEditorVm,
+        DigitalGyotaqEditorViewModel      gyotaqEditorVm,
+        WelcomeViewModel                  welcomeVm,
+        RegistryCollectionViewModel       registryCollectionVm,
+        IWorkspaceService                 workspace)
     {
         _basicParamsVm        = basicParamsVm;
         _moduleEditVm         = moduleEditVm;
@@ -57,6 +59,7 @@ public partial class MainViewModel : ObservableObject
         _appConfigVm          = appConfigVm;
         _profileDetailVm      = profileDetailVm;
         _autokeyEditorVm      = autokeyEditorVm;
+        _gyotaqEditorVm       = gyotaqEditorVm;
         _welcomeVm            = welcomeVm;
         _registryCollectionVm = registryCollectionVm;
         _workspace            = workspace;
@@ -140,6 +143,7 @@ public partial class MainViewModel : ObservableObject
             "ModuleEdit"         => _moduleEditVm,
             "HostList"           => _hostListVm,
             "AutokeyEditor"      => _autokeyEditorVm,
+            "GyotaqEditor"       => _gyotaqEditorVm,
             "RegistryCollection" => _registryCollectionVm,
             _                    => CurrentPage
         };

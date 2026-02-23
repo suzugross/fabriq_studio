@@ -1,0 +1,94 @@
+<Window x:Class="FabriqStudio.Views.CommandSelectorDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="コマンドライブラリから選択"
+        Width="720" Height="520"
+        MinWidth="500" MinHeight="360"
+        ResizeMode="CanResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />  <!-- フィルタバー -->
+            <RowDefinition Height="*" />     <!-- DataGrid -->
+            <RowDefinition Height="Auto" />  <!-- ボタン -->
+        </Grid.RowDefinitions>
+
+        <!-- ===== フィルタバー ===== -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,10">
+            <TextBlock Text="検索:"
+                       VerticalAlignment="Center"
+                       FontSize="12" Margin="0,0,6,0" />
+            <TextBox x:Name="SearchBox"
+                     Width="240"
+                     FontSize="12" Padding="5,4"
+                     BorderBrush="#CCCCCC"
+                     TextChanged="OnFilterChanged" />
+
+            <TextBlock Text="カテゴリ:"
+                       VerticalAlignment="Center"
+                       FontSize="12" Margin="18,0,6,0" />
+            <ComboBox x:Name="CategoryCombo"
+                      Width="180"
+                      FontSize="12"
+                      SelectionChanged="OnFilterChanged" />
+        </StackPanel>
+
+        <!-- ===== コマンド一覧 ===== -->
+        <DataGrid x:Name="CommandGrid"
+                  Grid.Row="1"
+                  AutoGenerateColumns="False"
+                  CanUserAddRows="False"
+                  CanUserDeleteRows="False"
+                  CanUserReorderColumns="False"
+                  CanUserSortColumns="True"
+                  IsReadOnly="True"
+                  SelectionMode="Single"
+                  GridLinesVisibility="Horizontal"
+                  BorderBrush="#DDDDDD" BorderThickness="1"
+                  MouseDoubleClick="OnGridDoubleClick">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="カテゴリ"
+                                    Binding="{Binding Category}"
+                                    Width="140" />
+                <DataGridTextColumn Header="名前"
+                                    Binding="{Binding Name}"
+                                    Width="*" />
+                <DataGridTextColumn Header="コマンド"
+                                    Binding="{Binding OpenCommand}"
+                                    Width="160">
+                    <DataGridTextColumn.ElementStyle>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Foreground" Value="#666666" />
+                        </Style>
+                    </DataGridTextColumn.ElementStyle>
+                </DataGridTextColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- ===== ボタンエリア ===== -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="0,10,0,0">
+            <TextBlock x:Name="CountLabel"
+                       VerticalAlignment="Center"
+                       FontSize="11" Foreground="#AAAAAA"
+                       Margin="0,0,14,0" />
+            <Button Content="選択"
+                    Click="OnSelect_Click"
+                    Padding="20,6"
+                    Margin="0,0,8,0"
+                    FontSize="12"
+                    Cursor="Hand"
+                    IsDefault="True" />
+            <Button Content="キャンセル"
+                    Click="OnCancel_Click"
+                    Padding="20,6"
+                    FontSize="12"
+                    Cursor="Hand"
+                    IsCancel="True" />
+        </StackPanel>
+    </Grid>
+</Window>
