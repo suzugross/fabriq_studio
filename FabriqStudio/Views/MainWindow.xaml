@@ -251,6 +251,11 @@
                             Command="{Binding NavigateCommand}"
                             CommandParameter="AutokeyEditor"
                             IsEnabled="{Binding IsWorkspaceOpen}" />
+                    <Button Content="📷  デジタル魚拓"
+                            Style="{StaticResource NavChildButtonStyle}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="GyotaqEditor"
+                            IsEnabled="{Binding IsWorkspaceOpen}" />
                     <Button Content="📖  レジストリ辞書"
                             Style="{StaticResource NavChildButtonStyle}"
                             Command="{Binding NavigateCommand}"
