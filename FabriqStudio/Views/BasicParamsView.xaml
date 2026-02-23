@@ -179,6 +179,11 @@
                                     <DataTrigger Binding="{Binding IsSystemCommand}" Value="True">
                                         <Setter Property="FontStyle" Value="Italic" />
                                     </DataTrigger>
+                                    <!-- 無効化された行のグレーアウト -->
+                                    <DataTrigger Binding="{Binding IsEnabled}" Value="False">
+                                        <Setter Property="Foreground" Value="#999999" />
+                                        <Setter Property="Opacity"    Value="0.6" />
+                                    </DataTrigger>
                                 </Style.Triggers>
                             </Style>
                         </DataGrid.RowStyle>
@@ -186,9 +191,15 @@
                             <DataGridTextColumn Header="順序"
                                                 Binding="{Binding Order}"
                                                 Width="55" />
-                            <DataGridTextColumn Header="有効"
-                                                Binding="{Binding Enabled}"
-                                                Width="50" />
+                            <DataGridTemplateColumn Header="有効" Width="50">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox IsChecked="{Binding IsEnabled, Mode=OneWay}"
+                                                  IsHitTestVisible="False"
+                                                  HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="スクリプト / コマンド"
                                                 Binding="{Binding ScriptPath}"
                                                 Width="*" />
