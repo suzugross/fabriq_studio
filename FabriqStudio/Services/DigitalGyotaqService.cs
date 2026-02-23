@@ -12,10 +12,10 @@ public class DigitalGyotaqService : IDigitalGyotaqService
 {
     private readonly IWorkspaceService _workspace;
 
-    /// <summary>テンプレートベースパス（アプリ同梱）。</summary>
-    private static readonly string TemplateFabriqPath = Path.Combine(
+    /// <summary>ツール専用テンプレートベースパス（gyotaq_template 等を格納）。</summary>
+    private static readonly string StudioTemplatesPath = Path.Combine(
         AppDomain.CurrentDomain.BaseDirectory,
-        "template", "template_fabriq", "fabriq");
+        "template", "template_fabriq");
 
     public DigitalGyotaqService(IWorkspaceService workspace)
     {
@@ -133,53 +133,33 @@ public class DigitalGyotaqService : IDigitalGyotaqService
     // ── パス解決ヘルパー ─────────────────────────────────────────────────────
 
     /// <summary>
-    /// gyotaq_template ディレクトリのパスを解決する（Dual Resolution）。
-    /// 1. ワークスペース内 apps/digital_gyotaq_editor/gyotaq_template/
-    /// 2. フォールバック: アプリ同梱テンプレート
+    /// gyotaq_template ディレクトリのパスを解決する。
+    /// 常にアプリ同梱の StudioTemplatesPath/gyotaq_template/ を参照する。
     /// </summary>
-    private string ResolveGyotaqTemplateDir()
+    private static string ResolveGyotaqTemplateDir()
     {
-        const string relativePath = @"apps\digital_gyotaq_editor\gyotaq_template";
-
-        if (_workspace.RootPath is not null)
-        {
-            var workspacePath = Path.Combine(_workspace.RootPath, relativePath);
-            if (Directory.Exists(workspacePath))
-                return workspacePath;
-        }
-
-        var templatePath = Path.Combine(TemplateFabriqPath, relativePath);
-        if (Directory.Exists(templatePath))
-            return templatePath;
+        var path = Path.Combine(StudioTemplatesPath, "gyotaq_template");
+        if (Directory.Exists(path))
+            return path;
 
         throw new DirectoryNotFoundException(
             "Gyotaq テンプレートディレクトリが見つかりません。\n" +
-            "ワークスペースまたはアプリテンプレートにテンプレートが存在することを確認してください。");
+            "アプリ同梱テンプレートに gyotaq_template/ が存在することを確認してください。");
     }
 
     /// <summary>
-    /// uri_list.csv のパスを解決する（Dual Resolution）。
-    /// 1. ワークスペース内 apps/digital_gyotaq_editor/material/uri_list.csv
-    /// 2. フォールバック: アプリ同梱テンプレート
+    /// uri_list.csv のパスを解決する。
+    /// 常にアプリ同梱の StudioTemplatesPath/gyotaq_template/uri_list.csv を参照する。
     /// </summary>
-    private string ResolveUriListPath()
+    private static string ResolveUriListPath()
     {
-        const string relativePath = @"apps\digital_gyotaq_editor\material\uri_list.csv";
-
-        if (_workspace.RootPath is not null)
-        {
-            var workspacePath = Path.Combine(_workspace.RootPath, relativePath);
-            if (File.Exists(workspacePath))
-                return workspacePath;
-        }
-
-        var templatePath = Path.Combine(TemplateFabriqPath, relativePath);
-        if (File.Exists(templatePath))
-            return templatePath;
+        var path = Path.Combine(StudioTemplatesPath, "gyotaq_template", "uri_list.csv");
+        if (File.Exists(path))
+            return path;
 
         throw new FileNotFoundException(
             "コマンドライブラリ (uri_list.csv) が見つかりません。\n" +
-            "ワークスペースまたはアプリテンプレートにファイルが存在することを確認してください。");
+            "アプリ同梱テンプレートに gyotaq_template/uri_list.csv が存在することを確認してください。");
     }
 
     // ── CsvHelper マッピング ─────────────────────────────────────────────────
