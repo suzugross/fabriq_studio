@@ -91,6 +91,39 @@ public partial class BasicParamsViewModel : ObservableObject
         };
         if (workspace.IsOpen)
             _ = LoadAllAsync();
+
+        // 詳細画面での保存完了を受信してデータを自動リフレッシュ
+        WeakReferenceMessenger.Default.Register<WorkspaceDataUpdatedMessage>(this, (_, msg) =>
+        {
+            _ = OnWorkspaceDataUpdatedAsync(msg.Value);
+        });
+    }
+
+    /// <summary>
+    /// 詳細画面で保存が完了したとき、該当セクションのデータをリロードする。
+    /// SelectedProfile は名前で復元する。
+    /// </summary>
+    private async Task OnWorkspaceDataUpdatedAsync(string source)
+    {
+        switch (source)
+        {
+            case "ProfileDetail":
+                var profileName = SelectedProfile?.Name;
+                await LoadProfilesAsync();
+                if (profileName is not null)
+                    SelectedProfile = Profiles.FirstOrDefault(p => p.Name == profileName);
+                break;
+
+            case "HostDetail":
+                // ホスト一覧は BasicParams に直接表示していないが、将来拡張に備える
+                break;
+
+            case "ModuleDetail":
+                // プロファイルモジュール構成が変わった可能性があるため再読み込み
+                if (SelectedProfile is not null)
+                    _ = LoadProfileModulesAsync(SelectedProfile);
+                break;
+        }
     }
 
     private Task LoadAllAsync()

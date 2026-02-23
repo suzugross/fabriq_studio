@@ -310,6 +310,7 @@ public partial class ProfileDetailViewModel : ObservableObject
             await _profileService.SaveProfileModulesAsync(Profile, Modules);
             IsDirty    = false;
             SaveStatus = "✓ 保存しました";
+            WeakReferenceMessenger.Default.Send(new WorkspaceDataUpdatedMessage("ProfileDetail"));
         }
         catch (Exception ex)
         {

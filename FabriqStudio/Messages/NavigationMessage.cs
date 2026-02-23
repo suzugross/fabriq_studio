@@ -26,3 +26,12 @@ public class NavigateBackMessage : ValueChangedMessage<string>
 {
     public NavigateBackMessage(string targetPage) : base(targetPage) { }
 }
+
+/// <summary>
+/// 詳細画面で保存が完了したことを通知するメッセージ。
+/// BasicParamsViewModel がこのメッセージを受信してデータを自動リフレッシュする。
+/// </summary>
+public class WorkspaceDataUpdatedMessage : ValueChangedMessage<string>
+{
+    public WorkspaceDataUpdatedMessage(string source) : base(source) { }
+}
