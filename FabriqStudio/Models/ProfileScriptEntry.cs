@@ -5,7 +5,7 @@ namespace FabriqStudio.Models;
 
 /// <summary>
 /// profiles/*.csv の1行を表すモデル。
-/// カラム: Order, ScriptPath, Enabled, Description
+/// カラム: Order, ScriptPath, Enabled, Description, Segment
 /// </summary>
 public partial class ProfileScriptEntry : ObservableObject
 {
@@ -18,6 +18,7 @@ public partial class ProfileScriptEntry : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsEnabled))]
     private string _enabled     = "0";
     [ObservableProperty] private string _description = "";
+    [ObservableProperty] [property: Optional] private string _segment = "";
 
     /// <summary>
     /// Enabled ("0"/"1") の bool ラッパー。CheckBox バインド用。
