@@ -46,6 +46,7 @@ public partial class App : Application
         services.AddSingleton<IModuleService, ModuleService>();
         services.AddSingleton<IFileService, FileService>();
         services.AddSingleton<IAutokeyService, AutokeyService>();
+        services.AddSingleton<ILooperService, LooperService>();
         services.AddSingleton<IDigitalGyotaqService, DigitalGyotaqService>();
         services.AddSingleton<IRegistryCollectionService, RegistryCollectionService>();
 
@@ -58,6 +59,7 @@ public partial class App : Application
         services.AddSingleton<AppConfigViewModel>();
         services.AddSingleton<ProfileDetailViewModel>();
         services.AddSingleton<AutokeyRecipeEditorViewModel>();
+        services.AddSingleton<LooperEditorViewModel>();
         services.AddSingleton<DigitalGyotaqEditorViewModel>();
         services.AddSingleton<WelcomeViewModel>();
         services.AddSingleton<RegistryCollectionViewModel>();

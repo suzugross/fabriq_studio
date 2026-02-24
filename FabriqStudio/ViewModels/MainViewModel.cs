@@ -23,6 +23,7 @@ public partial class MainViewModel : ObservableObject
     private readonly AppConfigViewModel            _appConfigVm;
     private readonly ProfileDetailViewModel        _profileDetailVm;
     private readonly AutokeyRecipeEditorViewModel      _autokeyEditorVm;
+    private readonly LooperEditorViewModel            _looperEditorVm;
     private readonly DigitalGyotaqEditorViewModel     _gyotaqEditorVm;
     private readonly WelcomeViewModel                 _welcomeVm;
     private readonly RegistryCollectionViewModel      _registryCollectionVm;
@@ -46,6 +47,7 @@ public partial class MainViewModel : ObservableObject
         AppConfigViewModel                appConfigVm,
         ProfileDetailViewModel            profileDetailVm,
         AutokeyRecipeEditorViewModel      autokeyEditorVm,
+        LooperEditorViewModel             looperEditorVm,
         DigitalGyotaqEditorViewModel      gyotaqEditorVm,
         WelcomeViewModel                  welcomeVm,
         RegistryCollectionViewModel       registryCollectionVm,
@@ -59,6 +61,7 @@ public partial class MainViewModel : ObservableObject
         _appConfigVm          = appConfigVm;
         _profileDetailVm      = profileDetailVm;
         _autokeyEditorVm      = autokeyEditorVm;
+        _looperEditorVm       = looperEditorVm;
         _gyotaqEditorVm       = gyotaqEditorVm;
         _welcomeVm            = welcomeVm;
         _registryCollectionVm = registryCollectionVm;
@@ -143,6 +146,7 @@ public partial class MainViewModel : ObservableObject
             "ModuleEdit"         => _moduleEditVm,
             "HostList"           => _hostListVm,
             "AutokeyEditor"      => _autokeyEditorVm,
+            "LooperEditor"       => _looperEditorVm,
             "GyotaqEditor"       => _gyotaqEditorVm,
             "RegistryCollection" => _registryCollectionVm,
             _                    => CurrentPage
