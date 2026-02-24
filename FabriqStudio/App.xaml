@@ -53,6 +53,10 @@
                 <views:DigitalGyotaqEditorView />
             </DataTemplate>
 
+            <DataTemplate DataType="{x:Type vm:LooperEditorViewModel}">
+                <views:LooperEditorView />
+            </DataTemplate>
+
             <DataTemplate DataType="{x:Type vm:WelcomeViewModel}">
                 <views:WelcomeView />
             </DataTemplate>
