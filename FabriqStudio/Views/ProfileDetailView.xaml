@@ -320,6 +320,9 @@
                             <DataGridTextColumn Header="説明"
                                                 Binding="{Binding Description}"
                                                 Width="200" />
+                            <DataGridTextColumn Header="セグメント"
+                                                Binding="{Binding Segment}"
+                                                Width="80" />
                             <!-- ⚙ 設定ボタン（通常モジュールのみ表示） -->
                             <DataGridTemplateColumn Header="" Width="40">
                                 <DataGridTemplateColumn.CellTemplate>
