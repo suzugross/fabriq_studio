@@ -11,7 +11,10 @@
 # [dev_fabriq] fabriq フレームワーク本体（ローカル参照のみ）
 # ---------------------------------------------------------------
 /dev_fabriq/
-**/template_fabriq/
+
+# template_fabriq 内のワークスペーステンプレート（fabriq/）のみ除外。
+# autokey_template, looper_template 等のツール専用テンプレートは追跡対象。
+/FabriqStudio/template/template_fabriq/fabriq/
 
 # ---------------------------------------------------------------
 # [C# / .NET] FabriqStudio WPF プロジェクト
@@ -66,7 +69,7 @@ desktop.ini
 !/logs/history
 !/logs/history/.gitkeep
 
-**/template/
+/dev_fabriq/**/template/
 
 # 巨大なバイナリ（インストーラー・ドライバー等）
 *.iso
