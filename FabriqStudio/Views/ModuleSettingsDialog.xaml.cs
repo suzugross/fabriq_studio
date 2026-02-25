@@ -32,7 +32,8 @@ public partial class ModuleSettingsDialog : Window
                 sp.GetRequiredService<IFileService>(),
                 sp.GetRequiredService<ICsvService>(),
                 sp.GetRequiredService<IWorkspaceService>(),
-                sp.GetRequiredService<IRegistryCollectionService>());
+                sp.GetRequiredService<IRegistryCollectionService>(),
+                sp.GetRequiredService<ICryptoService>());
             detailVm.Load(module);
             vm = detailVm;
         }
