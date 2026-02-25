@@ -28,7 +28,8 @@ namespace FabriqStudio.ViewModels;
 /// </summary>
 public partial class HostDetailViewModel : ObservableObject
 {
-    private readonly ICsvService _csvService;
+    private readonly ICsvService    _csvService;
+    private readonly ICryptoService _crypto;
 
     // ─── 表示データ ────────────────────────────────────────────────
     [ObservableProperty] private HostEntry?                        _host;
@@ -47,9 +48,10 @@ public partial class HostDetailViewModel : ObservableObject
     [ObservableProperty] private string? _saveStatus;
     [ObservableProperty] private string? _saveError;
 
-    public HostDetailViewModel(ICsvService csvService)
+    public HostDetailViewModel(ICsvService csvService, ICryptoService crypto)
     {
         _csvService = csvService;
+        _crypto     = crypto;
     }
 
     /// <summary>選択された端末を読み込み、スナップショットを作成する。</summary>
@@ -116,6 +118,55 @@ public partial class HostDetailViewModel : ObservableObject
         catch (Exception ex)
         {
             SaveError = $"保存エラー: {ex.Message}";
+        }
+    }
+
+    // ── フィールド暗号化・復号（View の code-behind から呼び出し）────
+
+    /// <summary>指定プロパティの値を暗号化する。戻り値 = エラーメッセージ（成功時 null）。</summary>
+    public string? EncryptField(string propertyName)
+    {
+        if (Host is null) return "端末が選択されていません。";
+
+        if (!_crypto.HasPassphrase)
+            return "パスフレーズが設定されていません。\n左ペイン下部の「🔑 パスフレーズ」から設定してください。";
+
+        var prop = typeof(HostEntry).GetProperty(propertyName);
+        if (prop is null) return $"プロパティ '{propertyName}' が見つかりません。";
+
+        var value = prop.GetValue(Host)?.ToString() ?? "";
+        if (string.IsNullOrEmpty(value))
+            return "空のフィールドは暗号化できません。";
+        if (value.StartsWith("ENC:", StringComparison.Ordinal))
+            return "このフィールドは既に暗号化されています。";
+
+        prop.SetValue(Host, _crypto.Encrypt(value, _crypto.MasterPassphrase!));
+        return null;
+    }
+
+    /// <summary>指定プロパティの値を復号する。戻り値 = エラーメッセージ（成功時 null）。</summary>
+    public string? DecryptField(string propertyName)
+    {
+        if (Host is null) return "端末が選択されていません。";
+
+        if (!_crypto.HasPassphrase)
+            return "パスフレーズが設定されていません。\n左ペイン下部の「🔑 パスフレーズ」から設定してください。";
+
+        var prop = typeof(HostEntry).GetProperty(propertyName);
+        if (prop is null) return $"プロパティ '{propertyName}' が見つかりません。";
+
+        var value = prop.GetValue(Host)?.ToString() ?? "";
+        if (!value.StartsWith("ENC:", StringComparison.Ordinal))
+            return "このフィールドは暗号化されていません（ENC: プレフィクスがありません）。";
+
+        try
+        {
+            prop.SetValue(Host, _crypto.Decrypt(value, _crypto.MasterPassphrase!));
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"復号に失敗しました。パスフレーズが正しいか確認してください。\n{ex.Message}";
         }
     }
 
