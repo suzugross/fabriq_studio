@@ -163,6 +163,9 @@
                 <DataGridTextColumn Header="DNS3" Binding="{Binding DNS3}" Width="120" />
                 <DataGridTextColumn Header="DNS4" Binding="{Binding DNS4}" Width="120" />
 
+                <!-- BitLocker -->
+                <DataGridTextColumn Header="Pin" Binding="{Binding Pin}" Width="80" />
+
                 <!-- プリンター 1〜10 -->
                 <DataGridTextColumn Header="Printer1 Name"   Binding="{Binding Printer1Name}"   Width="160" />
                 <DataGridTextColumn Header="Printer1 Driver" Binding="{Binding Printer1Driver}" Width="200" />
