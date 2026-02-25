@@ -272,6 +272,20 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- BitLocker -->
+                    <Border Style="{StaticResource SectionBorderStyle}">
+                        <StackPanel>
+                            <TextBlock Text="BitLocker" Style="{StaticResource SectionHeaderStyle}" />
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Left" Text="PIN:" Style="{StaticResource FieldLabelStyle}" />
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="Pin"
+                                         Text="{Binding Host.Pin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                                    <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.Pin" /><Binding Path="OriginalHost.Pin" /></MultiBinding></TextBox.Foreground>
+                                </TextBox>
+                            </DockPanel>
+                        </StackPanel>
+                    </Border>
+
                 </StackPanel>
             </ScrollViewer>
 

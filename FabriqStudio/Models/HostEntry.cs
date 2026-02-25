@@ -30,6 +30,9 @@ public partial class HostEntry : ObservableObject
     [ObservableProperty] private string _dNS3            = "";
     [ObservableProperty] private string _dNS4            = "";
 
+    // --- BitLocker ---
+    [ObservableProperty] private string _pin             = "";
+
     // --- プリンター 1〜10 ---
     [ObservableProperty] private string _printer1Name    = "";
     [ObservableProperty] private string _printer1Driver  = "";
