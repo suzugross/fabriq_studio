@@ -160,14 +160,73 @@ public partial class MainViewModel : ObservableObject
     }
 
     // ─── パスフレーズ設定 ───────────────────────────────────────
+    private const string VerifyToken    = "surkitinisme";
+    private const string VerifyRelPath  = "kernel/txt/passphrase_verify.txt";
+
     [RelayCommand]
     private void SetPassphrase()
     {
         var result = Views.PassphraseDialog.Show(_crypto.HasPassphrase);
         if (result is null) return;   // キャンセル
 
-        _crypto.MasterPassphrase = string.IsNullOrEmpty(result) ? null : result;
-        PassphraseStatus = _crypto.HasPassphrase ? "設定済み" : "未設定";
+        if (string.IsNullOrEmpty(result))
+        {
+            // クリア
+            _crypto.MasterPassphrase = null;
+            PassphraseStatus = "未設定";
+            return;
+        }
+
+        // ── 既存の検証トークンがあればパスフレーズを照合 ──
+        var verifyPath = GetVerifyTokenPath();
+        if (verifyPath is not null && File.Exists(verifyPath))
+        {
+            var token = File.ReadAllText(verifyPath).Trim();
+            if (!string.IsNullOrEmpty(token))
+            {
+                try
+                {
+                    var decrypted = _crypto.Decrypt(token, result);
+                    if (decrypted != VerifyToken)
+                    {
+                        MessageBox.Show(
+                            "パスフレーズが正しくありません。",
+                            "パスフレーズ検証エラー",
+                            MessageBoxButton.OK, MessageBoxImage.Warning);
+                        return;
+                    }
+                }
+                catch
+                {
+                    MessageBox.Show(
+                        "パスフレーズが正しくありません。",
+                        "パスフレーズ検証エラー",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                    return;
+                }
+            }
+        }
+
+        // ── パスフレーズを適用 ──
+        _crypto.MasterPassphrase = result;
+        PassphraseStatus = "設定済み";
+
+        // ── 検証トークンを書き出し（新規 or 上書き） ──
+        if (verifyPath is not null)
+        {
+            var dir = Path.GetDirectoryName(verifyPath)!;
+            if (!Directory.Exists(dir))
+                Directory.CreateDirectory(dir);
+
+            File.WriteAllText(verifyPath, _crypto.Encrypt(VerifyToken, result));
+        }
+    }
+
+    /// <summary>ワークスペースが開いていれば検証トークンの絶対パスを返す。</summary>
+    private string? GetVerifyTokenPath()
+    {
+        var root = _workspace.RootPath;
+        return root is null ? null : Path.Combine(root, VerifyRelPath);
     }
 
     /// <summary>
