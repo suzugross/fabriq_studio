@@ -6,6 +6,12 @@
     <UserControl.Resources>
         <converters:DirtyToForegroundConverter x:Key="DirtyConverter" />
 
+        <!-- 暗号化・復号コンテキストメニュー（x:Shared=False で TextBox ごとに個別インスタンス） -->
+        <ContextMenu x:Key="CryptoContextMenu" x:Shared="False">
+            <MenuItem Header="暗号化 (ENC:)" Click="EncryptField_Click" />
+            <MenuItem Header="復号"          Click="DecryptField_Click" />
+        </ContextMenu>
+
         <!-- フィールドラベル -->
         <Style x:Key="FieldLabelStyle" TargetType="TextBlock">
             <Setter Property="Width"             Value="150" />
@@ -23,6 +29,7 @@
             <Setter Property="BorderBrush"             Value="#CCCCCC" />
             <Setter Property="Background"              Value="White" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="ContextMenu"             Value="{StaticResource CryptoContextMenu}" />
             <Style.Triggers>
                 <DataTrigger Binding="{Binding IsLocked}" Value="True">
                     <Setter Property="Background" Value="#F8F8F8" />
@@ -152,21 +159,21 @@
                             <TextBlock Text="基本情報" Style="{StaticResource SectionHeaderStyle}" />
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock DockPanel.Dock="Left" Text="AdminID:" Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="AdminID"
                                          Text="{Binding Host.AdminID, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.AdminID" /><Binding Path="OriginalHost.AdminID" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
                             </DockPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock DockPanel.Dock="Left" Text="旧PC名:" Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="OldPCName"
                                          Text="{Binding Host.OldPCName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.OldPCName" /><Binding Path="OriginalHost.OldPCName" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
                             </DockPanel>
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Left" Text="新PC名:" Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="NewPCName"
                                          Text="{Binding Host.NewPCName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.NewPCName" /><Binding Path="OriginalHost.NewPCName" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
@@ -180,21 +187,21 @@
                             <TextBlock Text="有線LAN" Style="{StaticResource SectionHeaderStyle}" />
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock DockPanel.Dock="Left" Text="IPアドレス:"    Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="EthernetIP"
                                          Text="{Binding Host.EthernetIP, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.EthernetIP" /><Binding Path="OriginalHost.EthernetIP" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
                             </DockPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock DockPanel.Dock="Left" Text="サブネット:"    Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="EthernetSubnet"
                                          Text="{Binding Host.EthernetSubnet, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.EthernetSubnet" /><Binding Path="OriginalHost.EthernetSubnet" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
                             </DockPanel>
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Left" Text="デフォルトGW:" Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="EthernetGateway"
                                          Text="{Binding Host.EthernetGateway, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.EthernetGateway" /><Binding Path="OriginalHost.EthernetGateway" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
@@ -208,21 +215,21 @@
                             <TextBlock Text="無線LAN (Wi-Fi)" Style="{StaticResource SectionHeaderStyle}" />
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock DockPanel.Dock="Left" Text="IPアドレス:"    Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="WifiIP"
                                          Text="{Binding Host.WifiIP, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.WifiIP" /><Binding Path="OriginalHost.WifiIP" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
                             </DockPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock DockPanel.Dock="Left" Text="サブネット:"    Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="WifiSubnet"
                                          Text="{Binding Host.WifiSubnet, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.WifiSubnet" /><Binding Path="OriginalHost.WifiSubnet" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
                             </DockPanel>
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Left" Text="デフォルトGW:" Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="WifiGateway"
                                          Text="{Binding Host.WifiGateway, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.WifiGateway" /><Binding Path="OriginalHost.WifiGateway" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
@@ -236,28 +243,28 @@
                             <TextBlock Text="DNS" Style="{StaticResource SectionHeaderStyle}" />
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock DockPanel.Dock="Left" Text="DNS 1:" Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="DNS1"
                                          Text="{Binding Host.DNS1, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.DNS1" /><Binding Path="OriginalHost.DNS1" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
                             </DockPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock DockPanel.Dock="Left" Text="DNS 2:" Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="DNS2"
                                          Text="{Binding Host.DNS2, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.DNS2" /><Binding Path="OriginalHost.DNS2" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
                             </DockPanel>
                             <DockPanel Margin="0,0,0,6">
                                 <TextBlock DockPanel.Dock="Left" Text="DNS 3:" Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="DNS3"
                                          Text="{Binding Host.DNS3, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.DNS3" /><Binding Path="OriginalHost.DNS3" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
                             </DockPanel>
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Left" Text="DNS 4:" Style="{StaticResource FieldLabelStyle}" />
-                                <TextBox Style="{StaticResource FieldBoxStyle}"
+                                <TextBox Style="{StaticResource FieldBoxStyle}" Tag="DNS4"
                                          Text="{Binding Host.DNS4, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                     <TextBox.Foreground><MultiBinding Converter="{StaticResource DirtyConverter}"><Binding Path="Host.DNS4" /><Binding Path="OriginalHost.DNS4" /></MultiBinding></TextBox.Foreground>
                                 </TextBox>
