@@ -387,7 +387,8 @@
                                    Converter={StaticResource BoolToCollapsedConverter}}" />
 
                     <!-- 汎用CSV DataGrid: IsReadOnly を IsLocked に連動 -->
-                    <DataGrid ItemsSource="{Binding ConfigCsvData.DefaultView}"
+                    <DataGrid x:Name="ConfigDataGrid"
+                              ItemsSource="{Binding ConfigCsvData.DefaultView}"
                               SelectedItem="{Binding SelectedCsvRow, Mode=TwoWay}"
                               AutoGenerateColumns="True"
                               IsReadOnly="{Binding IsLocked}"
@@ -399,7 +400,14 @@
                               AlternatingRowBackground="#F7F7F7"
                               BorderBrush="#DDDDDD" BorderThickness="1"
                               Visibility="{Binding HasConfigCsv,
-                                  Converter={StaticResource BoolToVisibilityConverter}}" />
+                                  Converter={StaticResource BoolToVisibilityConverter}}">
+                        <DataGrid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="🔒 セルを暗号化 (ENC:)" Click="EncryptCell_Click" />
+                                <MenuItem Header="🔓 セルを復号"          Click="DecryptCell_Click" />
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
+                    </DataGrid>
                 </DockPanel>
             </Border>
 

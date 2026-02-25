@@ -28,6 +28,7 @@ public partial class MainViewModel : ObservableObject
     private readonly WelcomeViewModel                 _welcomeVm;
     private readonly RegistryCollectionViewModel      _registryCollectionVm;
     private readonly IWorkspaceService                _workspace;
+    private readonly ICryptoService                   _crypto;
 
     [ObservableProperty]
     private object _currentPage;
@@ -37,6 +38,9 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>現在のワークスペースのフォルダ名（表示用）。</summary>
     [ObservableProperty] private string _workspaceName = "";
+
+    /// <summary>パスフレーズ設定状態の表示テキスト。</summary>
+    [ObservableProperty] private string _passphraseStatus = "未設定";
 
     public MainViewModel(
         BasicParamsViewModel              basicParamsVm,
@@ -51,7 +55,8 @@ public partial class MainViewModel : ObservableObject
         DigitalGyotaqEditorViewModel      gyotaqEditorVm,
         WelcomeViewModel                  welcomeVm,
         RegistryCollectionViewModel       registryCollectionVm,
-        IWorkspaceService                 workspace)
+        IWorkspaceService                 workspace,
+        ICryptoService                    crypto)
     {
         _basicParamsVm        = basicParamsVm;
         _moduleEditVm         = moduleEditVm;
@@ -66,6 +71,7 @@ public partial class MainViewModel : ObservableObject
         _welcomeVm            = welcomeVm;
         _registryCollectionVm = registryCollectionVm;
         _workspace            = workspace;
+        _crypto               = crypto;
 
         // ── 初期表示: ワークスペースが開いていればメイン画面、未設定なら WelcomeView ──
         IsWorkspaceOpen = workspace.IsOpen;
@@ -151,6 +157,17 @@ public partial class MainViewModel : ObservableObject
             "RegistryCollection" => _registryCollectionVm,
             _                    => CurrentPage
         };
+    }
+
+    // ─── パスフレーズ設定 ───────────────────────────────────────
+    [RelayCommand]
+    private void SetPassphrase()
+    {
+        var result = Views.PassphraseDialog.Show(_crypto.HasPassphrase);
+        if (result is null) return;   // キャンセル
+
+        _crypto.MasterPassphrase = string.IsNullOrEmpty(result) ? null : result;
+        PassphraseStatus = _crypto.HasPassphrase ? "設定済み" : "未設定";
     }
 
     /// <summary>

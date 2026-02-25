@@ -49,6 +49,7 @@ public partial class App : Application
         services.AddSingleton<ILooperService, LooperService>();
         services.AddSingleton<IDigitalGyotaqService, DigitalGyotaqService>();
         services.AddSingleton<IRegistryCollectionService, RegistryCollectionService>();
+        services.AddSingleton<ICryptoService, CryptoService>();
 
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();

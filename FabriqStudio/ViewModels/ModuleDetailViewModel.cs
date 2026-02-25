@@ -30,6 +30,7 @@ public partial class ModuleDetailViewModel : ObservableObject
     private readonly ICsvService                 _csvService;
     private readonly IWorkspaceService            _workspace;
     private readonly IRegistryCollectionService   _registryCollection;
+    private readonly ICryptoService               _crypto;
 
     // ─── モジュール情報 ───────────────────────────────────────────
     [ObservableProperty] private ModuleMasterEntry? _module;
@@ -107,12 +108,14 @@ public partial class ModuleDetailViewModel : ObservableObject
         IFileService              fileService,
         ICsvService               csvService,
         IWorkspaceService         workspace,
-        IRegistryCollectionService registryCollection)
+        IRegistryCollectionService registryCollection,
+        ICryptoService             crypto)
     {
         _fileService        = fileService;
         _csvService         = csvService;
         _workspace          = workspace;
         _registryCollection = registryCollection;
+        _crypto             = crypto;
     }
 
     /// <summary>View の TextChanged から呼ばれ、module.csv 変更フラグを立てる。</summary>
@@ -338,6 +341,44 @@ public partial class ModuleDetailViewModel : ObservableObject
                 max = id;
         }
         return max + 1;
+    }
+
+    // ── セル暗号化・復号（View の code-behind から呼び出し）────────
+    /// <summary>指定セルの値を暗号化する。戻り値 = エラーメッセージ（成功時 null）。</summary>
+    public string? EncryptCell(System.Data.DataRowView row, string columnName)
+    {
+        if (!_crypto.HasPassphrase)
+            return "パスフレーズが設定されていません。\n左ペイン下部の「🔑 パスフレーズ」から設定してください。";
+
+        var value = row[columnName]?.ToString() ?? "";
+        if (string.IsNullOrEmpty(value))
+            return "空のセルは暗号化できません。";
+        if (value.StartsWith("ENC:", StringComparison.Ordinal))
+            return "このセルは既に暗号化されています。";
+
+        row[columnName] = _crypto.Encrypt(value, _crypto.MasterPassphrase!);
+        return null;
+    }
+
+    /// <summary>指定セルの値を復号する。戻り値 = エラーメッセージ（成功時 null）。</summary>
+    public string? DecryptCell(System.Data.DataRowView row, string columnName)
+    {
+        if (!_crypto.HasPassphrase)
+            return "パスフレーズが設定されていません。\n左ペイン下部の「🔑 パスフレーズ」から設定してください。";
+
+        var value = row[columnName]?.ToString() ?? "";
+        if (!value.StartsWith("ENC:", StringComparison.Ordinal))
+            return "このセルは暗号化されていません（ENC: プレフィクスがありません）。";
+
+        try
+        {
+            row[columnName] = _crypto.Decrypt(value, _crypto.MasterPassphrase!);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"復号に失敗しました。パスフレーズが正しいか確認してください。\n{ex.Message}";
+        }
     }
 
     [RelayCommand]
