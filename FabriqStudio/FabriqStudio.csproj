@@ -27,25 +27,28 @@
   <!--
     ビルド後に registry_collection/ を出力ディレクトリへコピーする。
     初回インストール時の初期カタログとして同梱される。
-    SkipUnchangedFiles="true" により、ユーザーが出力先を編集した場合でも
-    ソース側が変更されていなければ上書きされない。
+    RemoveDir でクリーンアップ後にコピーすることで、
+    ソース側で削除されたファイルが出力先に残留しない。
   -->
   <Target Name="CopyRegistryCollectionFiles" AfterTargets="Build">
+    <RemoveDir Directories="$(OutDir)registry_collection" />
     <ItemGroup>
       <RegistryCollectionFiles
           Include="$(MSBuildProjectDirectory)\registry_collection\**\*" />
     </ItemGroup>
     <Copy SourceFiles="@(RegistryCollectionFiles)"
           DestinationFiles="@(RegistryCollectionFiles->
-            '$(OutDir)registry_collection\%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
+            '$(OutDir)registry_collection\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
   <!--
     ビルド後に template/ を出力ディレクトリへコピーする。
     除外: .git / .claude / dev（テンプレート差し替え時の予防的除外）
+    RemoveDir でクリーンアップ後にコピーすることで、
+    ソース側で削除されたファイルが出力先に残留しない。
   -->
   <Target Name="CopyTemplateFiles" AfterTargets="Build">
+    <RemoveDir Directories="$(OutDir)template" />
     <ItemGroup>
       <TemplateFiles
           Include="$(MSBuildProjectDirectory)\template\**\*"
@@ -55,8 +58,7 @@
     </ItemGroup>
     <Copy SourceFiles="@(TemplateFiles)"
           DestinationFiles="@(TemplateFiles->
-            '$(OutDir)template\%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
+            '$(OutDir)template\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
 </Project>
