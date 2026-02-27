@@ -405,6 +405,15 @@
                             <ContextMenu>
                                 <MenuItem Header="🔒 セルを暗号化 (ENC:)" Click="EncryptCell_Click" />
                                 <MenuItem Header="🔓 セルを復号"          Click="DecryptCell_Click" />
+                                <Separator />
+                                <MenuItem Header="🔒 列を一括暗号化" Click="EncryptColumn_Click" />
+                                <MenuItem Header="🔓 列を一括復号"   Click="DecryptColumn_Click" />
+                                <Separator />
+                                <MenuItem Header="🔒 行を一括暗号化" Click="EncryptRow_Click" />
+                                <MenuItem Header="🔓 行を一括復号"   Click="DecryptRow_Click" />
+                                <Separator />
+                                <MenuItem Header="🔒 全体を一括暗号化" Click="EncryptAll_Click" />
+                                <MenuItem Header="🔓 全体を一括復号"   Click="DecryptAll_Click" />
                             </ContextMenu>
                         </DataGrid.ContextMenu>
                     </DataGrid>

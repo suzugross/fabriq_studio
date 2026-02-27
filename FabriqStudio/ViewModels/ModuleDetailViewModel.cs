@@ -4,6 +4,7 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using FabriqStudio.Helpers;
 using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
@@ -379,6 +380,141 @@ public partial class ModuleDetailViewModel : ObservableObject
         {
             return $"復号に失敗しました。パスフレーズが正しいか確認してください。\n{ex.Message}";
         }
+    }
+
+    // ── 列一括暗号化・復号 ─────────────────────────────────────────
+
+    /// <summary>指定列の全行を暗号化する。</summary>
+    public BatchCryptoResult EncryptColumn(string columnName)
+    {
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) return new BatchCryptoResult(0, 0, [error]);
+        if (!CryptoHelper.IsEncryptableColumn(columnName))
+            return new BatchCryptoResult(0, 0, [$"列 '{columnName}' は暗号化対象外です。"]);
+
+        int processed = 0, skipped = 0;
+        foreach (DataRow row in ConfigCsvData.Rows)
+        {
+            if (row.RowState == DataRowState.Deleted) continue;
+            var value = row[columnName]?.ToString() ?? "";
+            if (string.IsNullOrEmpty(value) || value.StartsWith("ENC:", StringComparison.Ordinal))
+            { skipped++; continue; }
+            row[columnName] = _crypto.Encrypt(value, _crypto.MasterPassphrase!);
+            processed++;
+        }
+        return new BatchCryptoResult(processed, skipped, []);
+    }
+
+    /// <summary>指定列の全行を復号する。</summary>
+    public BatchCryptoResult DecryptColumn(string columnName)
+    {
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) return new BatchCryptoResult(0, 0, [error]);
+
+        int processed = 0, skipped = 0;
+        var errors = new List<string>();
+        foreach (DataRow row in ConfigCsvData.Rows)
+        {
+            if (row.RowState == DataRowState.Deleted) continue;
+            var value = row[columnName]?.ToString() ?? "";
+            if (!value.StartsWith("ENC:", StringComparison.Ordinal)) { skipped++; continue; }
+            try { row[columnName] = _crypto.Decrypt(value, _crypto.MasterPassphrase!); processed++; }
+            catch (Exception ex) { errors.Add($"行{ConfigCsvData.Rows.IndexOf(row) + 1}: {ex.Message}"); }
+        }
+        return new BatchCryptoResult(processed, skipped, errors);
+    }
+
+    // ── 行一括暗号化・復号 ─────────────────────────────────────────
+
+    /// <summary>指定行の全暗号化可能列を暗号化する。</summary>
+    public BatchCryptoResult EncryptRow(DataRowView rowView)
+    {
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) return new BatchCryptoResult(0, 0, [error]);
+
+        int processed = 0, skipped = 0;
+        foreach (DataColumn col in ConfigCsvData.Columns)
+        {
+            if (!CryptoHelper.IsEncryptableColumn(col.ColumnName)) { skipped++; continue; }
+            var value = rowView[col.ColumnName]?.ToString() ?? "";
+            if (string.IsNullOrEmpty(value) || value.StartsWith("ENC:", StringComparison.Ordinal))
+            { skipped++; continue; }
+            rowView[col.ColumnName] = _crypto.Encrypt(value, _crypto.MasterPassphrase!);
+            processed++;
+        }
+        return new BatchCryptoResult(processed, skipped, []);
+    }
+
+    /// <summary>指定行の全暗号化済み列を復号する。</summary>
+    public BatchCryptoResult DecryptRow(DataRowView rowView)
+    {
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) return new BatchCryptoResult(0, 0, [error]);
+
+        int processed = 0, skipped = 0;
+        var errors = new List<string>();
+        foreach (DataColumn col in ConfigCsvData.Columns)
+        {
+            if (!CryptoHelper.IsEncryptableColumn(col.ColumnName)) { skipped++; continue; }
+            var value = rowView[col.ColumnName]?.ToString() ?? "";
+            if (!value.StartsWith("ENC:", StringComparison.Ordinal)) { skipped++; continue; }
+            try { rowView[col.ColumnName] = _crypto.Decrypt(value, _crypto.MasterPassphrase!); processed++; }
+            catch (Exception ex) { errors.Add($"{col.ColumnName}: {ex.Message}"); }
+        }
+        return new BatchCryptoResult(processed, skipped, errors);
+    }
+
+    // ── テーブル全体暗号化・復号 ────────────────────────────────────
+
+    /// <summary>テーブル全体の暗号化可能セルを一括暗号化する。</summary>
+    public BatchCryptoResult EncryptAll()
+    {
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) return new BatchCryptoResult(0, 0, [error]);
+
+        int processed = 0, skipped = 0;
+        var encryptableCols = ConfigCsvData.Columns.Cast<DataColumn>()
+            .Where(c => CryptoHelper.IsEncryptableColumn(c.ColumnName)).ToList();
+
+        foreach (DataRow row in ConfigCsvData.Rows)
+        {
+            if (row.RowState == DataRowState.Deleted) continue;
+            foreach (var col in encryptableCols)
+            {
+                var value = row[col]?.ToString() ?? "";
+                if (string.IsNullOrEmpty(value) || value.StartsWith("ENC:", StringComparison.Ordinal))
+                { skipped++; continue; }
+                row[col] = _crypto.Encrypt(value, _crypto.MasterPassphrase!);
+                processed++;
+            }
+        }
+        return new BatchCryptoResult(processed, skipped, []);
+    }
+
+    /// <summary>テーブル全体の暗号化済みセルを一括復号する。</summary>
+    public BatchCryptoResult DecryptAll()
+    {
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) return new BatchCryptoResult(0, 0, [error]);
+
+        int processed = 0, skipped = 0;
+        var errors = new List<string>();
+        var encryptableCols = ConfigCsvData.Columns.Cast<DataColumn>()
+            .Where(c => CryptoHelper.IsEncryptableColumn(c.ColumnName)).ToList();
+
+        foreach (DataRow row in ConfigCsvData.Rows)
+        {
+            if (row.RowState == DataRowState.Deleted) continue;
+            var rowIdx = ConfigCsvData.Rows.IndexOf(row) + 1;
+            foreach (var col in encryptableCols)
+            {
+                var value = row[col]?.ToString() ?? "";
+                if (!value.StartsWith("ENC:", StringComparison.Ordinal)) { skipped++; continue; }
+                try { row[col] = _crypto.Decrypt(value, _crypto.MasterPassphrase!); processed++; }
+                catch (Exception ex) { errors.Add($"行{rowIdx}/{col.ColumnName}: {ex.Message}"); }
+            }
+        }
+        return new BatchCryptoResult(processed, skipped, errors);
     }
 
     [RelayCommand]

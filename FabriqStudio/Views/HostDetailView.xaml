@@ -10,6 +10,9 @@
         <ContextMenu x:Key="CryptoContextMenu" x:Shared="False">
             <MenuItem Header="暗号化 (ENC:)" Click="EncryptField_Click" />
             <MenuItem Header="復号"          Click="DecryptField_Click" />
+            <Separator />
+            <MenuItem Header="全フィールド一括暗号化" Click="EncryptAllFields_Click" />
+            <MenuItem Header="全フィールド一括復号"   Click="DecryptAllFields_Click" />
         </ContextMenu>
 
         <!-- フィールドラベル -->
