@@ -256,6 +256,11 @@
                             <DataGridTextColumn Header="Description"
                                                 Binding="{Binding Description, UpdateSourceTrigger=LostFocus}"
                                                 Width="200" />
+
+                            <!-- Segment -->
+                            <DataGridTextColumn Header="Segment"
+                                                Binding="{Binding Segment, UpdateSourceTrigger=LostFocus}"
+                                                Width="80" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>

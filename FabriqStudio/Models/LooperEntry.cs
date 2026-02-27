@@ -1,12 +1,13 @@
 using System.Collections;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CsvHelper.Configuration.Attributes;
 
 namespace FabriqStudio.Models;
 
 /// <summary>
 /// looper_list.csv の 1 行を表すモデル。
-/// カラム: Enabled, ScriptPath, MaxRetry, IntervalSec, Condition, Description
+/// カラム: Enabled, ScriptPath, MaxRetry, IntervalSec, Condition, Description, Segment
 /// </summary>
 public partial class LooperEntry : ObservableObject, INotifyDataErrorInfo
 {
@@ -38,6 +39,9 @@ public partial class LooperEntry : ObservableObject, INotifyDataErrorInfo
 
     /// <summary>管理用の説明文（コンソール表示にも使用）</summary>
     [ObservableProperty] private string _description = "";
+
+    /// <summary>実行セグメント（fabriq のセグメント分離機能で使用）</summary>
+    [ObservableProperty] [property: Optional] private string _segment = "";
 
     // ── INotifyDataErrorInfo ──────────────────────────────────────────────
 
