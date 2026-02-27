@@ -44,4 +44,43 @@ public partial class HostDetailView : UserControl
             MessageBox.Show(error, isEncrypt ? "暗号化" : "復号",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
     }
+
+    // ── 全フィールド一括暗号化・復号 ──────────────────────────────
+
+    private void EncryptAllFields_Click(object sender, RoutedEventArgs e)
+        => BatchCryptoAction(isEncrypt: true);
+
+    private void DecryptAllFields_Click(object sender, RoutedEventArgs e)
+        => BatchCryptoAction(isEncrypt: false);
+
+    private void BatchCryptoAction(bool isEncrypt)
+    {
+        if (DataContext is not HostDetailViewModel vm) return;
+
+        if (vm.IsLocked)
+        {
+            MessageBox.Show("編集モードに切り替えてから操作してください。",
+                "ロック中", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var action = isEncrypt ? "一括暗号化" : "一括復号";
+        var confirm = MessageBox.Show(
+            $"全フィールドを{action}しますか？\n（AdminID 等の除外カラムはスキップされます）",
+            action, MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        var result = isEncrypt
+            ? vm.EncryptAllFields()
+            : vm.DecryptAllFields();
+
+        if (result is null) return;
+
+        if (result.HasErrors)
+            MessageBox.Show(result.ToSummary(isEncrypt), action,
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        else
+            MessageBox.Show(result.ToSummary(isEncrypt), action,
+                MessageBoxButton.OK, MessageBoxImage.Information);
+    }
 }

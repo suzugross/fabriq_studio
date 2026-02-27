@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Reflection;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using FabriqStudio.Helpers;
 using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
@@ -168,6 +170,64 @@ public partial class HostDetailViewModel : ObservableObject
         {
             return $"復号に失敗しました。パスフレーズが正しいか確認してください。\n{ex.Message}";
         }
+    }
+
+    // ── 一括暗号化・復号 ──────────────────────────────────────────
+
+    /// <summary>現在の端末の全暗号化可能フィールドを一括暗号化する。</summary>
+    public BatchCryptoResult? EncryptAllFields()
+    {
+        if (Host is null) return null;
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) return new BatchCryptoResult(0, 0, [error]);
+
+        int processed = 0, skipped = 0;
+        var errors = new List<string>();
+
+        foreach (var prop in typeof(HostEntry).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.PropertyType != typeof(string) || !prop.CanWrite) { skipped++; continue; }
+            if (!CryptoHelper.IsEncryptableColumn(prop.Name)) { skipped++; continue; }
+
+            var value = prop.GetValue(Host)?.ToString() ?? "";
+            if (string.IsNullOrEmpty(value)) { skipped++; continue; }
+            if (value.StartsWith("ENC:", StringComparison.Ordinal)) { skipped++; continue; }
+
+            prop.SetValue(Host, _crypto.Encrypt(value, _crypto.MasterPassphrase!));
+            processed++;
+        }
+        return new BatchCryptoResult(processed, skipped, errors);
+    }
+
+    /// <summary>現在の端末の全暗号化済みフィールドを一括復号する。</summary>
+    public BatchCryptoResult? DecryptAllFields()
+    {
+        if (Host is null) return null;
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) return new BatchCryptoResult(0, 0, [error]);
+
+        int processed = 0, skipped = 0;
+        var errors = new List<string>();
+
+        foreach (var prop in typeof(HostEntry).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.PropertyType != typeof(string) || !prop.CanWrite) { skipped++; continue; }
+            if (!CryptoHelper.IsEncryptableColumn(prop.Name)) { skipped++; continue; }
+
+            var value = prop.GetValue(Host)?.ToString() ?? "";
+            if (!value.StartsWith("ENC:", StringComparison.Ordinal)) { skipped++; continue; }
+
+            try
+            {
+                prop.SetValue(Host, _crypto.Decrypt(value, _crypto.MasterPassphrase!));
+                processed++;
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"{prop.Name}: {ex.Message}");
+            }
+        }
+        return new BatchCryptoResult(processed, skipped, errors);
     }
 
     [RelayCommand]
