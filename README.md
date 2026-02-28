@@ -52,6 +52,32 @@ dotnet run --project FabriqStudio
 
 ビルド後、`registry_collection/` および `template/` が出力ディレクトリへ自動コピーされます。
 
+### fabriq 本体の配置
+
+「テンプレートから新規作成」機能を使用するには、fabriq フレームワーク本体を以下のパスに配置する必要があります。
+
+```
+FabriqStudio/template/template_fabriq/fabriq/
+```
+
+このディレクトリは `.gitignore` で追跡対象外のため、別途 fabriq 本体のリポジトリから取得し配置してください。
+配置後のディレクトリ構成は以下のようになります。
+
+```
+FabriqStudio/template/template_fabriq/
+├── fabriq/                # ← fabriq 本体を配置
+│   ├── kernel/
+│   ├── modules/
+│   ├── profiles/
+│   ├── commands/
+│   ├── evidence/
+│   ├── Fabriq.bat
+│   └── Deploy.bat
+├── autokey_template/
+├── gyotaq_template/
+└── looper_template/
+```
+
 ## プロジェクト構成
 
 ```
