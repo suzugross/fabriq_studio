@@ -468,6 +468,30 @@
       "value": "",
       "description": "【右クリックメニューを旧仕様に戻す】\n\nCLSID {86ca1aa0-34aa-4e8b-a509-50c905bae2a2} の InprocServer32 の\n既定値（@）を空文字に設定することで、Windows 11の新しいコンテキストメニューを\n無効化し、Windows 10スタイルの従来メニューを表示します。\n\n■ 効果\n  右クリック時に「その他のオプションを表示」を経由せず、\n  直接すべてのメニュー項目が表示されるようになります。\n\n■ キッティングでの用途\n  Windows 10からの移行環境で操作感の統一性を保つため、\n  またはサードパーティ製アプリの右クリックメニュー項目に\n  直接アクセスできるようにするために使用します。\n\n■ 注意事項\n  この設定を反映するにはエクスプローラの再起動またはサインアウトが必要です。\n  元に戻すには、作成したレジストリキーを削除します。\n\n■ 既定値\n  キーが存在しない（Windows 11の新しいメニューを使用）",
       "tags": "コンテキストメニュー;右クリック;Windows 10スタイル"
+    },
+    {
+      "id": "00000028",
+      "category": "Applications",
+      "title": "Edgeの初回画面をスキップする",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\Software\\Policies\\Microsoft\\Edge",
+      "keyName": "HideFirstRunExperience",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【Edgeの初回画面をスキップする】\n\nPolicies\\Microsoft\\Edge の HideFirstRunExperience = 1 に設定することで、\nMicrosoft Edgeを初めて起動した際に表示される初回セットアップ画面（FRE）をスキップします。\n\n■ 効果\n  - 初回起動時のウェルカムページ・インポートウィザードが表示されません\n  - ユーザーは直接Edgeの通常画面にアクセスできます\n\n■ キッティングでの用途\n  キッティング後のユーザー初回ログオン時に、Edgeの初回セットアップ画面が\n  表示されるのを防ぎ、スムーズな業務開始を実現します。\n\n■ 注意事項\n  このキーは Policies 配下（マシンポリシー）に設定するため、\n  グループポリシーで管理されている環境では競合する可能性があります。\n  Edge のバージョンによってはポリシーの対応状況が異なる場合があります。\n\n■ 既定値\n  HideFirstRunExperience キーが存在しない（初回画面を表示する）",
+      "tags": "Edge;ブラウザ;初回起動;FirstRun"
+    },
+    {
+      "id": "00000029",
+      "category": "Desktop",
+      "title": "Windowsスポットライト（ロック画面の広告・おすすめ）を無効化",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent",
+      "keyName": "DisableWindowsSpotlightFeatures",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【Windowsスポットライト（ロック画面の広告・おすすめ）を無効化】\n\nCloudContent ポリシーの DisableWindowsSpotlightFeatures = 1 に設定することで、\nWindowsスポットライト機能を無効化し、ロック画面に日替わりの画像や\n「トリビア・ヒント」が表示されるのを防ぎます。\n\n■ 効果\n  - ロック画面の日替わりBing画像が非表示になります\n  - ロック画面上の「気に入りましたか？」等のヒント・広告が表示されなくなります\n  - スタートメニューの提案コンテンツにも影響する場合があります\n\n■ キッティングでの用途\n  企業向けの統一されたロック画面を維持し、\n  業務端末に不要な広告やおすすめコンテンツが表示されるのを防ぎます。\n\n■ 注意事項\n  このキーは Policies 配下（マシンポリシー）に設定するため、\n  グループポリシーで管理されている環境では競合する可能性があります。\n  ロック画面の背景画像は別途「個人用設定」で指定する必要があります。\n\n■ 既定値\n  DisableWindowsSpotlightFeatures キーが存在しない（スポットライト有効）",
+      "tags": "ロック画面;スポットライト;広告;ポリシー"
     }
   ]
 }
