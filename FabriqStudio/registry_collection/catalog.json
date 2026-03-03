@@ -2052,6 +2052,18 @@
       "value": "1",
       "description": "【Disable OS upgrade via Windows Store】\n\nWindowsStoreによるOSアップグレードを無効にする。ストア経由でのOSバージョンアップの提案・自動実行を抑制する。\n\n■ マスタ作成時の注意\n  OSインストール後にインターネットへ接続する場合、接続前（15分以内）に適用すること。\n  未適用のままインターネットに接続すると、ストア経由でOSアップグレードが提案される場合がある。\n\n■ Source\n  Microsoft Learn - Manage connections from Windows to Microsoft services",
       "tags": "マスタ;WindowsStore;OSアップグレード;policy"
+    },
+    {
+      "id": "000000ae",
+      "category": "System",
+      "title": "スタートアップの遅延を無効にする。StartupDelayInMSec を 0 に設定し、ログオン時のアプリ起動遅延を短縮する。",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Serialize",
+      "keyName": "StartupDelayInMSec",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【Disable Startup Delay】\n\nスタートアップの遅延を無効にする。\nSerialize キーの StartupDelayInMSec を 0 に設定することで、ログオン時にスタートアップアプリが起動するまでの遅延を無効化し、起動を高速化する。\n\n■ 既定値\n  Serialize キーおよび StartupDelayInMSec は既定では存在しない（遅延あり）。\n  キーと値を新規作成して 0 を設定する必要がある。\n\n■ 注意\n  遅延を無効にすると、ログオン直後にすべてのスタートアップアプリが一斉に起動するため、\n  ディスク I/O や CPU 負荷が集中し、低スペック環境ではログオン直後の操作が重くなる場合がある。",
+      "tags": "スタートアップ;起動;遅延;StartupDelay;Serialize;高速化"
     }
   ]
 }
