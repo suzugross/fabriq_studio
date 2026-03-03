@@ -1510,8 +1510,8 @@
       "keyName": "DisableWindowsConsumerFeatures",
       "type": "REG_DWORD",
       "value": "1",
-      "description": "【Turn off Microsoft consumer experiences】\n\nMicrosoftコンシューマーエクスペリエンスをオフにする。診断データを使用した関連するヒントとおすすめによるカスタマイズされたエクスペリエンスをオフにする。\n\n■ Source\n  Microsoft Learn - Manage connections from Windows to Microsoft services",
-      "tags": "16 Feedback & diagnostics - Consumer experiences;policy"
+      "description": "【Turn off Microsoft consumer experiences】\n\nMicrosoftコンシューマーエクスペリエンスをオフにする。診断データを使用した関連するヒントとおすすめによるカスタマイズされたエクスペリエンスをオフにする。\n\n■ マスタ作成時の注意\n  OSインストール後にインターネットへ接続する場合、接続前（15分以内）に適用すること。\n  未適用のままインターネットに接続すると、コンシューマー向けアプリが自動インストールされる場合がある。\n\n■ Source\n  Microsoft Learn - Manage connections from Windows to Microsoft services",
+      "tags": "マスタ;16 Feedback & diagnostics - Consumer experiences;policy"
     },
     {
       "id": "00000081",
@@ -1900,14 +1900,14 @@
     {
       "id": "000000a1",
       "category": "Applications",
-      "title": "更新の自動ダウンロードおよびインストールをオフにする。",
+      "title": "更新の自動ダウンロードおよびインストールをオフにする（ポリシーベース / グループポリシー対応）。",
       "hive": "HKLM",
       "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\WindowsStore",
       "keyName": "AutoDownload",
       "type": "REG_DWORD",
       "value": "2",
-      "description": "【Turn off automatic download and install of updates】\n\n更新の自動ダウンロードおよびインストールをオフにする。\n\n■ Source\n  Microsoft Learn - Manage connections from Windows to Microsoft services",
-      "tags": "Microsoft Store;policy"
+      "description": "【Turn off automatic download and install of updates (Policy)】\n\n更新の自動ダウンロードおよびインストールをオフにする。グループポリシー対応のポリシーベース設定。\n\n■ マスタ作成時の注意\n  OSインストール後にインターネットへ接続する場合、接続前（15分以内）に適用すること。\n  未適用のままインターネットに接続すると、ストアアプリの自動更新が開始される場合がある。\n\n■ Source\n  Microsoft Learn - Manage connections from Windows to Microsoft services",
+      "tags": "マスタ;Microsoft Store;policy"
     },
     {
       "id": "000000a2",
@@ -2008,14 +2008,14 @@
     {
       "id": "000000aa",
       "category": "System",
-      "title": "自動更新をオフにする。",
+      "title": "自動更新をオフにする（プライバシーガイド準拠 / WindowsStore直下）。",
       "hive": "HKLM",
       "keyPath": "HKEY_LOCAL_MACHINE\\Software\\Microsoft\\Windows\\CurrentVersion\\WindowsStore\\WindowsUpdate",
       "keyName": "AutoDownload",
       "type": "REG_DWORD",
       "value": "5",
-      "description": "【Turn off automatic updates】\n\n自動更新をオフにする。\n\n■ Note\n  推奨されない設定\n\n■ Source\n  Microsoft Learn - Manage connections from Windows to Microsoft services",
-      "tags": "Windows Update - Auto updates;policy"
+      "description": "【Turn off automatic updates (Privacy guide)】\n\n自動更新をオフにする。プライバシーガイド準拠のWindowsStore直下設定。\n\n■ マスタ作成時の注意\n  OSインストール後にインターネットへ接続する場合、接続前（15分以内）に適用すること。\n  未適用のままインターネットに接続すると、ストアアプリの自動更新が開始される場合がある。\n\n■ Source\n  Microsoft Learn - Manage connections from Windows to Microsoft services",
+      "tags": "マスタ;Windows Update - Auto updates;policy"
     },
     {
       "id": "000000ab",
@@ -2040,6 +2040,18 @@
       "value": "1",
       "description": "【Disable dynamic configuration downloads from Services Configuration】\n\nサービス構成からの動的な構成ダウンロードを無効にする。サービス構成はWindowsコンポーネントやアプリ（テレメトリサービスなど）が構成を動的に更新するために使用される。\n\n■ Source\n  Microsoft Learn - Manage connections from Windows to Microsoft services",
       "tags": "Services Configuration;policy"
+    },
+    {
+      "id": "000000ad",
+      "category": "System",
+      "title": "WindowsStoreによるOSアップグレードを無効にする。ストア経由でのOSバージョンアップを抑制する。",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\WindowsStore",
+      "keyName": "DisableOSUpgrade",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【Disable OS upgrade via Windows Store】\n\nWindowsStoreによるOSアップグレードを無効にする。ストア経由でのOSバージョンアップの提案・自動実行を抑制する。\n\n■ マスタ作成時の注意\n  OSインストール後にインターネットへ接続する場合、接続前（15分以内）に適用すること。\n  未適用のままインターネットに接続すると、ストア経由でOSアップグレードが提案される場合がある。\n\n■ Source\n  Microsoft Learn - Manage connections from Windows to Microsoft services",
+      "tags": "マスタ;WindowsStore;OSアップグレード;policy"
     }
   ]
 }
