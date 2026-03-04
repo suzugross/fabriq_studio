@@ -323,6 +323,9 @@
                             <DataGridTextColumn Header="セグメント"
                                                 Binding="{Binding Segment}"
                                                 Width="80" />
+                            <DataGridTextColumn Header="メモ"
+                                                Binding="{Binding Note, UpdateSourceTrigger=LostFocus}"
+                                                Width="150" />
                             <!-- ⚙ 設定ボタン（通常モジュールのみ表示） -->
                             <DataGridTemplateColumn Header="" Width="40">
                                 <DataGridTemplateColumn.CellTemplate>
