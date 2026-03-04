@@ -97,6 +97,7 @@ public partial class ProfileDetailViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(MoveUpCommand))]
     [NotifyCanExecuteChangedFor(nameof(MoveDownCommand))]
     [NotifyCanExecuteChangedFor(nameof(AddSpecialCommandCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ImportProfileCommand))]
     private bool _isLocked = true;
 
     // ─── 状態 ────────────────────────────────────────────────────
@@ -291,6 +292,61 @@ public partial class ProfileDetailViewModel : ObservableObject
             Enabled     = "1",
             Description = SelectedSpecialCommand.Description
         });
+    }
+
+    // ─── インポート ─────────────────────────────────────────────
+    private bool CanImportProfile() => !IsLocked;
+
+    [RelayCommand(CanExecute = nameof(CanImportProfile))]
+    private async Task ImportProfileAsync()
+    {
+        // profiles フォルダを初期ディレクトリに設定
+        var initialDir = Profile?.FilePath is not null
+            ? System.IO.Path.GetDirectoryName(Profile.FilePath)
+            : null;
+
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title            = "インポートするプロファイルを選択",
+            Filter           = "CSV ファイル (*.csv)|*.csv",
+            InitialDirectory = initialDir ?? ""
+        };
+
+        if (dlg.ShowDialog() != true) return;
+
+        try
+        {
+            var tempEntry = new ProfileEntry
+            {
+                Name     = System.IO.Path.GetFileNameWithoutExtension(dlg.FileName),
+                FilePath = dlg.FileName
+            };
+
+            var imported = await _profileService.GetProfileModulesAsync(tempEntry);
+
+            foreach (var src in imported)
+            {
+                Modules.Add(new ProfileScriptEntry
+                {
+                    Order       = src.Order,
+                    ScriptPath  = src.ScriptPath,
+                    Enabled     = src.Enabled,
+                    Description = src.Description,
+                    Segment     = src.Segment,
+                    Note        = src.Note
+                });
+            }
+
+            IsDirty = true;
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"インポートエラー: {ex.Message}",
+                "インポート",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
     }
 
     // ─── 保存 ────────────────────────────────────────────────────
