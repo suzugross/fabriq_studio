@@ -61,4 +61,33 @@
             '$(OutDir)template\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
+  <!--
+    Publish 時に registry_collection/ と template/ を PublishDir へコピーする。
+    dotnet publish -o で指定した出力先は $(PublishDir) で参照される。
+  -->
+  <Target Name="CopyRegistryCollectionFilesOnPublish" AfterTargets="Publish">
+    <RemoveDir Directories="$(PublishDir)registry_collection" />
+    <ItemGroup>
+      <RegistryCollectionFilesPublish
+          Include="$(MSBuildProjectDirectory)\registry_collection\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(RegistryCollectionFilesPublish)"
+          DestinationFiles="@(RegistryCollectionFilesPublish->
+            '$(PublishDir)registry_collection\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <Target Name="CopyTemplateFilesOnPublish" AfterTargets="Publish">
+    <RemoveDir Directories="$(PublishDir)template" />
+    <ItemGroup>
+      <TemplateFilesPublish
+          Include="$(MSBuildProjectDirectory)\template\**\*"
+          Exclude="$(MSBuildProjectDirectory)\template\**\.git\**;
+                   $(MSBuildProjectDirectory)\template\**\.claude\**;
+                   $(MSBuildProjectDirectory)\template\**\dev\**" />
+    </ItemGroup>
+    <Copy SourceFiles="@(TemplateFilesPublish)"
+          DestinationFiles="@(TemplateFilesPublish->
+            '$(PublishDir)template\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
 </Project>
