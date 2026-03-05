@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Data;
 using System.IO;
 using System.Windows;
@@ -79,6 +80,12 @@ public partial class ModuleDetailViewModel : ObservableObject
     private bool _hasConfigCsv;
     [ObservableProperty] private string?   _configCsvFileName;
 
+    /// <summary>module.csv 以外の CSV ファイル名一覧（View のドロップダウン用）。</summary>
+    [ObservableProperty] private ObservableCollection<string> _configCsvFiles = [];
+
+    /// <summary>現在選択中の CSV ファイル名。変更時に LoadSelectedCsvAsync が発火する。</summary>
+    [ObservableProperty] private string? _selectedConfigCsvFile;
+
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private bool _hasCsvChanges;
@@ -104,6 +111,10 @@ public partial class ModuleDetailViewModel : ObservableObject
     // ファイルパス（保存時に使用）
     private string? _guidePath;
     private string? _csvFilePath;
+    private string? _moduleDir;
+
+    /// <summary>初期ロード中の CSV 切り替え発火を抑制するフラグ。</summary>
+    private bool _suppressCsvSwitch;
 
     public ModuleDetailViewModel(
         IFileService              fileService,
@@ -159,17 +170,23 @@ public partial class ModuleDetailViewModel : ObservableObject
 
     private async Task LoadFilesAsync(ModuleMasterEntry module)
     {
-        IsLoading         = true;
-        ErrorMessage      = null;
-        GuideText         = null;
-        OriginalGuideText = null;
-        HasGuideText      = false;
-        ConfigCsvData     = new DataTable();
-        HasConfigCsv      = false;
-        HasCsvChanges     = false;
-        ConfigCsvFileName = null;
-        _guidePath        = null;
-        _csvFilePath      = null;
+        _suppressCsvSwitch = true;      // CSV 切り替えハンドラを抑制
+        IsLoading          = true;
+        ErrorMessage       = null;
+
+        DetachCsvHandlers();
+        GuideText             = null;
+        OriginalGuideText     = null;
+        HasGuideText          = false;
+        ConfigCsvData         = new DataTable();
+        HasConfigCsv          = false;
+        HasCsvChanges         = false;
+        ConfigCsvFileName     = null;
+        SelectedConfigCsvFile = null;
+        ConfigCsvFiles.Clear();
+        _guidePath            = null;
+        _csvFilePath          = null;
+        _moduleDir            = null;
 
         try
         {
@@ -185,31 +202,27 @@ public partial class ModuleDetailViewModel : ObservableObject
             OriginalGuideText = guideText;
             HasGuideText      = guideText is not null;
 
-            // ── module.csv 以外の CSV（1件目を動的表示対象）──────
+            // ── module.csv 以外の CSV 一覧を取得し、先頭を選択 ──────
+            _moduleDir = moduleDir;
+
             if (Directory.Exists(moduleDir))
             {
-                var csvFile = Directory
+                var csvNames = Directory
                     .GetFiles(moduleDir, "*.csv")
                     .Where(f => !string.Equals(
                         Path.GetFileName(f), "module.csv",
                         StringComparison.OrdinalIgnoreCase))
                     .OrderBy(f => f)
-                    .FirstOrDefault();
+                    .Select(f => Path.GetFileName(f))
+                    .ToList();
 
-                if (csvFile is not null)
-                {
-                    _csvFilePath      = csvFile;
-                    var table         = await _fileService.ReadCsvAsDataTableAsync(csvFile);
-                    HasConfigCsv      = table.Columns.Count > 0;
-                    ConfigCsvFileName = Path.GetFileName(csvFile);
+                foreach (var name in csvNames)
+                    ConfigCsvFiles.Add(name);
 
-                    // AcceptChanges を先に呼び初期状態をクリーンにしてからイベント購読する。
-                    // 逆順だと AcceptChanges が RowChanged を発火し HasCsvChanges が即 true になる。
-                    table.AcceptChanges();
-                    table.RowChanged += OnCsvRowChanged;
-                    table.RowDeleted += OnCsvRowChanged;
-                    ConfigCsvData = table;
-                }
+                // 先頭を選択して CSV をロード
+                // （_suppressCsvSwitch で partial method の二重発火を防いでいるため直接 await する）
+                SelectedConfigCsvFile = csvNames.FirstOrDefault();
+                await LoadSelectedCsvAsync();
             }
         }
         catch (Exception ex)
@@ -222,6 +235,7 @@ public partial class ModuleDetailViewModel : ObservableObject
             // Load() で立てた抑制フラグを非同期ロード完了後に解除。
             // View の DataTemplate 生成・バインディング初期評価による
             // TextChanged の誤検知がここまでに完了していることを保証する。
+            _suppressCsvSwitch      = false;   // CSV 切り替えハンドラを再開
             _suppressModuleCsvDirty = false;
             HasModuleCsvChanges = false;
         }
@@ -229,6 +243,61 @@ public partial class ModuleDetailViewModel : ObservableObject
 
     private void OnCsvRowChanged(object sender, DataRowChangeEventArgs e)
         => HasCsvChanges = true;
+
+    // ── CSV 切り替え ─────────────────────────────────────────────
+
+    /// <summary>
+    /// SelectedConfigCsvFile が変更されたときに呼ばれる。
+    /// 初期ロード中は _suppressCsvSwitch で抑制される。
+    /// </summary>
+    partial void OnSelectedConfigCsvFileChanged(string? value)
+    {
+        if (!_suppressCsvSwitch)
+            _ = LoadSelectedCsvAsync();
+    }
+
+    /// <summary>現在の ConfigCsvData から RowChanged/RowDeleted ハンドラを解除する。</summary>
+    private void DetachCsvHandlers()
+    {
+        ConfigCsvData.RowChanged -= OnCsvRowChanged;
+        ConfigCsvData.RowDeleted -= OnCsvRowChanged;
+    }
+
+    /// <summary>
+    /// SelectedConfigCsvFile に対応する CSV を読み込み、ConfigCsvData を差し替える。
+    /// 旧 DataTable のイベントハンドラ解除 → 新 DataTable のロード → ハンドラ登録 を行う。
+    /// </summary>
+    private async Task LoadSelectedCsvAsync()
+    {
+        DetachCsvHandlers();
+        ConfigCsvData     = new DataTable();
+        HasConfigCsv      = false;
+        HasCsvChanges     = false;
+        ConfigCsvFileName = null;
+        _csvFilePath      = null;
+
+        if (SelectedConfigCsvFile is null || _moduleDir is null) return;
+
+        try
+        {
+            var csvFile       = Path.Combine(_moduleDir, SelectedConfigCsvFile);
+            _csvFilePath      = csvFile;
+            var table         = await _fileService.ReadCsvAsDataTableAsync(csvFile);
+            HasConfigCsv      = table.Columns.Count > 0;
+            ConfigCsvFileName = SelectedConfigCsvFile;
+
+            // AcceptChanges を先に呼び初期状態をクリーンにしてからイベント購読する。
+            // 逆順だと AcceptChanges が RowChanged を発火し HasCsvChanges が即 true になる。
+            table.AcceptChanges();
+            table.RowChanged += OnCsvRowChanged;
+            table.RowDeleted += OnCsvRowChanged;
+            ConfigCsvData = table;
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"CSV 読み込みエラー: {ex.Message}";
+        }
+    }
 
     // ── ロック切り替え ────────────────────────────────────────────
     [RelayCommand]
