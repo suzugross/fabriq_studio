@@ -394,7 +394,8 @@
                                    Converter={StaticResource BoolToVisibilityConverter}}" />
 
                     <!-- DataGrid: IsReadOnly / CanUserAddRows / CanUserDeleteRows をロックに連動 -->
-                    <DataGrid ItemsSource="{Binding LogDestinations}"
+                    <DataGrid x:Name="LogDestDataGrid"
+                              ItemsSource="{Binding LogDestinations}"
                               SelectedItem="{Binding SelectedLogDest, Mode=TwoWay}"
                               IsReadOnly="{Binding IsLogDestLocked}"
                               AutoGenerateColumns="False"
@@ -407,11 +408,19 @@
                               BorderBrush="#DDDDDD" BorderThickness="1"
                               MaxHeight="200"
                               Margin="0,0,0,8">
+                        <DataGrid.ContextMenu>
+                            <ContextMenu>
+                                <MenuItem Header="🔒 セルを暗号化 (ENC:)" Click="EncryptLogDestCell_Click" />
+                                <MenuItem Header="🔓 セルを復号"          Click="DecryptLogDestCell_Click" />
+                            </ContextMenu>
+                        </DataGrid.ContextMenu>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="パス"       Binding="{Binding Path}"        Width="*" />
-                            <DataGridTextColumn Header="種別"       Binding="{Binding Type}"        Width="80" />
-                            <DataGridTextColumn Header="有効(0/1)" Binding="{Binding Enabled}"     Width="75" />
-                            <DataGridTextColumn Header="説明"       Binding="{Binding Description}" Width="*" />
+                            <DataGridTextColumn Header="パス"         Binding="{Binding Path}"        Width="*" />
+                            <DataGridTextColumn Header="種別"         Binding="{Binding Type}"        Width="80" />
+                            <DataGridTextColumn Header="有効(0/1)"   Binding="{Binding Enabled}"     Width="75" />
+                            <DataGridTextColumn Header="ユーザー名"   Binding="{Binding AuthUser}"    Width="120" />
+                            <DataGridTextColumn Header="パスワード"   Binding="{Binding AuthPass}"    Width="120" />
+                            <DataGridTextColumn Header="説明"         Binding="{Binding Description}" Width="*" />
                         </DataGrid.Columns>
                     </DataGrid>
 

@@ -11,5 +11,7 @@ public partial class LogDestination : ObservableObject
     [ObservableProperty] private string _path        = "";
     [ObservableProperty] private string _type        = "";
     [ObservableProperty] private string _enabled     = "0";
+    [ObservableProperty] private string _authUser    = "";
+    [ObservableProperty] private string _authPass    = "";
     [ObservableProperty] private string _description = "";
 }

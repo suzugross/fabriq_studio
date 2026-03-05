@@ -4,6 +4,7 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using FabriqStudio.Helpers;
 using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
@@ -15,6 +16,7 @@ public partial class BasicParamsViewModel : ObservableObject
     private readonly ICsvService     _csvService;
     private readonly IFileService    _fileService;
     private readonly IProfileService _profileService;
+    private readonly ICryptoService  _crypto;
 
     [ObservableProperty] private ObservableCollection<WorkerEntry> _workers         = [];
     [ObservableProperty] private bool                              _isWorkersLoading;
@@ -83,11 +85,12 @@ public partial class BasicParamsViewModel : ObservableObject
     [ObservableProperty] private bool                                     _isModulesLoading;
     [ObservableProperty] private string?                                  _modulesError;
 
-    public BasicParamsViewModel(ICsvService csvService, IFileService fileService, IProfileService profileService, IWorkspaceService workspace)
+    public BasicParamsViewModel(ICsvService csvService, IFileService fileService, IProfileService profileService, IWorkspaceService workspace, ICryptoService crypto)
     {
         _csvService     = csvService;
         _fileService    = fileService;
         _profileService = profileService;
+        _crypto         = crypto;
         workspace.WorkspaceChanged += (_, e) =>
         {
             if (e.NewPath is null) { ClearAll(); return; }
@@ -341,6 +344,51 @@ public partial class BasicParamsViewModel : ObservableObject
         catch (Exception ex)
         {
             LogDestError = $"保存エラー: {ex.Message}";
+        }
+    }
+
+    // ── ログ出力先 暗号化・復号 ─────────────────────────────────
+
+    /// <summary>指定プロパティの値を暗号化する。戻り値 = エラーメッセージ（成功時 null）。</summary>
+    public string? EncryptLogDestField(LogDestination item, string propertyName)
+    {
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) return error;
+
+        var prop = typeof(LogDestination).GetProperty(propertyName);
+        if (prop is null) return $"プロパティ '{propertyName}' が見つかりません。";
+
+        var value = prop.GetValue(item)?.ToString() ?? "";
+        if (string.IsNullOrEmpty(value))
+            return "空のフィールドは暗号化できません。";
+        if (value.StartsWith("ENC:", StringComparison.Ordinal))
+            return "このフィールドは既に暗号化されています。";
+
+        prop.SetValue(item, _crypto.Encrypt(value, _crypto.MasterPassphrase!));
+        return null;
+    }
+
+    /// <summary>指定プロパティの値を復号する。戻り値 = エラーメッセージ（成功時 null）。</summary>
+    public string? DecryptLogDestField(LogDestination item, string propertyName)
+    {
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) return error;
+
+        var prop = typeof(LogDestination).GetProperty(propertyName);
+        if (prop is null) return $"プロパティ '{propertyName}' が見つかりません。";
+
+        var value = prop.GetValue(item)?.ToString() ?? "";
+        if (!value.StartsWith("ENC:", StringComparison.Ordinal))
+            return "このフィールドは暗号化されていません（ENC: プレフィクスがありません）。";
+
+        try
+        {
+            prop.SetValue(item, _crypto.Decrypt(value, _crypto.MasterPassphrase!));
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"復号に失敗しました。パスフレーズが正しいか確認してください。\n{ex.Message}";
         }
     }
 
