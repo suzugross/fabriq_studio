@@ -337,12 +337,16 @@
                                    Text="設定CSV"
                                    Style="{StaticResource SectionHeaderStyle}"
                                    Margin="0" VerticalAlignment="Center" />
-                        <TextBlock DockPanel.Dock="Left"
-                                   Text="{Binding ConfigCsvFileName, StringFormat=' ({0})'}"
-                                   FontSize="11" Foreground="#888888"
-                                   VerticalAlignment="Center"
-                                   Visibility="{Binding HasConfigCsv,
-                                       Converter={StaticResource BoolToVisibilityConverter}}" />
+                        <ComboBox DockPanel.Dock="Left"
+                                  ItemsSource="{Binding ConfigCsvFiles}"
+                                  SelectedItem="{Binding SelectedConfigCsvFile, Mode=TwoWay}"
+                                  IsEnabled="{Binding HasCsvChanges,
+                                      Converter={StaticResource InverseBooleanConverter}}"
+                                  FontSize="11" MinWidth="140"
+                                  VerticalAlignment="Center"
+                                  Margin="8,0,0,0"
+                                  Visibility="{Binding HasConfigCsv,
+                                      Converter={StaticResource BoolToVisibilityConverter}}" />
 
                         <!-- CSV Dirty インジケーター -->
                         <TextBlock DockPanel.Dock="Left"
