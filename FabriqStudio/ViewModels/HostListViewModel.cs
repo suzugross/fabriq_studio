@@ -1,10 +1,12 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using FabriqStudio.Helpers;
 using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
@@ -17,8 +19,9 @@ namespace FabriqStudio.ViewModels;
 /// </summary>
 public partial class HostListViewModel : ObservableObject
 {
-    private readonly ICsvService  _csvService;
-    private readonly IFileService _fileService;
+    private readonly ICsvService    _csvService;
+    private readonly IFileService   _fileService;
+    private readonly ICryptoService _crypto;
 
     [ObservableProperty] private ObservableCollection<HostEntry> _hosts        = [];
 
@@ -42,10 +45,11 @@ public partial class HostListViewModel : ObservableObject
     [ObservableProperty] private bool    _isLoading;
     [ObservableProperty] private string? _errorMessage;
 
-    public HostListViewModel(ICsvService csvService, IFileService fileService, IWorkspaceService workspace)
+    public HostListViewModel(ICsvService csvService, IFileService fileService, IWorkspaceService workspace, ICryptoService crypto)
     {
         _csvService  = csvService;
         _fileService = fileService;
+        _crypto      = crypto;
         workspace.WorkspaceChanged += (_, e) =>
         {
             if (e.NewPath is null) { Hosts.Clear(); return; }
@@ -194,5 +198,83 @@ public partial class HostListViewModel : ObservableObject
         {
             SaveError = $"保存エラー: {ex.Message}";
         }
+    }
+
+    // ── 全端末一括暗号化・復号 ──────────────────────────────────
+
+    [RelayCommand]
+    private void EncryptAllHosts()
+    {
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) { MessageBox.Show(error, "暗号化", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (Hosts.Count == 0) { MessageBox.Show("端末データがありません。", "暗号化", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+
+        var confirm = MessageBox.Show(
+            $"全 {Hosts.Count} 台の端末データを一括暗号化します。\nよろしいですか？",
+            "一括暗号化", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.OK) return;
+
+        var result = CryptoAllHosts(isEncrypt: true);
+        IsDirty = result.Processed > 0;
+        MessageBox.Show(result.ToSummary(isEncrypt: true), "一括暗号化", MessageBoxButton.OK,
+            result.HasErrors ? MessageBoxImage.Warning : MessageBoxImage.Information);
+    }
+
+    [RelayCommand]
+    private void DecryptAllHosts()
+    {
+        var error = CryptoHelper.ValidatePassphrase(_crypto);
+        if (error is not null) { MessageBox.Show(error, "復号", MessageBoxButton.OK, MessageBoxImage.Warning); return; }
+        if (Hosts.Count == 0) { MessageBox.Show("端末データがありません。", "復号", MessageBoxButton.OK, MessageBoxImage.Information); return; }
+
+        var confirm = MessageBox.Show(
+            $"全 {Hosts.Count} 台の端末データを一括復号します。\nよろしいですか？",
+            "一括復号", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.OK) return;
+
+        var result = CryptoAllHosts(isEncrypt: false);
+        IsDirty = result.Processed > 0;
+        MessageBox.Show(result.ToSummary(isEncrypt: false), "一括復号", MessageBoxButton.OK,
+            result.HasErrors ? MessageBoxImage.Warning : MessageBoxImage.Information);
+    }
+
+    private BatchCryptoResult CryptoAllHosts(bool isEncrypt)
+    {
+        int processed = 0, skipped = 0;
+        var errors = new List<string>();
+        var props = typeof(HostEntry)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType == typeof(string) && p.CanWrite && CryptoHelper.IsEncryptableColumn(p.Name))
+            .ToList();
+
+        foreach (var host in Hosts)
+        {
+            foreach (var prop in props)
+            {
+                var value = prop.GetValue(host)?.ToString() ?? "";
+                if (string.IsNullOrEmpty(value)) { skipped++; continue; }
+
+                if (isEncrypt)
+                {
+                    if (value.StartsWith("ENC:", StringComparison.Ordinal)) { skipped++; continue; }
+                    prop.SetValue(host, _crypto.Encrypt(value, _crypto.MasterPassphrase!));
+                    processed++;
+                }
+                else
+                {
+                    if (!value.StartsWith("ENC:", StringComparison.Ordinal)) { skipped++; continue; }
+                    try
+                    {
+                        prop.SetValue(host, _crypto.Decrypt(value, _crypto.MasterPassphrase!));
+                        processed++;
+                    }
+                    catch (Exception ex)
+                    {
+                        errors.Add($"{host.AdminID}/{prop.Name}: {ex.Message}");
+                    }
+                }
+            }
+        }
+        return new BatchCryptoResult(processed, skipped, errors);
     }
 }
