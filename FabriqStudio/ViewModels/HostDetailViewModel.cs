@@ -38,6 +38,9 @@ public partial class HostDetailViewModel : ObservableObject
     [ObservableProperty] private HostEntry?                        _originalHost;
     [ObservableProperty] private ObservableCollection<PrinterInfo> _printers = [];
 
+    /// <summary>PrinterInfo → HostEntry 書き戻し中に Printers 再構築を抑止するフラグ。</summary>
+    private bool _suppressPrinterRebuild;
+
     // ─── 状態 ─────────────────────────────────────────────────────
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
@@ -70,6 +73,7 @@ public partial class HostDetailViewModel : ObservableObject
         SaveStatus   = null;
         SaveError    = null;
         Printers     = new ObservableCollection<PrinterInfo>(BuildPrinters(host));
+        AttachPrinterHandlers();
 
         host.PropertyChanged += OnHostPropertyChanged;
     }
@@ -80,9 +84,56 @@ public partial class HostDetailViewModel : ObservableObject
         if (Host is null || OriginalHost is null) return;
         IsDirty = !Host.ContentEquals(OriginalHost);
 
+        // PrinterInfo からの書き戻し中は Printers 再構築をスキップ（無限ループ防止）
+        if (_suppressPrinterRebuild) return;
+
         // プリンターフィールドが変わったら表示リストも更新
         if (e.PropertyName?.StartsWith("Printer", StringComparison.Ordinal) == true)
+        {
+            DetachPrinterHandlers();
             Printers = new ObservableCollection<PrinterInfo>(BuildPrinters(Host));
+            AttachPrinterHandlers();
+        }
+    }
+
+    // ── PrinterInfo 変更時: HostEntry へ書き戻し ────────────────
+    private void OnPrinterInfoPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (Host is null || sender is not PrinterInfo pi) return;
+        if (e.PropertyName is not ("Name" or "Driver" or "Port")) return;
+
+        _suppressPrinterRebuild = true;
+        try
+        {
+            var hostPropName = $"Printer{pi.Number}{e.PropertyName}";
+            var prop = typeof(HostEntry).GetProperty(hostPropName);
+            if (prop is null) return;
+
+            var value = e.PropertyName switch
+            {
+                "Name"   => pi.Name,
+                "Driver" => pi.Driver,
+                "Port"   => pi.Port,
+                _        => null
+            };
+            prop.SetValue(Host, value ?? "");
+        }
+        finally
+        {
+            _suppressPrinterRebuild = false;
+        }
+    }
+
+    private void AttachPrinterHandlers()
+    {
+        foreach (var p in Printers)
+            p.PropertyChanged += OnPrinterInfoPropertyChanged;
+    }
+
+    private void DetachPrinterHandlers()
+    {
+        foreach (var p in Printers)
+            p.PropertyChanged -= OnPrinterInfoPropertyChanged;
     }
 
     // ── 保存コマンド ──────────────────────────────────────────────

@@ -292,7 +292,7 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- ─── 右列: プリンター（表示のみ） ─── -->
+            <!-- ─── 右列: プリンター ─── -->
             <Border Grid.Column="2"
                     Style="{StaticResource SectionBorderStyle}"
                     Margin="0">
@@ -300,13 +300,9 @@
                     <TextBlock DockPanel.Dock="Top"
                                Text="プリンター（最大10台）"
                                Style="{StaticResource SectionHeaderStyle}" />
-                    <TextBlock DockPanel.Dock="Top"
-                               Text="※ プリンター項目の編集は hostlist.csv を直接編集してください"
-                               FontSize="10" Foreground="#AAAAAA"
-                               Margin="0,0,0,8" />
 
                     <DataGrid ItemsSource="{Binding Printers}"
-                              IsReadOnly="True"
+                              IsReadOnly="{Binding IsLocked}"
                               AutoGenerateColumns="False"
                               CanUserAddRows="False"
                               CanUserDeleteRows="False"
@@ -316,10 +312,10 @@
                               AlternatingRowBackground="#F7F7F7"
                               BorderBrush="#DDDDDD" BorderThickness="1">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="No."        Binding="{Binding Number}" Width="40" />
-                            <DataGridTextColumn Header="名前"       Binding="{Binding Name}"   Width="180" />
-                            <DataGridTextColumn Header="ドライバー" Binding="{Binding Driver}" Width="*" />
-                            <DataGridTextColumn Header="ポート"     Binding="{Binding Port}"   Width="120" />
+                            <DataGridTextColumn Header="No."        Binding="{Binding Number}" Width="40" IsReadOnly="True" />
+                            <DataGridTextColumn Header="名前"       Binding="{Binding Name,   UpdateSourceTrigger=LostFocus}" Width="180" />
+                            <DataGridTextColumn Header="ドライバー" Binding="{Binding Driver, UpdateSourceTrigger=LostFocus}" Width="*" />
+                            <DataGridTextColumn Header="ポート"     Binding="{Binding Port,   UpdateSourceTrigger=LostFocus}" Width="120" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>
