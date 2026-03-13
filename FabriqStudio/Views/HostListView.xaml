@@ -97,6 +97,26 @@
                     BorderThickness="0" Cursor="Hand"
                     Margin="0,0,8,0" />
 
+            <!-- 右: 一括復号ボタン -->
+            <Button DockPanel.Dock="Right"
+                    Content="🔓 一括復号"
+                    Command="{Binding DecryptAllHostsCommand}"
+                    ToolTip="全端末の暗号化フィールドを一括復号"
+                    Padding="12,4" FontSize="11"
+                    Background="#6A1B9A" Foreground="White"
+                    BorderThickness="0" Cursor="Hand"
+                    Margin="0,0,8,0" />
+
+            <!-- 右: 一括暗号化ボタン -->
+            <Button DockPanel.Dock="Right"
+                    Content="🔒 一括暗号化"
+                    Command="{Binding EncryptAllHostsCommand}"
+                    ToolTip="全端末の暗号化可能フィールドを一括暗号化"
+                    Padding="12,4" FontSize="11"
+                    Background="#4A148C" Foreground="White"
+                    BorderThickness="0" Cursor="Hand"
+                    Margin="0,0,8,0" />
+
             <!-- 右: パスラベル -->
             <TextBlock DockPanel.Dock="Right"
                        Text="kernel/csv/hostlist.csv"
