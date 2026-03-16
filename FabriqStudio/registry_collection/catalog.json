@@ -2316,6 +2316,18 @@
       "value": "1",
       "description": "【一時ファイルの自動クリーンアップを有効化】\n\n256 = 1 に設定し、ストレージセンサーによる一時ファイルの自動クリーンアップを有効にする。\n\n■ 値の意味\n  0 = 無効\n  1 = 有効",
       "tags": "ストレージセンサー;StorageSense;一時ファイル;クリーンアップ"
+    },
+    {
+      "id": "000000c4",
+      "category": "Security",
+      "title": "ロストモードを無効化",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Winlogon\\LostMode",
+      "keyName": "EnableLostMode",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【ロストモードを無効化】\n\nEnableLostMode = 0 に設定し、Windows Lost Mode を無効化する。\n\n■ 値の意味\n  0 = 無効\n  1 = 有効（デバイスをロックしメッセージを表示）\n\n■ Lost Mode とは\n  Intune / MDM 経由で紛失・盗難デバイスをリモートロックする機能。\n  有効時はデバイスがロックされ、同キー配下の LostModeMessage（REG_SZ）に\n  設定された文字列がロック画面に固定表示される。\n\n■ キッティングでの用途\n  キッティング中にロストモードが有効化された場合のクリーンアップとして使用する。\n  EnableLostMode = 0 で無効化すれば LostModeMessage は残存していても影響なし。",
+      "tags": "ロストモード;LostMode;Intune;MDM;セキュリティ;ロック"
     }
   ]
 }
