@@ -2232,6 +2232,90 @@
       "value": "0",
       "description": "【ウィジェットを無効化（グループポリシー）】\n\nAllowNewsAndInterests = 0 に設定し、ウィジェットを無効化する。タスクバーから非表示になり、設定画面もグレーアウトされる。\n\n■ 値の意味\n  0 = 無効化\n  1 = 有効化\n  キー削除 = ポリシー未構成（既定、ユーザー設定に従う）\n\n■ 管理者権限\n  HKLM\\Policies 配下のため管理者権限が必要。\n\n■ 備考\n  Windows 11 25H2 では HKCU 側の TaskbarDa が保護されており直接書き込みできないため、このポリシーキーを使用する。",
       "tags": "タスクバー;ウィジェット;ポリシー;25H2"
+    },
+    {
+      "id": "000000bd",
+      "category": "Storage",
+      "title": "ストレージセンサーを有効化",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy",
+      "keyName": "01",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【ストレージセンサーを有効化】\n\n01 = 1 に設定し、ストレージセンサーを有効にする。\n\n■ 値の意味\n  0 = 無効\n  1 = 有効",
+      "tags": "ストレージセンサー;StorageSense;クリーンアップ"
+    },
+    {
+      "id": "000000be",
+      "category": "Storage",
+      "title": "ストレージセンサーの実行タイミング",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy",
+      "keyName": "2048",
+      "type": "REG_DWORD",
+      "value": "30",
+      "description": "【ストレージセンサーの実行タイミング】\n\n2048 の値で実行頻度を制御する。\n\n■ 値の意味\n  0 = 空き容量の不足時のみ\n  1 = 毎日\n  7 = 毎週\n  30 = 毎月",
+      "tags": "ストレージセンサー;StorageSense;スケジュール"
+    },
+    {
+      "id": "000000bf",
+      "category": "Storage",
+      "title": "ごみ箱の自動クリーンアップを有効化",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy",
+      "keyName": "04",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【ごみ箱の自動クリーンアップを有効化】\n\n04 = 1 に設定し、ストレージセンサーによるごみ箱の自動クリーンアップを有効にする。\n\n■ 値の意味\n  0 = 無効\n  1 = 有効",
+      "tags": "ストレージセンサー;StorageSense;ごみ箱;クリーンアップ"
+    },
+    {
+      "id": "000000c0",
+      "category": "Storage",
+      "title": "ごみ箱の保持日数",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy",
+      "keyName": "32",
+      "type": "REG_DWORD",
+      "value": "30",
+      "description": "【ごみ箱の保持日数】\n\n32 の値でごみ箱内のファイルを自動削除するまでの日数を指定する。\n\n■ 値の意味\n  0 = クリーンアップしない\n  1 = 1日\n  14 = 14日\n  30 = 30日\n  60 = 60日",
+      "tags": "ストレージセンサー;StorageSense;ごみ箱;保持日数"
+    },
+    {
+      "id": "000000c1",
+      "category": "Storage",
+      "title": "ダウンロードフォルダの自動クリーンアップを有効化",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy",
+      "keyName": "08",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【ダウンロードフォルダの自動クリーンアップを有効化】\n\n08 = 1 に設定し、ストレージセンサーによるダウンロードフォルダの自動クリーンアップを有効にする。\n\n■ 値の意味\n  0 = 無効\n  1 = 有効",
+      "tags": "ストレージセンサー;StorageSense;ダウンロード;クリーンアップ"
+    },
+    {
+      "id": "000000c2",
+      "category": "Storage",
+      "title": "ダウンロードフォルダの保持日数",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy",
+      "keyName": "128",
+      "type": "REG_DWORD",
+      "value": "30",
+      "description": "【ダウンロードフォルダの保持日数】\n\n128 の値でダウンロードフォルダ内のファイルを自動削除するまでの日数を指定する。\n\n■ 値の意味\n  0 = クリーンアップしない\n  1 = 1日\n  14 = 14日\n  30 = 30日\n  60 = 60日",
+      "tags": "ストレージセンサー;StorageSense;ダウンロード;保持日数"
+    },
+    {
+      "id": "000000c3",
+      "category": "Storage",
+      "title": "一時ファイルの自動クリーンアップを有効化",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\StorageSense\\Parameters\\StoragePolicy",
+      "keyName": "256",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【一時ファイルの自動クリーンアップを有効化】\n\n256 = 1 に設定し、ストレージセンサーによる一時ファイルの自動クリーンアップを有効にする。\n\n■ 値の意味\n  0 = 無効\n  1 = 有効",
+      "tags": "ストレージセンサー;StorageSense;一時ファイル;クリーンアップ"
     }
   ]
 }
