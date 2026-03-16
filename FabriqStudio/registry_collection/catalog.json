@@ -100,13 +100,13 @@
     {
       "id": "00000009",
       "category": "Desktop",
-      "title": "タスクバーのウィジェットボタンを非表示",
+      "title": "タスクバーのウィジェットボタンを非表示（HKCU）",
       "hive": "HKCU",
       "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
       "keyName": "TaskbarDa",
       "type": "REG_DWORD",
       "value": "0",
-      "description": "",
+      "description": "【タスクバーのウィジェットボタンを非表示（HKCU）】\n\nTaskbarDa = 0 に設定し、タスクバーのウィジェットボタンを非表示にする。\n\n■ 値の意味\n  0 = 非表示\n  1 = 表示（既定値）\n\n■ 注意事項\n  Windows 11 25H2 では HKCU 側の値が保護されており直接書き込みできない場合がある。\n  その場合は HKLM ポリシーキー（AllowNewsAndInterests）を使用すること。",
       "tags": "タスクバー;ウィジェット"
     },
     {
@@ -130,7 +130,7 @@
       "keyName": "ShowTaskViewButton",
       "type": "REG_DWORD",
       "value": "0",
-      "description": "",
+      "description": "【タスクビューボタンをタスクバーから非表示】\n\nShowTaskViewButton = 0 に設定し、タスクバーのタスクビューボタンを非表示にする。\n\n■ 値の意味\n  0 = 非表示\n  1 = 表示（既定値）",
       "tags": "タスクバー;タスクビュー"
     },
     {
@@ -142,7 +142,7 @@
       "keyName": "SearchboxTaskbarMode",
       "type": "REG_DWORD",
       "value": "1",
-      "description": "",
+      "description": "【タスクバーの検索をアイコンのみ表示】\n\nSearchboxTaskbarMode の値で検索ボックスの表示形式を制御する。\n\n■ 値の意味\n  0 = 非表示\n  1 = アイコンのみ表示\n  2 = 検索ボックス（入力欄付き）を表示\n  3 = 検索ボタン（ラベル付き）を表示",
       "tags": "タスクバー;検索"
     },
     {
@@ -2220,6 +2220,18 @@
       "value": "0",
       "description": "【タスクバーの縮小版プレビューの保存を無効にする】\n\nAlwaysHibernateThumbnails = 0 に設定し、タスクバーの縮小版プレビューのキャッシュ保存を無効にする。\n\n■ 値の意味\n  0 = 保存しない\n  1 = 常に保存する（既定値）\n\n■ 効果\n  メモリ使用量を削減できる。\n\n■ 備考\n  視覚効果のカスタムモード（VisualFXSetting=3）と組み合わせて使用する。",
       "tags": "視覚効果;タスクバー;縮小版;サムネイル;DWM;パフォーマンス;UI"
+    },
+    {
+      "id": "000000bc",
+      "category": "Desktop",
+      "title": "ウィジェットを無効化（グループポリシー）",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Dsh",
+      "keyName": "AllowNewsAndInterests",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【ウィジェットを無効化（グループポリシー）】\n\nAllowNewsAndInterests = 0 に設定し、ウィジェットを無効化する。タスクバーから非表示になり、設定画面もグレーアウトされる。\n\n■ 値の意味\n  0 = 無効化\n  1 = 有効化\n  キー削除 = ポリシー未構成（既定、ユーザー設定に従う）\n\n■ 管理者権限\n  HKLM\\Policies 配下のため管理者権限が必要。\n\n■ 備考\n  Windows 11 25H2 では HKCU 側の TaskbarDa が保護されており直接書き込みできないため、このポリシーキーを使用する。",
+      "tags": "タスクバー;ウィジェット;ポリシー;25H2"
     }
   ]
 }
