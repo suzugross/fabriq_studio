@@ -2328,6 +2328,18 @@
       "value": "0",
       "description": "【ロストモードを無効化】\n\nEnableLostMode = 0 に設定し、Windows Lost Mode を無効化する。\n\n■ 値の意味\n  0 = 無効\n  1 = 有効（デバイスをロックしメッセージを表示）\n\n■ Lost Mode とは\n  Intune / MDM 経由で紛失・盗難デバイスをリモートロックする機能。\n  有効時はデバイスがロックされ、同キー配下の LostModeMessage（REG_SZ）に\n  設定された文字列がロック画面に固定表示される。\n\n■ キッティングでの用途\n  キッティング中にロストモードが有効化された場合のクリーンアップとして使用する。\n  EnableLostMode = 0 で無効化すれば LostModeMessage は残存していても影響なし。",
       "tags": "ロストモード;LostMode;Intune;MDM;セキュリティ;ロック"
+    },
+    {
+      "id": "000000c5",
+      "category": "Privacy",
+      "title": "ストアアプリのバックグラウンド実行をオフにする（HKCU）",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications",
+      "keyName": "GlobalUserDisabled",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【ストアアプリのバックグラウンド実行をオフにする（HKCU）】\n\nGlobalUserDisabled = 1 に設定し、UWP/ストアアプリのバックグラウンド実行をユーザー単位で無効化する。\n\n■ 値の意味\n  0 = バックグラウンド実行を許可（既定値）\n  1 = バックグラウンド実行を無効化\n\n■ 効果\n  設定 → プライバシーとセキュリティ → バックグラウンドアプリ で\n  「アプリのバックグラウンド実行を許可する」をオフにした状態と同等。\n  バッテリー消費やCPU/メモリ使用量の削減に効果がある。\n\n■ HKLM ポリシー版との違い\n  LetAppsRunInBackground（HKLM\\AppPrivacy）はグループポリシーによる\n  全ユーザー強制設定。本キーはユーザー単位の設定で管理者権限不要。\n\n■ 注意事項\n  通知系アプリ（メール、カレンダー等）のバックグラウンド更新も停止するため、\n  リアルタイム通知が不要な環境での適用を推奨する。",
+      "tags": "バックグラウンド;ストアアプリ;UWP;プライバシー;パフォーマンス"
     }
   ]
 }
