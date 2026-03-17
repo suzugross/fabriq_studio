@@ -2158,8 +2158,8 @@
       "keyName": "MinAnimate",
       "type": "REG_SZ",
       "value": "0",
-      "description": "【ウィンドウの最大化/最小化アニメーションを無効にする】\n\nMinAnimate = 0 に設定し、ウィンドウの最大化・最小化時のアニメーション効果を無効にする。\n\n■ 値の意味\n  0 = アニメーション無効\n  1 = アニメーション有効（既定値）\n\n■ 効果\n  ウィンドウ操作のレスポンスが向上する。\n\n■ 備考\n  視覚効果のカスタムモード（VisualFXSetting=3）と組み合わせて使用する。",
-      "tags": "視覚効果;アニメーション;最大化;最小化;MinAnimate;パフォーマンス;UI"
+      "description": "【ウィンドウの最大化/最小化アニメーションを無効にする】\n\nMinAnimate = 0 に設定し、ウィンドウの最大化・最小化時のアニメーション効果を無効にする。\n\n■ 値の意味\n  0 = アニメーション無効\n  1 = アニメーション有効（既定値）\n\n■ 効果\n  ウィンドウ操作のレスポンスが向上する。\n\n■ 新規プロファイルへの適用\n  デフォルトプロファイル（NTUSER.DAT）への直接書き込みでは反映されないことが\n  実機検証で確認されている。新規ユーザーに適用するには Active Setup 等を利用し、\n  初回ログオン時に reg add で直接書き込む必要がある。\n\n■ 備考\n  視覚効果のカスタムモード（VisualFXSetting=3）と組み合わせて使用する。",
+      "tags": "視覚効果;アニメーション;最大化;最小化;MinAnimate;パフォーマンス;UI;ActiveSetup"
     },
     {
       "id": "000000b7",
@@ -2340,6 +2340,78 @@
       "value": "1",
       "description": "【ストアアプリのバックグラウンド実行をオフにする（HKCU）】\n\nGlobalUserDisabled = 1 に設定し、UWP/ストアアプリのバックグラウンド実行をユーザー単位で無効化する。\n\n■ 値の意味\n  0 = バックグラウンド実行を許可（既定値）\n  1 = バックグラウンド実行を無効化\n\n■ 効果\n  設定 → プライバシーとセキュリティ → バックグラウンドアプリ で\n  「アプリのバックグラウンド実行を許可する」をオフにした状態と同等。\n  バッテリー消費やCPU/メモリ使用量の削減に効果がある。\n\n■ HKLM ポリシー版との違い\n  LetAppsRunInBackground（HKLM\\AppPrivacy）はグループポリシーによる\n  全ユーザー強制設定。本キーはユーザー単位の設定で管理者権限不要。\n\n■ 注意事項\n  通知系アプリ（メール、カレンダー等）のバックグラウンド更新も停止するため、\n  リアルタイム通知が不要な環境での適用を推奨する。",
       "tags": "バックグラウンド;ストアアプリ;UWP;プライバシー;パフォーマンス"
+    },
+    {
+      "id": "000000c6",
+      "category": "Security",
+      "title": "DPAPI保護ポリシーをローカルマシンキーに設定（資格情報エラー対応）",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\Cryptography\\Protect\\Providers\\df9d8cd0-1501-11d1-8c7a-00c04fc297eb",
+      "keyName": "ProtectionPolicy",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【DPAPI保護ポリシーをローカルマシンキーに設定】\n\nProtectionPolicy = 1 に設定し、DPAPIの保護キーをユーザープロファイルではなくローカルマシンキーで暗号化する。\n\n■ 値の意味\n  0 = ユーザーキーで保護（既定値）\n  1 = ローカルマシンキーで保護\n\n■ キッティングでの用途\n  ドメイン移行、プロファイル再作成、SID変更などにより発生する\n  資格情報マネージャーのエラーや証明書アクセス失敗を回避するために使用する。\n\n■ 注意事項\n  マシンキーで保護するため、同一マシン上の他ユーザーからもデータにアクセスできる\n  可能性がある。共用PCでは適用を慎重に検討すること。",
+      "tags": "DPAPI;資格情報;Cryptography;セキュリティ;プロファイル"
+    },
+    {
+      "id": "000000c7",
+      "category": "Desktop",
+      "title": "デスクトップアイコンのサイズを変更",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\Shell\\Bags\\1\\Desktop",
+      "keyName": "IconSize",
+      "type": "REG_DWORD",
+      "value": "48",
+      "description": "【デスクトップアイコンのサイズを変更】\n\nIconSize の値でデスクトップアイコンのサイズを制御する。\n\n■ 値の意味\n  32 = 小アイコン\n  48 = 中アイコン（既定値）\n  96 = 大アイコン\n\n■ 反映方法\n  Explorer の再起動が必要。",
+      "tags": "デスクトップ;アイコン;サイズ;IconSize"
+    },
+    {
+      "id": "000000c8",
+      "category": "Desktop",
+      "title": "デスクトップにPCアイコンを表示",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\HideDesktopIcons\\NewStartPanel",
+      "keyName": "{20D04FE0-3AEA-1069-A2D8-08002B30309D}",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【デスクトップにPCアイコンを表示】\n\nCLSID {20D04FE0-3AEA-1069-A2D8-08002B30309D} の値でPCアイコンの表示を制御する。\n\n■ 値の意味\n  0 = 表示\n  1 = 非表示\n\n■ 確認方法\n  設定 → 個人用設定 → テーマ → デスクトップアイコンの設定 → 「コンピューター」",
+      "tags": "デスクトップ;PC;アイコン;CLSID"
+    },
+    {
+      "id": "000000c9",
+      "category": "Desktop",
+      "title": "デスクトップにコントロールパネルアイコンを表示",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\HideDesktopIcons\\NewStartPanel",
+      "keyName": "{5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0}",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【デスクトップにコントロールパネルアイコンを表示】\n\nCLSID {5399E694-6CE5-4D6C-8FCE-1D8870FDCBA0} の値でコントロールパネルアイコンの表示を制御する。\n\n■ 値の意味\n  0 = 表示\n  1 = 非表示\n\n■ 確認方法\n  設定 → 個人用設定 → テーマ → デスクトップアイコンの設定 → 「コントロールパネル」",
+      "tags": "デスクトップ;コントロールパネル;アイコン;CLSID"
+    },
+    {
+      "id": "000000ca",
+      "category": "Desktop",
+      "title": "デスクトップにユーザーのファイルアイコンを表示",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\HideDesktopIcons\\NewStartPanel",
+      "keyName": "{59031a47-3f72-44a7-89c5-5595fe6b30ee}",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【デスクトップにユーザーのファイルアイコンを表示】\n\nCLSID {59031a47-3f72-44a7-89c5-5595fe6b30ee} の値でユーザーのファイルアイコンの表示を制御する。\n\n■ 値の意味\n  0 = 表示\n  1 = 非表示\n\n■ 確認方法\n  設定 → 個人用設定 → テーマ → デスクトップアイコンの設定 → 「ユーザーのファイル」",
+      "tags": "デスクトップ;ユーザーのファイル;アイコン;CLSID"
+    },
+    {
+      "id": "000000cb",
+      "category": "Desktop",
+      "title": "デスクトップにネットワークアイコンを表示",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\HideDesktopIcons\\NewStartPanel",
+      "keyName": "{F02C1A0D-BE21-4350-88B0-7367FC96EF3C}",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【デスクトップにネットワークアイコンを表示】\n\nCLSID {F02C1A0D-BE21-4350-88B0-7367FC96EF3C} の値でネットワークアイコンの表示を制御する。\n\n■ 値の意味\n  0 = 表示\n  1 = 非表示\n\n■ 確認方法\n  設定 → 個人用設定 → テーマ → デスクトップアイコンの設定 → 「ネットワーク」",
+      "tags": "デスクトップ;ネットワーク;アイコン;CLSID"
     }
   ]
 }
