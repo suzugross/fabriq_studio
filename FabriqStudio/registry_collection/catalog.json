@@ -2412,6 +2412,42 @@
       "value": "0",
       "description": "【デスクトップにネットワークアイコンを表示】\n\nCLSID {F02C1A0D-BE21-4350-88B0-7367FC96EF3C} の値でネットワークアイコンの表示を制御する。\n\n■ 値の意味\n  0 = 表示\n  1 = 非表示\n\n■ 確認方法\n  設定 → 個人用設定 → テーマ → デスクトップアイコンの設定 → 「ネットワーク」",
       "tags": "デスクトップ;ネットワーク;アイコン;CLSID"
+    },
+    {
+      "id": "000000cc",
+      "category": "Applications",
+      "title": "Edgeデスクトップショートカットの自動作成を抑止",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\EdgeUpdate",
+      "keyName": "CreateDesktopShortcutDefault",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【Edgeデスクトップショートカットの自動作成を抑止】\n\nCreateDesktopShortcutDefault = 0 に設定し、Edge更新時にデスクトップショートカットが自動作成されるのを防止する。\n\n■ 値の意味\n  0 = ショートカットを作成しない\n  1 = ショートカットを作成する\n\n■ 注意事項\n  Edge 本体のポリシー（Policies\\Microsoft\\Edge）ではなく、\n  EdgeUpdate のポリシーである点に注意。\n  既に作成済みのショートカットは削除されないため、\n  既存分の削除には RemoveDesktopShortcutDefault = 1 を併用する。\n\n■ 旧キーとの違い\n  HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer の\n  DisableEdgeDesktopShortcutCreation は旧 Edge Legacy（非Chromium版）向けであり、\n  Chromium ベースの Edge（Windows 11 25H2 等）には効果がない。",
+      "tags": "Edge;EdgeUpdate;デスクトップ;ショートカット;ポリシー"
+    },
+    {
+      "id": "000000cd",
+      "category": "Applications",
+      "title": "Edgeデスクトップショートカットの既存分を削除",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\EdgeUpdate",
+      "keyName": "RemoveDesktopShortcutDefault",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【Edgeデスクトップショートカットの既存分を削除】\n\nRemoveDesktopShortcutDefault = 1 に設定し、既存のEdgeデスクトップショートカットを削除する。\n\n■ 値の意味\n  0 = 削除しない（既定値）\n  1 = 既存ショートカットを削除\n\n■ 備考\n  CreateDesktopShortcutDefault = 0 と併用することで、\n  既存ショートカットの削除と新規作成の抑止を同時に行える。\n  設定後は再起動で反映される。",
+      "tags": "Edge;EdgeUpdate;デスクトップ;ショートカット;ポリシー"
+    },
+    {
+      "id": "000000ce",
+      "category": "Desktop",
+      "title": "デスクトップスポットライトの有効フラグをオフにする",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\DesktopSpotlight\\Settings",
+      "keyName": "EnabledState",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【デスクトップスポットライトの有効フラグをオフにする】\n\nEnabledState = 0 に設定し、Desktop Spotlight（デスクトップの壁紙自動切り替え）の有効フラグをオフにする。\n\n■ 値の意味\n  0 = フラグオフ（スポットライト非適用状態）\n  1 = フラグオン（スポットライト適用状態）\n\n■ ポリシー無効化との違い\n  本キーはユーザー設定レベルの有効フラグを外すだけであり、\n  機能自体を強制無効化するものではない。ユーザーは設定画面から\n  再度スポットライトを有効にすることができる。\n  ポリシーによる完全無効化が必要な場合は\n  DisableWindowsSpotlightFeatures（HKCU\\Policies\\CloudContent）を使用すること。\n\n■ キッティングでの用途\n  OSセットアップ後にデスクトップ背景が自動的にスポットライト画像に\n  切り替わるのを防ぎ、指定した壁紙を維持する目的で使用する。",
+      "tags": "デスクトップ;スポットライト;Spotlight;壁紙;DesktopSpotlight"
     }
   ]
 }
