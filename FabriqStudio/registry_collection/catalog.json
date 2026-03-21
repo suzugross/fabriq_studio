@@ -2448,6 +2448,18 @@
       "value": "0",
       "description": "【デスクトップスポットライトの有効フラグをオフにする】\n\nEnabledState = 0 に設定し、Desktop Spotlight（デスクトップの壁紙自動切り替え）の有効フラグをオフにする。\n\n■ 値の意味\n  0 = フラグオフ（スポットライト非適用状態）\n  1 = フラグオン（スポットライト適用状態）\n\n■ ポリシー無効化との違い\n  本キーはユーザー設定レベルの有効フラグを外すだけであり、\n  機能自体を強制無効化するものではない。ユーザーは設定画面から\n  再度スポットライトを有効にすることができる。\n  ポリシーによる完全無効化が必要な場合は\n  DisableWindowsSpotlightFeatures（HKCU\\Policies\\CloudContent）を使用すること。\n\n■ キッティングでの用途\n  OSセットアップ後にデスクトップ背景が自動的にスポットライト画像に\n  切り替わるのを防ぎ、指定した壁紙を維持する目的で使用する。",
       "tags": "デスクトップ;スポットライト;Spotlight;壁紙;DesktopSpotlight"
+    },
+    {
+      "id": "000000cf",
+      "category": "System",
+      "title": "通常使うプリンターの自動切り替えを無効化",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows NT\\CurrentVersion\\Windows",
+      "keyName": "LegacyDefaultPrinterMode",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【通常使うプリンターの自動切り替えを無効化】\n\nLegacyDefaultPrinterMode = 1 に設定し、「Windowsで通常使うプリンターを管理する」をオフにする。\n\n■ 値の意味\n  0 = 最後に使ったプリンターを通常使うプリンターに自動設定する（既定値）\n  1 = 自動切り替えを無効化し、ユーザーが手動設定したプリンターを固定する\n\n■ 効果\n  設定 → Bluetooth とデバイス → プリンターとスキャナー →\n  「Windowsで通常使うプリンターを管理する」をオフにした状態と同等。\n\n■ キッティングでの用途\n  業務端末で特定のプリンターを通常使うプリンターとして固定し、\n  場所移動や別プリンターの一時使用で意図せず切り替わるのを防ぐ。",
+      "tags": "プリンター;通常使うプリンター;LegacyDefaultPrinterMode;印刷"
     }
   ]
 }
