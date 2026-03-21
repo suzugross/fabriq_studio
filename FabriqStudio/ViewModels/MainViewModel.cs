@@ -112,7 +112,8 @@ public partial class MainViewModel : ObservableObject
         WeakReferenceMessenger.Default.Register<ShowModuleDetailMessage>(this, (_, msg) =>
         {
             var dir = msg.Value.ModuleDir ?? "";
-            if (dir.Contains("app_config", StringComparison.OrdinalIgnoreCase))
+            var dirName = Path.GetFileName(dir.TrimEnd('\\', '/'));
+            if (dirName.Equals("app_config", StringComparison.OrdinalIgnoreCase))
             {
                 _appConfigVm.Load(msg.Value);
                 CurrentPage = _appConfigVm;
