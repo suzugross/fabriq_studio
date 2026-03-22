@@ -2460,6 +2460,78 @@
       "value": "1",
       "description": "【通常使うプリンターの自動切り替えを無効化】\n\nLegacyDefaultPrinterMode = 1 に設定し、「Windowsで通常使うプリンターを管理する」をオフにする。\n\n■ 値の意味\n  0 = 最後に使ったプリンターを通常使うプリンターに自動設定する（既定値）\n  1 = 自動切り替えを無効化し、ユーザーが手動設定したプリンターを固定する\n\n■ 効果\n  設定 → Bluetooth とデバイス → プリンターとスキャナー →\n  「Windowsで通常使うプリンターを管理する」をオフにした状態と同等。\n\n■ キッティングでの用途\n  業務端末で特定のプリンターを通常使うプリンターとして固定し、\n  場所移動や別プリンターの一時使用で意図せず切り替わるのを防ぐ。",
       "tags": "プリンター;通常使うプリンター;LegacyDefaultPrinterMode;印刷"
+    },
+    {
+      "id": "000000d0",
+      "category": "Applications",
+      "title": "Edge IEモードを有効化",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge",
+      "keyName": "InternetExplorerIntegrationLevel",
+      "type": "REG_DWORD",
+      "value": "2",
+      "description": "【Edge IEモードを有効化】\n\nInternetExplorerIntegrationLevel = 2 に設定し、EdgeのIEモード（Internet Explorerモード）を有効化する。\n\n■ 値の意味\n  0 = 無効（既定値）\n  1 = IEモードテスト\n  2 = IEモード有効化\n\n■ 注意事項\n  本設定だけではIEモードでの再読み込みが許可されない。\n  InternetExplorerIntegrationReloadInIEModeAllowed = 1 と併用すること。\n\n■ キッティングでの用途\n  IE互換が必要な業務Webアプリへの対応に使用する。",
+      "tags": "Edge;IEモード;InternetExplorer;ポリシー"
+    },
+    {
+      "id": "000000d1",
+      "category": "Applications",
+      "title": "Edge IEモードでの再読み込みを許可",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge",
+      "keyName": "InternetExplorerIntegrationReloadInIEModeAllowed",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【Edge IEモードでの再読み込みを許可】\n\nInternetExplorerIntegrationReloadInIEModeAllowed = 1 に設定し、EdgeでサイトをIEモードで再読み込みすることを許可する。\n\n■ 値の意味\n  0 = 許可しない（既定値）\n  1 = 許可する\n\n■ 注意事項\n  InternetExplorerIntegrationLevel = 2 と併用すること。\n  両方を設定しないとIEモードは機能しない。",
+      "tags": "Edge;IEモード;InternetExplorer;ポリシー"
+    },
+    {
+      "id": "000000d2",
+      "category": "Applications",
+      "title": "Edgeのポップアップブロックを無効化",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Microsoft\\Edge",
+      "keyName": "DefaultPopupsSetting",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【Edgeのポップアップブロックを無効化】\n\nDefaultPopupsSetting = 1 に設定し、すべてのサイトでポップアップを許可する。\n\n■ 値の意味\n  1 = すべてのサイトでポップアップを許可\n  2 = すべてのサイトでポップアップをブロック\n\n■ 注意事項\n  全サイト許可はセキュリティリスクを伴う。\n  特定サイトのみ許可する場合は PopupsAllowedForUrls ポリシーの使用を推奨。",
+      "tags": "Edge;ポップアップ;ポリシー"
+    },
+    {
+      "id": "000000d3",
+      "category": "Applications",
+      "title": "Chromeのポップアップブロックを無効化",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome",
+      "keyName": "DefaultPopupsSetting",
+      "type": "REG_DWORD",
+      "value": "1",
+      "description": "【Chromeのポップアップブロックを無効化】\n\nDefaultPopupsSetting = 1 に設定し、すべてのサイトでポップアップを許可する。\n\n■ 値の意味\n  1 = すべてのサイトでポップアップを許可\n  2 = すべてのサイトでポップアップをブロック\n\n■ 注意事項\n  全サイト許可はセキュリティリスクを伴う。\n  特定サイトのみ許可する場合は PopupsAllowedForUrls ポリシーの使用を推奨。",
+      "tags": "Chrome;ポップアップ;ポリシー"
+    },
+    {
+      "id": "000000d4",
+      "category": "Network",
+      "title": "信頼済みサイトへのURL登録（サンプル: 192.168.0.1）",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\ZoneMap\\Domains\\192.168.0.1",
+      "keyName": "http",
+      "type": "REG_DWORD",
+      "value": "2",
+      "description": "【信頼済みサイトへのURL登録】\n\nZoneMap\\Domains 配下にドメインまたはIPのキーを作成し、プロトコル名の値にゾーン番号を設定することで信頼済みサイトに登録する。\n\n■ 値の意味（ゾーン番号）\n  1 = ローカルイントラネット\n  2 = 信頼済みサイト\n  3 = インターネット\n  4 = 制限付きサイト\n\n■ 値名はプロトコル\n  http = httpアクセス時に適用\n  https = httpsアクセス時に適用\n  * = すべてのプロトコルに適用\n\n■ 備考\n  IPアドレスやドメインは環境に応じて変更すること。\n  レジストリで直接登録する場合、インターネットオプションの\n  「サーバーの確認(https:)を必要とする」チェックの有無に関係なく登録が有効になる。",
+      "tags": "信頼済みサイト;ZoneMap;インターネットオプション;ゾーン"
+    },
+    {
+      "id": "000000d5",
+      "category": "Network",
+      "title": "信頼済みゾーンのポップアップブロックを無効化",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Zones\\2",
+      "keyName": "1809",
+      "type": "REG_DWORD",
+      "value": "3",
+      "description": "【信頼済みゾーンのポップアップブロックを無効化】\n\nZones\\2（信頼済みサイトゾーン）の値名 1809 でポップアップブロッカーを制御する。\n\n■ 値の意味\n  0 = ポップアップブロック有効\n  3 = ポップアップブロック無効（許可）\n\n■ 備考\n  値名 1809 はIEゾーンセキュリティ設定のポップアップブロッカー制御用の定義値。\n  信頼済みゾーンに登録されたサイトでのみポップアップが許可される。",
+      "tags": "信頼済みサイト;ポップアップ;インターネットオプション;ゾーン"
     }
   ]
 }
