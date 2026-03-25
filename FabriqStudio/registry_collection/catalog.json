@@ -2544,6 +2544,54 @@
       "value": "0",
       "description": "【電源オプションのスリープのチェックを外し、スタートメニューからスリープを非表示にする】\n\nFlyoutMenuSettings の ShowSleepOption = 0 に設定することで、コントロールパネル → 電源オプション → 「シャットダウン設定」の「スリープ」チェックボックスをオフにする。\nその結果、スタートメニューやWin+Xメニューの電源メニューからスリープの選択肢が非表示になる。\n\n■ 値の意味\n  0 = スリープのチェックを外す → スタートメニューからスリープが非表示になる\n  1 = スリープのチェックを入れる → スタートメニューにスリープが表示される（既定値）\n\n■ 備考\n  スリープ機能自体（蓋を閉じた時の動作等）を無効化するものではなく、電源メニュー上の選択肢の表示を制御する。\n  HKLM配下のためマシン全体（全ユーザー）に適用される。",
       "tags": "電源;スリープ;シャットダウン;FlyoutMenu;電源オプション"
+    },
+    {
+      "id": "000000d7",
+      "category": "Desktop",
+      "title": "スクリーンセーバーの有効化/無効化",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Control Panel\\Desktop",
+      "keyName": "ScreenSaveActive",
+      "type": "REG_SZ",
+      "value": "1",
+      "description": "【スクリーンセーバーの有効化/無効化】\n\nControl Panel\\Desktop の ScreenSaveActive でスクリーンセーバーの有効/無効を制御する。\n\n■ 値の意味\n  1 = スクリーンセーバー有効\n  0 = スクリーンセーバー無効\n\n■ 備考\n  型は REG_SZ（文字列）。REG_DWORDではない点に注意。",
+      "tags": "スクリーンセーバー;ScreenSaver;Desktop;ロック"
+    },
+    {
+      "id": "000000d8",
+      "category": "Desktop",
+      "title": "スクリーンセーバーの待ち時間（秒）",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Control Panel\\Desktop",
+      "keyName": "ScreenSaveTimeOut",
+      "type": "REG_SZ",
+      "value": "300",
+      "description": "【スクリーンセーバーの待ち時間（秒）】\n\nControl Panel\\Desktop の ScreenSaveTimeOut で、無操作からスクリーンセーバーが起動するまでの待ち時間を秒単位で指定する。\n\n■ 値の例\n  300 = 5分\n  600 = 10分\n  900 = 15分\n\n■ 備考\n  型は REG_SZ（文字列）。REG_DWORDではない点に注意。\n  ScreenSaveActive = 1 と併用すること。",
+      "tags": "スクリーンセーバー;ScreenSaver;タイムアウト;待ち時間"
+    },
+    {
+      "id": "000000d9",
+      "category": "Desktop",
+      "title": "スクリーンセーバー解除時にログオン画面に戻る",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Control Panel\\Desktop",
+      "keyName": "ScreenSaverIsSecure",
+      "type": "REG_SZ",
+      "value": "1",
+      "description": "【スクリーンセーバー解除時にログオン画面に戻る】\n\nControl Panel\\Desktop の ScreenSaverIsSecure で、スクリーンセーバー解除時にログオン画面（パスワード入力）を表示するかを制御する。\n\n■ 値の意味\n  1 = 再開時にログオン画面に戻る（チェックON）\n  0 = そのままデスクトップに戻る（チェックOFF）\n\n■ 備考\n  型は REG_SZ（文字列）。REG_DWORDではない点に注意。\n  「再開時にログオン画面に戻る」チェックボックスに対応する。",
+      "tags": "スクリーンセーバー;ScreenSaver;ロック;ログオン;セキュリティ"
+    },
+    {
+      "id": "000000da",
+      "category": "Desktop",
+      "title": "スクリーンセーバーの種類を指定する",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Control Panel\\Desktop",
+      "keyName": "SCRNSAVE.EXE",
+      "type": "REG_SZ",
+      "value": "",
+      "description": "【スクリーンセーバーの種類を指定する】\n\nControl Panel\\Desktop の SCRNSAVE.EXE でスクリーンセーバーの実行ファイルを指定する。\n\n■ 代表的な値\n  （空文字 or 未設定） = なし（ブランク）\n  C:\\Windows\\System32\\scrnsave.scr = ブランク\n  C:\\Windows\\System32\\Bubbles.scr = バブル\n  C:\\Windows\\System32\\Mystify.scr = ミスティファイ\n  C:\\Windows\\System32\\Ribbons.scr = リボン\n  C:\\Windows\\System32\\PhotoScreensaver.scr = 写真\n\n■ 備考\n  型は REG_SZ（文字列）。REG_DWORDではない点に注意。\n  空文字またはキー未設定の場合はスクリーンセーバーなし（ブランク）となる。",
+      "tags": "スクリーンセーバー;ScreenSaver;SCRNSAVE;種類"
     }
   ]
 }
