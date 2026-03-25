@@ -2592,6 +2592,30 @@
       "value": "",
       "description": "【スクリーンセーバーの種類を指定する】\n\nControl Panel\\Desktop の SCRNSAVE.EXE でスクリーンセーバーの実行ファイルを指定する。\n\n■ 代表的な値\n  （空文字 or 未設定） = なし（ブランク）\n  C:\\Windows\\System32\\scrnsave.scr = ブランク\n  C:\\Windows\\System32\\Bubbles.scr = バブル\n  C:\\Windows\\System32\\Mystify.scr = ミスティファイ\n  C:\\Windows\\System32\\Ribbons.scr = リボン\n  C:\\Windows\\System32\\PhotoScreensaver.scr = 写真\n\n■ 備考\n  型は REG_SZ（文字列）。REG_DWORDではない点に注意。\n  空文字またはキー未設定の場合はスクリーンセーバーなし（ブランク）となる。",
       "tags": "スクリーンセーバー;ScreenSaver;SCRNSAVE;種類"
+    },
+    {
+      "id": "000000db",
+      "category": "Desktop",
+      "title": "デスクトップのSpotlightアイコンを非表示にする",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Desktop\\NameSpace\\{2cc5ca98-6485-489a-920e-b3e88a6ccce3}",
+      "keyName": "(Default)",
+      "type": "REG_SZ",
+      "value": "",
+      "description": "【デスクトップのSpotlightアイコンを非表示にする】\n\nExplorer\\Desktop\\NameSpace 配下の CLSID {2cc5ca98-6485-489a-920e-b3e88a6ccce3} に空文字の既定値を登録することで、デスクトップに表示されるWindows Spotlightアイコン（「Windowsについて詳しく知る」等）を非表示にする。\n\n■ 設定方法\n  キー自体を作成し、既定値に空文字を設定する\n  reg add ... /f /ve /t REG_SZ /d \"\"\n\n■ 備考\n  Windows Spotlight機能自体を無効化するものではなく、デスクトップ上のアイコン表示のみを制御する。\n  CLSID {2cc5ca98-6485-489a-920e-b3e88a6ccce3} はWindows SpotlightのデスクトップNameSpace登録に対応する。",
+      "tags": "デスクトップ;Spotlight;アイコン;NameSpace;CLSID"
+    },
+    {
+      "id": "000000dc",
+      "category": "Desktop",
+      "title": "タスクバーの配置を左揃えにする",
+      "hive": "HKCU",
+      "keyPath": "HKEY_CURRENT_USER\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+      "keyName": "TaskbarAl",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【タスクバーの配置を左揃えにする】\n\nExplorer\\Advanced の TaskbarAl = 0 に設定することで、Windows 11のタスクバーアイコンの配置を中央揃えから左揃えに変更する。\n\n■ 値の意味\n  0 = 左揃え\n  1 = 中央揃え（Windows 11の既定値）\n\n■ 確認方法\n  設定 → 個人用設定 → タスクバー → タスクバーの動作 → 「タスクバーの配置」\n\n■ 備考\n  Windows 11専用の設定。Windows 10ではタスクバーは常に左揃えのためこのキーは存在しない。",
+      "tags": "タスクバー;配置;左揃え;TaskbarAl;Windows11"
     }
   ]
 }
