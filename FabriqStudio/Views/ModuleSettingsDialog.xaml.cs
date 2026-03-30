@@ -18,7 +18,8 @@ public partial class ModuleSettingsDialog : Window
         // モジュール種別に応じた VM インスタンスを生成
         // App.xaml の DataTemplate が VM 型に応じて自動的に正しい View をレンダリングする
         object vm;
-        if (dir.Contains("app_config", StringComparison.OrdinalIgnoreCase))
+        var dirName = System.IO.Path.GetFileName(dir.TrimEnd('\\', '/'));
+        if (dirName.Equals("app_config", StringComparison.OrdinalIgnoreCase))
         {
             var appVm = new AppConfigViewModel(
                 sp.GetRequiredService<IFileService>(),
