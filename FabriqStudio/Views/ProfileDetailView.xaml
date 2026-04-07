@@ -1,9 +1,15 @@
 <UserControl x:Class="FabriqStudio.Views.ProfileDetailView"
              x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:sys="clr-namespace:System;assembly=mscorlib">
 
     <UserControl.Resources>
+        <x:Array x:Key="ErrorModeOptions" Type="sys:String">
+            <sys:String>ask</sys:String>
+            <sys:String>skip</sys:String>
+            <sys:String>retry</sys:String>
+        </x:Array>
         <Style x:Key="SectionHeaderStyle" TargetType="TextBlock">
             <Setter Property="FontSize"   Value="12" />
             <Setter Property="FontWeight" Value="SemiBold" />
@@ -331,6 +337,10 @@
                             <DataGridTextColumn Header="メモ"
                                                 Binding="{Binding Note, UpdateSourceTrigger=LostFocus}"
                                                 Width="150" />
+                            <DataGridComboBoxColumn Header="エラー時"
+                                                    SelectedItemBinding="{Binding ErrorMode, UpdateSourceTrigger=LostFocus}"
+                                                    ItemsSource="{StaticResource ErrorModeOptions}"
+                                                    Width="80" />
                             <!-- ⚙ 設定ボタン（通常モジュールのみ表示） -->
                             <DataGridTemplateColumn Header="" Width="40">
                                 <DataGridTemplateColumn.CellTemplate>
