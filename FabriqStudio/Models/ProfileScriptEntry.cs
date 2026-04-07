@@ -18,8 +18,9 @@ public partial class ProfileScriptEntry : ObservableObject
     [NotifyPropertyChangedFor(nameof(IsEnabled))]
     private string _enabled     = "0";
     [ObservableProperty] private string _description = "";
-    [ObservableProperty] [property: Optional] private string _segment = "";
-    [ObservableProperty] [property: Optional] private string _note    = "";
+    [ObservableProperty] [property: Optional] private string _segment   = "";
+    [ObservableProperty] [property: Optional] private string _note      = "";
+    [ObservableProperty] [property: Optional] private string _errorMode = "";
 
     /// <summary>
     /// Enabled ("0"/"1") の bool ラッパー。CheckBox バインド用。
