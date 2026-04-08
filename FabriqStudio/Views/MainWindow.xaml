@@ -4,7 +4,8 @@
         Title="fabriq studio"
         Height="700" Width="1100"
         MinHeight="500" MinWidth="800"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        WindowState="Maximized">
 
     <Window.Resources>
         <!-- ナビゲーションボタンのスタイル -->
