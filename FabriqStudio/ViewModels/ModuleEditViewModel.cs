@@ -30,6 +30,9 @@ public partial class ModuleEditViewModel : ObservableObject
     [ObservableProperty] private ObservableCollection<string> _categoryNames = [];
     [ObservableProperty] private string?                      _selectedCategoryName;
 
+    // ─── テキスト検索 ─────────────────────────────────────────────
+    [ObservableProperty] private string _filterText = "";
+
     // ─── 選択中モジュール（ダブルクリックで詳細遷移）─────────────
     [ObservableProperty] private ModuleMasterEntry? _selectedModule;
 
@@ -48,6 +51,7 @@ public partial class ModuleEditViewModel : ObservableObject
                 AllModules.Clear();
                 CategoryNames.Clear();
                 FilteredModules.Clear();
+                FilterText = "";
                 return;
             }
             _ = LoadAsync();
@@ -87,19 +91,36 @@ public partial class ModuleEditViewModel : ObservableObject
         }
     }
 
-    // ── カテゴリ選択変更時: FilteredModules を再構築 ──────────────
-    partial void OnSelectedCategoryNameChanged(string? value)
+    // ── カテゴリ選択変更時 ──────────────────────────────────────────
+    partial void OnSelectedCategoryNameChanged(string? value) => ApplyFilter();
+
+    // ── テキスト検索変更時 ───────────────────────────────────────
+    partial void OnFilterTextChanged(string value) => ApplyFilter();
+
+    // ── フィルタ適用（カテゴリ × テキスト検索の AND 条件）────────
+    private void ApplyFilter()
     {
-        var items = (value is null || value == "すべて")
-            ? AllModules
-            : (IEnumerable<ModuleMasterEntry>)AllModules.Where(m => m.Category == value);
+        IEnumerable<ModuleMasterEntry> items =
+            (SelectedCategoryName is null || SelectedCategoryName == "すべて")
+                ? AllModules
+                : AllModules.Where(m => m.Category == SelectedCategoryName);
+
+        if (!string.IsNullOrWhiteSpace(FilterText))
+        {
+            var f = FilterText.Trim();
+            items = items.Where(m =>
+                m.MenuName.Contains(f, StringComparison.OrdinalIgnoreCase) ||
+                m.Category.Contains(f, StringComparison.OrdinalIgnoreCase) ||
+                m.ModuleDir.Contains(f, StringComparison.OrdinalIgnoreCase));
+        }
+
         FilteredModules = new ObservableCollection<ModuleMasterEntry>(items);
     }
 
     // ── 全件ロード完了後: フィルタを同期 ─────────────────────────
     partial void OnAllModulesChanged(ObservableCollection<ModuleMasterEntry> value)
     {
-        OnSelectedCategoryNameChanged(SelectedCategoryName);
+        ApplyFilter();
     }
 
     /// <summary>DataGrid 行のダブルクリック時に呼び出す（CommandParameter = SelectedModule）</summary>
