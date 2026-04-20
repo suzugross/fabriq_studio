@@ -76,7 +76,6 @@ public partial class ProfileDetailViewModel : ObservableObject
     /// <summary>ドロップダウンに表示する特殊コマンドのマスター定義（fabriq 仕様準拠）</summary>
     public IReadOnlyList<SpecialCommandDef> SpecialCommands { get; } =
     [
-        new("__AUTOPILOT__",  "WaitSec=3"),
         new("__RESTART__",    "Restart"),
         new("__REEXPLORER__", "Restart Explorer"),
         new("__STOPLOG__",    "Stop Transcript"),
@@ -273,6 +272,26 @@ public partial class ProfileDetailViewModel : ObservableObject
         if (idx >= Modules.Count - 1) return;
         Modules.Move(idx, idx + 1);
         IsDirty = true;
+        MoveUpCommand.NotifyCanExecuteChanged();
+        MoveDownCommand.NotifyCanExecuteChanged();
+    }
+
+    // ─── ドラッグ&ドロップによる並べ替え ─────────────────────────
+    /// <summary>
+    /// D&amp;D の Drop 確定時に <see cref="Helpers.DataGridRowDragDropBehavior"/> から呼ばれる。
+    /// ObservableCollection.Move 経由で <c>CollectionChanged</c> が発火し、
+    /// 既存の Dirty 検知ハンドラが自動で <c>IsDirty=true</c> にセットする。
+    /// </summary>
+    [RelayCommand]
+    private void MoveRow(RowMoveRequest? req)
+    {
+        if (req is null || IsLocked) return;
+        if (req.SourceIndex < 0 || req.SourceIndex >= Modules.Count) return;
+        if (req.TargetIndex < 0 || req.TargetIndex >= Modules.Count) return;
+        if (req.SourceIndex == req.TargetIndex) return;
+
+        Modules.Move(req.SourceIndex, req.TargetIndex);
+        // ↑/↓ ボタンの CanExecute を再評価（選択行の位置が変わったため）
         MoveUpCommand.NotifyCanExecuteChanged();
         MoveDownCommand.NotifyCanExecuteChanged();
     }

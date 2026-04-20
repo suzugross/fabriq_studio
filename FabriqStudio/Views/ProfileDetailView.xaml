@@ -2,7 +2,8 @@
              x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:sys="clr-namespace:System;assembly=mscorlib">
+             xmlns:sys="clr-namespace:System;assembly=mscorlib"
+             xmlns:helpers="clr-namespace:FabriqStudio.Helpers">
 
     <UserControl.Resources>
         <x:Array x:Key="ErrorModeOptions" Type="sys:String">
@@ -283,7 +284,9 @@
                                 Margin="0,0,6,0" />
                     </DockPanel>
 
-                    <!-- プロファイル DataGrid -->
+                    <!-- プロファイル DataGrid
+                         - DataGridRowDragDropBehavior で行の D&D 並べ替えを有効化
+                         - IsLocked=True 時は IsEnabled=False で D&D 抑止 -->
                     <DataGrid ItemsSource="{Binding Modules}"
                               SelectedItem="{Binding SelectedModule, Mode=TwoWay}"
                               IsReadOnly="{Binding IsLocked}"
@@ -295,7 +298,10 @@
                               CanUserSortColumns="False"
                               GridLinesVisibility="Horizontal"
                               BorderBrush="#DDDDDD" BorderThickness="1"
-                              SelectionMode="Single">
+                              SelectionMode="Single"
+                              helpers:DataGridRowDragDropBehavior.IsEnabled="{Binding IsLocked,
+                                  Converter={StaticResource InverseBooleanConverter}}"
+                              helpers:DataGridRowDragDropBehavior.MoveCommand="{Binding MoveRowCommand}">
                         <!--
                             DataGridCell のデフォルトスタイルは SystemColors のキーを参照して
                             選択時の背景色（Active=青 / Inactive=薄グレー）を決定する。
