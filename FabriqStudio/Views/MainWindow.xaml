@@ -266,6 +266,10 @@
                             Style="{StaticResource NavChildButtonStyle}"
                             Command="{Binding NavigateCommand}"
                             CommandParameter="RegistryCollection" />
+                    <Button Content="🖨  プリンタドライバ検出"
+                            Style="{StaticResource NavChildButtonStyle}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="PrinterDriverDetector" />
                 </StackPanel>
 
                 <!-- 下部: パスフレーズ設定 + フッター -->

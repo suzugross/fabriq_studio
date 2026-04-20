@@ -65,6 +65,10 @@
                 <views:RegistryCollectionView />
             </DataTemplate>
 
+            <DataTemplate DataType="{x:Type vm:PrinterDriverDetectorViewModel}">
+                <views:PrinterDriverDetectorView />
+            </DataTemplate>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>
