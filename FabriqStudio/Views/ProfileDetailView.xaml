@@ -265,14 +265,20 @@
                                 Command="{Binding ImportProfileCommand}"
                                 Padding="8,3" FontSize="11" Cursor="Hand"
                                 Margin="0,0,6,0" />
+                        <!--
+                            Focusable=False: 移動ボタン押下時にフォーカスを DataGrid に留め、
+                            Selector.IsSelectionActive=True を維持する（選択色が薄くならない対策）。
+                        -->
                         <Button DockPanel.Dock="Right"
                                 Content="↓"
                                 Command="{Binding MoveDownCommand}"
+                                Focusable="False"
                                 Padding="8,3" FontSize="11" Cursor="Hand"
                                 Margin="0,0,4,0" />
                         <Button DockPanel.Dock="Right"
                                 Content="↑"
                                 Command="{Binding MoveUpCommand}"
+                                Focusable="False"
                                 Padding="8,3" FontSize="11" Cursor="Hand"
                                 Margin="0,0,6,0" />
                     </DockPanel>
@@ -290,6 +296,19 @@
                               GridLinesVisibility="Horizontal"
                               BorderBrush="#DDDDDD" BorderThickness="1"
                               SelectionMode="Single">
+                        <!--
+                            DataGridCell のデフォルトスタイルは SystemColors のキーを参照して
+                            選択時の背景色（Active=青 / Inactive=薄グレー）を決定する。
+                            この DataGrid のスコープ内で両キーを同じ色にオーバーライドすることで、
+                            移動ボタン押下・D&D・他コントロールへのフォーカス移動時でも
+                            選択行のハイライトが常に同じ濃い色で維持される。
+                        -->
+                        <DataGrid.Resources>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"                  Color="#3399FF" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#3399FF" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}"              Color="White"   />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White" />
+                        </DataGrid.Resources>
                         <!-- AlternatingRowBackground は SpecialMarkerToBackgroundConverter と競合するため使用しない -->
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
@@ -307,6 +326,18 @@
                                         <Setter Property="Foreground" Value="#999999" />
                                         <Setter Property="Opacity"    Value="0.6" />
                                     </DataTrigger>
+                                    <!--
+                                        選択行のハイライト（IsSelectionActive 非依存）。
+                                        移動ボタンクリックや将来の D&D 操作でフォーカスが DataGrid から外れても、
+                                        選択行が視覚的に常に明確に識別できるようにする。
+                                        後勝ちの原則で IsEnabled=False DataTrigger より後に配置し、
+                                        無効化+選択の組み合わせでも選択色を優先させる。
+                                    -->
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#3399FF" />
+                                        <Setter Property="Foreground" Value="White" />
+                                        <Setter Property="Opacity"    Value="1.0" />
+                                    </Trigger>
                                 </Style.Triggers>
                             </Style>
                         </DataGrid.RowStyle>

@@ -167,6 +167,17 @@
                               CanUserSortColumns="False"
                               GridLinesVisibility="Horizontal"
                               BorderBrush="#DDDDDD" BorderThickness="1">
+                        <!--
+                            DataGridCell のデフォルトスタイルが参照する SystemColors キーをオーバーライドし、
+                            フォーカス状態（IsSelectionActive）に関わらず選択行を同じ濃い色で表示する。
+                            ProfileDetailView と共通の方針。
+                        -->
+                        <DataGrid.Resources>
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}"                  Color="#3399FF" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightBrushKey}" Color="#3399FF" />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}"              Color="White"   />
+                            <SolidColorBrush x:Key="{x:Static SystemColors.InactiveSelectionHighlightTextBrushKey}" Color="White" />
+                        </DataGrid.Resources>
                         <!-- AlternatingRowBackground は SpecialMarkerToBackgroundConverter と競合するため使用しない -->
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
@@ -184,6 +195,16 @@
                                         <Setter Property="Foreground" Value="#999999" />
                                         <Setter Property="Opacity"    Value="0.6" />
                                     </DataTrigger>
+                                    <!--
+                                        選択行のハイライト（IsSelectionActive 非依存）。
+                                        フォーカスが DataGrid 外にあっても選択行が常に明確に識別できるようにする。
+                                        ProfileDetailView と共通のルール。
+                                    -->
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Background" Value="#3399FF" />
+                                        <Setter Property="Foreground" Value="White" />
+                                        <Setter Property="Opacity"    Value="1.0" />
+                                    </Trigger>
                                 </Style.Triggers>
                             </Style>
                         </DataGrid.RowStyle>
