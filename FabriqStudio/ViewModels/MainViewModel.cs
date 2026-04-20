@@ -27,6 +27,7 @@ public partial class MainViewModel : ObservableObject
     private readonly DigitalGyotaqEditorViewModel     _gyotaqEditorVm;
     private readonly WelcomeViewModel                 _welcomeVm;
     private readonly RegistryCollectionViewModel      _registryCollectionVm;
+    private readonly PrinterDriverDetectorViewModel   _printerDriverDetectorVm;
     private readonly IWorkspaceService                _workspace;
     private readonly ICryptoService                   _crypto;
 
@@ -55,23 +56,25 @@ public partial class MainViewModel : ObservableObject
         DigitalGyotaqEditorViewModel      gyotaqEditorVm,
         WelcomeViewModel                  welcomeVm,
         RegistryCollectionViewModel       registryCollectionVm,
+        PrinterDriverDetectorViewModel    printerDriverDetectorVm,
         IWorkspaceService                 workspace,
         ICryptoService                    crypto)
     {
-        _basicParamsVm        = basicParamsVm;
-        _moduleEditVm         = moduleEditVm;
-        _hostListVm           = hostListVm;
-        _hostDetailVm         = hostDetailVm;
-        _moduleDetailVm       = moduleDetailVm;
-        _appConfigVm          = appConfigVm;
-        _profileDetailVm      = profileDetailVm;
-        _autokeyEditorVm      = autokeyEditorVm;
-        _looperEditorVm       = looperEditorVm;
-        _gyotaqEditorVm       = gyotaqEditorVm;
-        _welcomeVm            = welcomeVm;
-        _registryCollectionVm = registryCollectionVm;
-        _workspace            = workspace;
-        _crypto               = crypto;
+        _basicParamsVm           = basicParamsVm;
+        _moduleEditVm            = moduleEditVm;
+        _hostListVm              = hostListVm;
+        _hostDetailVm            = hostDetailVm;
+        _moduleDetailVm          = moduleDetailVm;
+        _appConfigVm             = appConfigVm;
+        _profileDetailVm         = profileDetailVm;
+        _autokeyEditorVm         = autokeyEditorVm;
+        _looperEditorVm          = looperEditorVm;
+        _gyotaqEditorVm          = gyotaqEditorVm;
+        _welcomeVm               = welcomeVm;
+        _registryCollectionVm    = registryCollectionVm;
+        _printerDriverDetectorVm = printerDriverDetectorVm;
+        _workspace               = workspace;
+        _crypto                  = crypto;
 
         // ── 初期表示: ワークスペースが開いていればメイン画面、未設定なら WelcomeView ──
         IsWorkspaceOpen = workspace.IsOpen;
@@ -149,14 +152,15 @@ public partial class MainViewModel : ObservableObject
     {
         CurrentPage = page switch
         {
-            "BasicParams"        => (object)_basicParamsVm,
-            "ModuleEdit"         => _moduleEditVm,
-            "HostList"           => _hostListVm,
-            "AutokeyEditor"      => _autokeyEditorVm,
-            "LooperEditor"       => _looperEditorVm,
-            "GyotaqEditor"       => _gyotaqEditorVm,
-            "RegistryCollection" => _registryCollectionVm,
-            _                    => CurrentPage
+            "BasicParams"            => (object)_basicParamsVm,
+            "ModuleEdit"             => _moduleEditVm,
+            "HostList"               => _hostListVm,
+            "AutokeyEditor"          => _autokeyEditorVm,
+            "LooperEditor"           => _looperEditorVm,
+            "GyotaqEditor"           => _gyotaqEditorVm,
+            "RegistryCollection"     => _registryCollectionVm,
+            "PrinterDriverDetector"  => _printerDriverDetectorVm,
+            _                        => CurrentPage
         };
     }
 
