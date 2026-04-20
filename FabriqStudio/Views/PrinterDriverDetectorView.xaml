@@ -40,40 +40,49 @@
         <!-- ===== スキャン入力行 ===== -->
         <Border Grid.Row="1" Style="{StaticResource SectionBorderStyle}"
                 Margin="16,0,16,8">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-                <TextBlock Grid.Column="0"
-                           Text="スキャン先:"
-                           FontSize="12" Foreground="#555555"
-                           VerticalAlignment="Center"
-                           Margin="0,0,8,0" />
+                    <TextBlock Grid.Column="0"
+                               Text="スキャン先:"
+                               FontSize="12" Foreground="#555555"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0" />
 
-                <TextBox Grid.Column="1"
-                         Text="{Binding ScanPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                         FontSize="12" Padding="6,5"
-                         VerticalContentAlignment="Center"
-                         BorderBrush="#CCCCCC" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding ScanPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             FontSize="12" Padding="6,5"
+                             VerticalContentAlignment="Center"
+                             BorderBrush="#CCCCCC" />
 
-                <Button Grid.Column="2"
-                        Content="📂 選択"
-                        Command="{Binding BrowseCommand}"
-                        Padding="10,5" FontSize="12" Cursor="Hand"
-                        Margin="6,0,0,0" />
+                    <Button Grid.Column="2"
+                            Content="📂 選択"
+                            Command="{Binding BrowseCommand}"
+                            Padding="10,5" FontSize="12" Cursor="Hand"
+                            Margin="6,0,0,0" />
 
-                <Button Grid.Column="3"
-                        Content="🔄 スキャン"
-                        Command="{Binding ScanCommand}"
-                        Background="#007ACC" Foreground="White"
-                        BorderThickness="0"
-                        Padding="14,5" FontSize="12" Cursor="Hand"
-                        Margin="6,0,0,0" />
-            </Grid>
+                    <Button Grid.Column="3"
+                            Content="🔄 スキャン"
+                            Command="{Binding ScanCommand}"
+                            Background="#007ACC" Foreground="White"
+                            BorderThickness="0"
+                            Padding="14,5" FontSize="12" Cursor="Hand"
+                            Margin="6,0,0,0" />
+                </Grid>
+
+                <!-- オプション行: 自動展開チェック -->
+                <CheckBox Content="📦 EXE/ZIP を自動展開（workspace の tools/7z.exe を使用。無ければ ZIP は組込みで展開）"
+                          IsChecked="{Binding AutoExtractArchives, Mode=TwoWay}"
+                          FontSize="11" Foreground="#555555"
+                          Margin="0,8,0,0"
+                          VerticalAlignment="Center" />
+            </StackPanel>
         </Border>
 
         <!-- ===== 結果テーブル ===== -->
@@ -105,11 +114,19 @@
                                Visibility="{Binding IsScanning,
                                    Converter={StaticResource BoolToVisibilityConverter}}" />
 
-                    <!-- 右: 選択行のコピー -->
+                    <!-- 右: 選択行を printer_driver_list.csv にエクスポート / クリップボードへコピー -->
+                    <Button DockPanel.Dock="Right"
+                            Content="➕ printer_driver_list.csv に追加"
+                            Command="{Binding ExportCommand}"
+                            ToolTip="選択行の DriverName を workspace の printer_driver_list.csv に追記します"
+                            Padding="10,4" FontSize="11" Cursor="Hand"
+                            Background="#107C10" Foreground="White"
+                            BorderThickness="0" />
                     <Button DockPanel.Dock="Right"
                             Content="📋 DriverName をコピー"
                             Command="{Binding CopyDriverNameCommand}"
-                            Padding="10,4" FontSize="11" Cursor="Hand" />
+                            Padding="10,4" FontSize="11" Cursor="Hand"
+                            Margin="0,0,6,0" />
                 </DockPanel>
 
                 <!-- ドライバ一覧 -->
