@@ -57,6 +57,59 @@
                                FontSize="11" Foreground="#3050CC" />
                 </Border>
 
+                <!-- モジュールのフォルダをエクスプローラーで開く（ロック状態に依存せず常時有効）
+                     配色は Windows エクスプローラーのフォルダアイコンを模した黄色系 -->
+                <Button DockPanel.Dock="Left"
+                        Command="{Binding OpenInExplorerCommand}"
+                        ToolTip="このモジュールのフォルダをエクスプローラーで開く"
+                        Padding="10,4" FontSize="11"
+                        Foreground="#3A2F00"
+                        Cursor="Hand"
+                        VerticalAlignment="Center"
+                        Margin="12,0,0,0">
+                    <Button.Content>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="📂" FontSize="13" VerticalAlignment="Center" />
+                            <TextBlock Text="フォルダを開く" VerticalAlignment="Center" Margin="5,0,0,0" />
+                        </StackPanel>
+                    </Button.Content>
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="Bd"
+                                                Background="#FFE082"
+                                                BorderBrush="#D4A017"
+                                                BorderThickness="1"
+                                                CornerRadius="3"
+                                                Padding="{TemplateBinding Padding}">
+                                            <ContentPresenter HorizontalAlignment="Center"
+                                                              VerticalAlignment="Center" />
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#FFD54F" />
+                                                <Setter TargetName="Bd" Property="BorderBrush" Value="#BF8F00" />
+                                            </Trigger>
+                                            <Trigger Property="IsPressed" Value="True">
+                                                <Setter TargetName="Bd" Property="Background" Value="#FFC107" />
+                                                <Setter TargetName="Bd" Property="BorderBrush" Value="#A07800" />
+                                            </Trigger>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="Bd" Property="Background" Value="#F5F0DC" />
+                                                <Setter TargetName="Bd" Property="BorderBrush" Value="#CCCCCC" />
+                                                <Setter Property="Foreground" Value="#999999" />
+                                                <Setter Property="Cursor"     Value="Arrow" />
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                        </Style>
+                    </Button.Style>
+                </Button>
+
                 <!-- 右: ロック / 保存ボタン / ステータス / Dirty -->
                 <ToggleButton DockPanel.Dock="Right"
                               IsChecked="{Binding IsLocked}"

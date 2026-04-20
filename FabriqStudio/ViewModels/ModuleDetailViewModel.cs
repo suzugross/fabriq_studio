@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Data;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -35,7 +36,9 @@ public partial class ModuleDetailViewModel : ObservableObject
     private readonly ICryptoService               _crypto;
 
     // ─── モジュール情報 ───────────────────────────────────────────
-    [ObservableProperty] private ModuleMasterEntry? _module;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(OpenInExplorerCommand))]
+    private ModuleMasterEntry? _module;
 
     /// <summary>現在のモジュールがレジストリ設定モジュール（reg_hklm_config / reg_hkcu_config）か。</summary>
     [ObservableProperty]
@@ -238,6 +241,9 @@ public partial class ModuleDetailViewModel : ObservableObject
             _suppressCsvSwitch      = false;   // CSV 切り替えハンドラを再開
             _suppressModuleCsvDirty = false;
             HasModuleCsvChanges = false;
+
+            // 非 Observable な _moduleDir を参照する CanExecute を再評価させる
+            OpenInExplorerCommand.NotifyCanExecuteChanged();
         }
     }
 
@@ -584,6 +590,36 @@ public partial class ModuleDetailViewModel : ObservableObject
             }
         }
         return new BatchCryptoResult(processed, skipped, errors);
+    }
+
+    // ── フォルダをエクスプローラーで開く ────────────────────────────
+    /// <summary>
+    /// Module が未ロード、<c>_moduleDir</c> が未設定、または実フォルダが存在しない場合は無効。
+    /// CanExecute は <see cref="Module"/> の変更通知 + <c>LoadFilesAsync</c> 末尾の
+    /// 手動 <c>NotifyCanExecuteChanged</c> で追従する。
+    /// </summary>
+    private bool CanOpenInExplorer()
+        => Module is not null
+        && _moduleDir is not null
+        && Directory.Exists(_moduleDir);
+
+    [RelayCommand(CanExecute = nameof(CanOpenInExplorer))]
+    private void OpenInExplorer()
+    {
+        if (_moduleDir is null) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName        = "explorer.exe",
+                Arguments       = $"\"{_moduleDir}\"",
+                UseShellExecute = true,
+            });
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"エクスプローラー起動エラー: {ex.Message}";
+        }
     }
 
     [RelayCommand]
