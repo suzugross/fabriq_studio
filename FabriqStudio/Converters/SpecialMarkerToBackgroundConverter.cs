@@ -9,9 +9,8 @@ namespace FabriqStudio.Converters;
 /// 特殊マーカーの種別に応じた背景 Brush を返す IValueConverter。
 ///
 /// 色分け仕様:
-///   __AUTOPILOT__       → 淡い紫 (#E1D5E7)
-///   その他の __xxx__ 系 → 淡い青 (#DAE8FC)
-///   通常モジュール      → Transparent（DataGrid 既定の白背景）
+///   __xxx__ 系の特殊マーカー → 淡い青 (#DAE8FC)
+///   通常モジュール           → Transparent（DataGrid 既定の白背景）
 ///
 /// 注意: このコンバーターを DataGridRow.RowStyle の Background Setter に使用する場合、
 ///       DataGrid の AlternatingRowBackground と競合するため、AlternatingRowBackground は
@@ -20,9 +19,6 @@ namespace FabriqStudio.Converters;
 [ValueConversion(typeof(string), typeof(SolidColorBrush))]
 public class SpecialMarkerToBackgroundConverter : IValueConverter
 {
-    private static readonly SolidColorBrush AutopilotBrush =
-        new(Color.FromRgb(0xE1, 0xD5, 0xE7));   // 淡い紫
-
     private static readonly SolidColorBrush SystemCommandBrush =
         new(Color.FromRgb(0xDA, 0xE8, 0xFC));   // 淡い青
 
@@ -30,10 +26,6 @@ public class SpecialMarkerToBackgroundConverter : IValueConverter
     {
         if (value is not string scriptPath)
             return Brushes.Transparent;
-
-        // __AUTOPILOT__ のみ専用の紫色
-        if (scriptPath.Equals("__AUTOPILOT__", StringComparison.Ordinal))
-            return AutopilotBrush;
 
         // __ で始まり __ で終わる（__RESTART__, __PAUSE__ 等）→ 共通の青色
         if (scriptPath.StartsWith("__", StringComparison.Ordinal) &&
