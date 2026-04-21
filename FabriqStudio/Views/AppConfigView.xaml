@@ -292,10 +292,14 @@
                                Visibility="{Binding HasConfigCsv,
                                    Converter={StaticResource BoolToCollapsedConverter}}" />
 
-                    <!-- アプリ一覧 DataGrid: 明示的カラム定義 -->
-                    <DataGrid ItemsSource="{Binding ConfigCsvData.DefaultView}"
+                    <!-- アプリ一覧 DataGrid: 明示的カラム定義
+                         - Enabled 列は preset.csv の有無に応じて code-behind で動的差し替え
+                         - BeginningEdit: 暗号化セル(ENC:)の誤上書きを警告付きでブロック -->
+                    <DataGrid x:Name="AppConfigDataGrid"
+                              ItemsSource="{Binding ConfigCsvData.DefaultView}"
                               SelectedItem="{Binding SelectedCsvRow, Mode=TwoWay}"
                               AutoGenerateColumns="False"
+                              BeginningEdit="OnBeginningEdit"
                               IsReadOnly="{Binding IsLocked}"
                               CanUserAddRows="False"
                               CanUserDeleteRows="False"

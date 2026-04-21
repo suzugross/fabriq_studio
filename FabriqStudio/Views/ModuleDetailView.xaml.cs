@@ -20,6 +20,52 @@ public partial class ModuleDetailView : UserControl
             vm.MarkModuleCsvDirty();
     }
 
+    // ── プリセット対応: AutoGeneratingColumn で列をスワップ ─────────────────
+
+    /// <summary>
+    /// DataGrid の列自動生成時、preset.csv で候補が定義されている列は
+    /// <see cref="DataGridTemplateColumn"/>（ComboBox 編集）に差し替える。
+    /// </summary>
+    private void OnAutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
+    {
+        if (DataContext is not ModuleDetailViewModel vm) return;
+
+        var columnName = e.PropertyName;
+        if (string.IsNullOrEmpty(columnName)) return;
+
+        if (!vm.ColumnPresets.TryGetValue(columnName, out var presets)) return;
+        if (presets.Count == 0) return;
+
+        e.Column = PresetColumnFactory.Build(columnName, presets);
+    }
+
+    // ── プリセット対応: 暗号化セル(ENC:)の誤編集ガード ─────────────────────
+
+    /// <summary>
+    /// プリセット対象列で <c>ENC:</c> 値を編集しようとした際、警告を表示して編集をキャンセルする。
+    /// 復号は右クリック → 「🔓 セルを復号」から行う。
+    /// </summary>
+    private void OnBeginningEdit(object sender, DataGridBeginningEditEventArgs e)
+    {
+        if (DataContext is not ModuleDetailViewModel vm) return;
+
+        var columnName = e.Column?.Header?.ToString();
+        if (string.IsNullOrEmpty(columnName)) return;
+        if (!vm.ColumnPresets.ContainsKey(columnName)) return;
+
+        if (e.Row.Item is not DataRowView row) return;
+        var value = row[columnName]?.ToString() ?? "";
+        if (!value.StartsWith("ENC:", StringComparison.Ordinal)) return;
+
+        MessageBox.Show(
+            "このセルは暗号化されています。\n" +
+            "先に右クリック →「🔓 セルを復号」で復号してから編集してください。",
+            "編集不可",
+            MessageBoxButton.OK,
+            MessageBoxImage.Warning);
+        e.Cancel = true;
+    }
+
     // ── セル単位暗号化・復号 ──────────────────────────────────────
 
     private void EncryptCell_Click(object sender, RoutedEventArgs e)

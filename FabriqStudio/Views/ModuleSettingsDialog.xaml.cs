@@ -23,7 +23,8 @@ public partial class ModuleSettingsDialog : Window
         {
             var appVm = new AppConfigViewModel(
                 sp.GetRequiredService<IFileService>(),
-                sp.GetRequiredService<IWorkspaceService>());
+                sp.GetRequiredService<IWorkspaceService>(),
+                sp.GetRequiredService<IModulePresetService>());
             appVm.Load(module);
             vm = appVm;
         }
@@ -34,7 +35,8 @@ public partial class ModuleSettingsDialog : Window
                 sp.GetRequiredService<ICsvService>(),
                 sp.GetRequiredService<IWorkspaceService>(),
                 sp.GetRequiredService<IRegistryCollectionService>(),
-                sp.GetRequiredService<ICryptoService>());
+                sp.GetRequiredService<ICryptoService>(),
+                sp.GetRequiredService<IModulePresetService>());
             detailVm.Load(module);
             vm = detailVm;
         }
