@@ -443,11 +443,15 @@
                                Visibility="{Binding HasConfigCsv,
                                    Converter={StaticResource BoolToCollapsedConverter}}" />
 
-                    <!-- 汎用CSV DataGrid: IsReadOnly を IsLocked に連動 -->
+                    <!-- 汎用CSV DataGrid: IsReadOnly を IsLocked に連動
+                         AutoGeneratingColumn: preset.csv に該当列があれば TemplateColumn に差し替え
+                         BeginningEdit: 暗号化セル(ENC:)の誤上書きを警告付きでブロック -->
                     <DataGrid x:Name="ConfigDataGrid"
                               ItemsSource="{Binding ConfigCsvData.DefaultView}"
                               SelectedItem="{Binding SelectedCsvRow, Mode=TwoWay}"
                               AutoGenerateColumns="True"
+                              AutoGeneratingColumn="OnAutoGeneratingColumn"
+                              BeginningEdit="OnBeginningEdit"
                               IsReadOnly="{Binding IsLocked}"
                               CanUserAddRows="False"
                               CanUserDeleteRows="False"

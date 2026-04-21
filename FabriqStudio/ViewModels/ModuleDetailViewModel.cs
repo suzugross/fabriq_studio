@@ -34,6 +34,7 @@ public partial class ModuleDetailViewModel : ObservableObject
     private readonly IWorkspaceService            _workspace;
     private readonly IRegistryCollectionService   _registryCollection;
     private readonly ICryptoService               _crypto;
+    private readonly IModulePresetService         _presetService;
 
     // ─── モジュール情報 ───────────────────────────────────────────
     [ObservableProperty]
@@ -93,6 +94,13 @@ public partial class ModuleDetailViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     private bool _hasCsvChanges;
 
+    /// <summary>
+    /// 現在表示中の CSV に対して適用されるプリセット辞書（列名 → 候補値リスト）。
+    /// preset.csv が無いモジュールでは空の辞書。View 側の AutoGeneratingColumn で参照する。
+    /// </summary>
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> ColumnPresets { get; private set; }
+        = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
     // ─── module.csv メタ情報 ──────────────────────────────────────
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
@@ -124,13 +132,15 @@ public partial class ModuleDetailViewModel : ObservableObject
         ICsvService               csvService,
         IWorkspaceService         workspace,
         IRegistryCollectionService registryCollection,
-        ICryptoService             crypto)
+        ICryptoService             crypto,
+        IModulePresetService      presetService)
     {
         _fileService        = fileService;
         _csvService         = csvService;
         _workspace          = workspace;
         _registryCollection = registryCollection;
         _crypto             = crypto;
+        _presetService      = presetService;
     }
 
     /// <summary>View の TextChanged から呼ばれ、module.csv 変更フラグを立てる。</summary>
@@ -181,6 +191,7 @@ public partial class ModuleDetailViewModel : ObservableObject
         GuideText             = null;
         OriginalGuideText     = null;
         HasGuideText          = false;
+        ColumnPresets         = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
         ConfigCsvData         = new DataTable();
         HasConfigCsv          = false;
         HasCsvChanges         = false;
@@ -281,6 +292,7 @@ public partial class ModuleDetailViewModel : ObservableObject
         HasCsvChanges     = false;
         ConfigCsvFileName = null;
         _csvFilePath      = null;
+        ColumnPresets     = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
 
         if (SelectedConfigCsvFile is null || _moduleDir is null) return;
 
@@ -291,6 +303,10 @@ public partial class ModuleDetailViewModel : ObservableObject
             var table         = await _fileService.ReadCsvAsDataTableAsync(csvFile);
             HasConfigCsv      = table.Columns.Count > 0;
             ConfigCsvFileName = SelectedConfigCsvFile;
+
+            // preset.csv を同期ロード。ConfigCsvData 代入（= DataGrid 再生成）より前に
+            // 更新しておくことで、AutoGeneratingColumn 発火時に最新辞書が参照できる。
+            ColumnPresets = await _presetService.LoadAsync(_moduleDir);
 
             // AcceptChanges を先に呼び初期状態をクリーンにしてからイベント購読する。
             // 逆順だと AcceptChanges が RowChanged を発火し HasCsvChanges が即 true になる。
