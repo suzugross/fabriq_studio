@@ -462,6 +462,25 @@
                               BorderBrush="#DDDDDD" BorderThickness="1"
                               Visibility="{Binding HasConfigCsv,
                                   Converter={StaticResource BoolToVisibilityConverter}}">
+                        <!--
+                            Enabled=0 の行をグレーアウト（プロファイル編集画面と同パターン）。
+                            DataRowView へは indexer `[Enabled]` でアクセスし、セル値は文字列 "0"/"1"。
+                            IsSelected Trigger を後勝ちで置き、選択行は通常色で WPF 標準ハイライトを維持する。
+                        -->
+                        <DataGrid.RowStyle>
+                            <Style TargetType="DataGridRow">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding [Enabled]}" Value="0">
+                                        <Setter Property="Foreground" Value="#999999" />
+                                        <Setter Property="Opacity"    Value="0.6" />
+                                    </DataTrigger>
+                                    <Trigger Property="IsSelected" Value="True">
+                                        <Setter Property="Foreground" Value="Black" />
+                                        <Setter Property="Opacity"    Value="1.0" />
+                                    </Trigger>
+                                </Style.Triggers>
+                            </Style>
+                        </DataGrid.RowStyle>
                         <DataGrid.ContextMenu>
                             <ContextMenu>
                                 <MenuItem Header="🔒 セルを暗号化 (ENC:)" Click="EncryptCell_Click" />
