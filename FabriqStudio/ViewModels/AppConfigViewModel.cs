@@ -20,9 +20,8 @@ namespace FabriqStudio.ViewModels;
 /// </summary>
 public partial class AppConfigViewModel : ObservableObject
 {
-    private readonly IFileService         _fileService;
-    private readonly IWorkspaceService    _workspace;
-    private readonly IModulePresetService _presetService;
+    private readonly IFileService      _fileService;
+    private readonly IWorkspaceService _workspace;
 
     // ─── モジュール情報 ───────────────────────────────────────────
     [ObservableProperty] private ModuleMasterEntry? _module;
@@ -84,28 +83,12 @@ public partial class AppConfigViewModel : ObservableObject
     private string? _fileDirPath;
 
     public AppConfigViewModel(
-        IFileService         fileService,
-        IWorkspaceService    workspace,
-        IModulePresetService presetService)
+        IFileService      fileService,
+        IWorkspaceService workspace)
     {
-        _fileService   = fileService;
-        _workspace     = workspace;
-        _presetService = presetService;
+        _fileService = fileService;
+        _workspace   = workspace;
     }
-
-    /// <summary>
-    /// 現在表示中の app_list.csv に対して適用されるプリセット辞書（列名 → 候補値リスト）。
-    /// preset.csv が無い場合は空辞書。View 側で Enabled 列の動的差し替えに使用する。
-    /// </summary>
-    public IReadOnlyDictionary<string, IReadOnlyList<string>> ColumnPresets { get; private set; }
-        = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
-
-    /// <summary>
-    /// preset.csv のロードが完了したことを View に伝えるイベント。
-    /// <c>HasConfigCsv</c> プロパティ変更だけでは「preset も含めて準備完了」を表現できないため、
-    /// 読み込みパイプラインの末尾で明示発火させる。
-    /// </summary>
-    public event EventHandler? PresetsLoaded;
 
     /// <summary>選択されたモジュールを読み込む。</summary>
     public void Load(ModuleMasterEntry module)
@@ -124,7 +107,6 @@ public partial class AppConfigViewModel : ObservableObject
         GuideText         = null;
         OriginalGuideText = null;
         HasGuideText      = false;
-        ColumnPresets     = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
         ConfigCsvData     = new DataTable();
         HasConfigCsv      = false;
         HasCsvChanges     = false;
@@ -133,8 +115,6 @@ public partial class AppConfigViewModel : ObservableObject
         _csvFilePath      = null;
         _fileDirPath      = null;
 
-        // app_list.csv と preset.csv の両方が無い場合でも、View 側の差し替え/復元ロジックを
-        // 必ず走らせるため、finally で PresetsLoaded を 1 回だけ発火する。
         try
         {
             var root = _workspace.RootPath
@@ -153,6 +133,8 @@ public partial class AppConfigViewModel : ObservableObject
             HasGuideText      = guideText is not null;
 
             // ── module.csv 以外の CSV（1件目を動的表示対象）──────
+            // preset.csv は AppConfig の編集対象外（Enabled はチェックボックス、
+            // 他列は XAML 側で明示定義済みのため）
             if (Directory.Exists(moduleDir))
             {
                 var csvFile = Directory
@@ -165,9 +147,6 @@ public partial class AppConfigViewModel : ObservableObject
                         StringComparison.OrdinalIgnoreCase))
                     .OrderBy(f => f)
                     .FirstOrDefault();
-
-                // preset.csv は app_list.csv の有無に関わらず同じ moduleDir から読み込む
-                ColumnPresets = await _presetService.LoadAsync(moduleDir);
 
                 if (csvFile is not null)
                 {
@@ -190,7 +169,6 @@ public partial class AppConfigViewModel : ObservableObject
         finally
         {
             IsLoading = false;
-            PresetsLoaded?.Invoke(this, EventArgs.Empty);
         }
     }
 

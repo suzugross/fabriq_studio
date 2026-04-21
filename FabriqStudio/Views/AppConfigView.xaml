@@ -293,13 +293,10 @@
                                    Converter={StaticResource BoolToCollapsedConverter}}" />
 
                     <!-- アプリ一覧 DataGrid: 明示的カラム定義
-                         - Enabled 列は preset.csv の有無に応じて code-behind で動的差し替え
-                         - BeginningEdit: 暗号化セル(ENC:)の誤上書きを警告付きでブロック -->
-                    <DataGrid x:Name="AppConfigDataGrid"
-                              ItemsSource="{Binding ConfigCsvData.DefaultView}"
+                         - Enabled 列はチェックボックス（プロファイル編集画面と同パターン） -->
+                    <DataGrid ItemsSource="{Binding ConfigCsvData.DefaultView}"
                               SelectedItem="{Binding SelectedCsvRow, Mode=TwoWay}"
                               AutoGenerateColumns="False"
-                              BeginningEdit="OnBeginningEdit"
                               IsReadOnly="{Binding IsLocked}"
                               CanUserAddRows="False"
                               CanUserDeleteRows="False"
@@ -330,9 +327,23 @@
                             </Style>
                         </DataGrid.RowStyle>
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="有効"
-                                                Binding="{Binding Enabled}"
-                                                Width="50" />
+                            <!-- 「有効」列: string "0"/"1" と CheckBox の双方向バインド
+                                 プロファイル編集画面の「有効」列と同一パターン -->
+                            <DataGridTemplateColumn Header="有効" Width="50" SortMemberPath="Enabled">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <CheckBox HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  IsChecked="{Binding [Enabled],
+                                                      Mode=TwoWay,
+                                                      UpdateSourceTrigger=PropertyChanged,
+                                                      Converter={StaticResource StringOneToBoolConverter}}"
+                                                  IsHitTestVisible="{Binding DataContext.IsLocked,
+                                                      RelativeSource={RelativeSource AncestorType=DataGrid},
+                                                      Converter={StaticResource InverseBooleanConverter}}" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="アプリ名"
                                                 Binding="{Binding AppName}"
                                                 Width="160" />
