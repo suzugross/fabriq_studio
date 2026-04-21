@@ -20,11 +20,15 @@ public partial class ModuleDetailView : UserControl
             vm.MarkModuleCsvDirty();
     }
 
-    // ── プリセット対応: AutoGeneratingColumn で列をスワップ ─────────────────
+    // ── プリセット対応 / チェックボックス化: AutoGeneratingColumn で列をスワップ ───
 
     /// <summary>
-    /// DataGrid の列自動生成時、preset.csv で候補が定義されている列は
-    /// <see cref="DataGridTemplateColumn"/>（ComboBox 編集）に差し替える。
+    /// DataGrid の列自動生成時に列種別を差し替える。優先順位は以下：
+    /// <list type="number">
+    ///   <item><c>Enabled</c> 列: 常に CheckBox UI（preset.csv の設定より優先）</item>
+    ///   <item>preset.csv で候補が定義されている列: ComboBox UI</item>
+    ///   <item>それ以外: WPF 既定の <see cref="DataGridTextColumn"/>（自由記述）</item>
+    /// </list>
     /// </summary>
     private void OnAutoGeneratingColumn(object sender, DataGridAutoGeneratingColumnEventArgs e)
     {
@@ -33,6 +37,14 @@ public partial class ModuleDetailView : UserControl
         var columnName = e.PropertyName;
         if (string.IsNullOrEmpty(columnName)) return;
 
+        // ① Enabled 列: チェックボックス化（preset より常に優先）
+        if (string.Equals(columnName, "Enabled", StringComparison.OrdinalIgnoreCase))
+        {
+            e.Column = CheckBoxColumnFactory.Build(columnName);
+            return;
+        }
+
+        // ② preset.csv の候補列: ComboBox
         if (!vm.ColumnPresets.TryGetValue(columnName, out var presets)) return;
         if (presets.Count == 0) return;
 

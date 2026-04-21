@@ -23,8 +23,7 @@ public partial class ModuleSettingsDialog : Window
         {
             var appVm = new AppConfigViewModel(
                 sp.GetRequiredService<IFileService>(),
-                sp.GetRequiredService<IWorkspaceService>(),
-                sp.GetRequiredService<IModulePresetService>());
+                sp.GetRequiredService<IWorkspaceService>());
             appVm.Load(module);
             vm = appVm;
         }
