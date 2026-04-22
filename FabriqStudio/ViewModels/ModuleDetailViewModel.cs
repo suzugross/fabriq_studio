@@ -221,11 +221,15 @@ public partial class ModuleDetailViewModel : ObservableObject
 
             if (Directory.Exists(moduleDir))
             {
+                var excluded = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "module.csv",
+                    ModulePresetService.PresetFileName,
+                };
+
                 var csvNames = Directory
                     .GetFiles(moduleDir, "*.csv")
-                    .Where(f => !string.Equals(
-                        Path.GetFileName(f), "module.csv",
-                        StringComparison.OrdinalIgnoreCase))
+                    .Where(f => !excluded.Contains(Path.GetFileName(f)))
                     .OrderBy(f => f)
                     .Select(f => Path.GetFileName(f))
                     .ToList();
