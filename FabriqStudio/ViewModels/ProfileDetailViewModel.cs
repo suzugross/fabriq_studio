@@ -76,6 +76,8 @@ public partial class ProfileDetailViewModel : ObservableObject
     /// <summary>ドロップダウンに表示する特殊コマンドのマスター定義（fabriq 仕様準拠）</summary>
     public IReadOnlyList<SpecialCommandDef> SpecialCommands { get; } =
     [
+        new("__AUTOPILOT__",  "AutoPilot (Description=WaitSec=N)"),
+        new("__ASYNC__",      "Async runspace (since kernel 2.1.0)"),
         new("__RESTART__",    "Restart"),
         new("__REEXPLORER__", "Restart Explorer"),
         new("__STOPLOG__",    "Stop Transcript"),
