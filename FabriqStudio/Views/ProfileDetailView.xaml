@@ -214,18 +214,19 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Margin="2,3">
-                                    <TextBlock Text="{Binding MenuName}"
+                                    <TextBlock Text="{Binding DisplayName}"
                                                FontSize="11" FontWeight="SemiBold"
                                                TextTrimming="CharacterEllipsis" />
                                     <StackPanel Orientation="Horizontal">
-                                        <TextBlock Text="{Binding Kind}"
+                                        <TextBlock Text="{Binding KindLabel}"
                                                    FontSize="9" Foreground="#5C2D91"
                                                    Margin="0,0,6,0" />
                                         <TextBlock Text="{Binding Category}"
                                                    FontSize="9" Foreground="#888888"
                                                    Margin="0,0,6,0" />
-                                        <TextBlock Text="{Binding ModuleDir}"
-                                                   FontSize="9" Foreground="#AAAAAA" />
+                                        <TextBlock Text="{Binding SubText}"
+                                                   FontSize="9" Foreground="#AAAAAA"
+                                                   TextTrimming="CharacterEllipsis" />
                                     </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
