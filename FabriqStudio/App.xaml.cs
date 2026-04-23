@@ -53,6 +53,7 @@ public partial class App : Application
         services.AddSingleton<ICryptoService, CryptoService>();
         services.AddSingleton<IModulePresetService, ModulePresetService>();
         services.AddSingleton<IHostListExportService, HostListExportService>();
+        services.AddSingleton<IFabriqBackupService, FabriqBackupService>();
 
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();

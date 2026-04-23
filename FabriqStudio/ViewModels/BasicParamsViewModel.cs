@@ -8,15 +8,18 @@ using FabriqStudio.Helpers;
 using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
+using FabriqStudio.Views;
 
 namespace FabriqStudio.ViewModels;
 
 public partial class BasicParamsViewModel : ObservableObject
 {
-    private readonly ICsvService     _csvService;
-    private readonly IFileService    _fileService;
-    private readonly IProfileService _profileService;
-    private readonly ICryptoService  _crypto;
+    private readonly ICsvService          _csvService;
+    private readonly IFileService         _fileService;
+    private readonly IProfileService      _profileService;
+    private readonly ICryptoService       _crypto;
+    private readonly IWorkspaceService    _workspace;
+    private readonly IFabriqBackupService _backupService;
 
     [ObservableProperty] private ObservableCollection<WorkerEntry> _workers         = [];
     [ObservableProperty] private bool                              _isWorkersLoading;
@@ -85,12 +88,20 @@ public partial class BasicParamsViewModel : ObservableObject
     [ObservableProperty] private bool                                     _isModulesLoading;
     [ObservableProperty] private string?                                  _modulesError;
 
-    public BasicParamsViewModel(ICsvService csvService, IFileService fileService, IProfileService profileService, IWorkspaceService workspace, ICryptoService crypto)
+    public BasicParamsViewModel(
+        ICsvService          csvService,
+        IFileService         fileService,
+        IProfileService      profileService,
+        IWorkspaceService    workspace,
+        ICryptoService       crypto,
+        IFabriqBackupService backupService)
     {
         _csvService     = csvService;
         _fileService    = fileService;
         _profileService = profileService;
         _crypto         = crypto;
+        _workspace      = workspace;
+        _backupService  = backupService;
         workspace.WorkspaceChanged += (_, e) =>
         {
             if (e.NewPath is null) { ClearAll(); return; }
@@ -496,6 +507,49 @@ public partial class BasicParamsViewModel : ObservableObject
         {
             // バリデーション失敗・同名ファイル存在・IO エラーをフォーム内に表示
             CreateProfileError = ex.Message;
+        }
+    }
+
+    // ─── fabriq バックアップ ──────────────────────────────────────
+    /// <summary>
+    /// fabriq ディレクトリ構造を再現したバックアップコピーを作成する。
+    /// PS1 / バージョン管理ファイル / 各種ドキュメントを除外しつつ、
+    /// モジュール内の素材フォルダは丸ごと保存する。
+    /// </summary>
+    [RelayCommand]
+    private async Task BackupFabriqAsync()
+    {
+        if (!_workspace.IsOpen || _workspace.RootPath is null)
+        {
+            MessageBox.Show("ワークスペースが開かれていません。",
+                "バックアップ", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var dialog = FabriqBackupDialog.Show(_workspace.RootPath, Application.Current.MainWindow);
+        if (dialog is null) return;
+
+        try
+        {
+            var request = new FabriqBackupRequest(
+                _workspace.RootPath, dialog.ParentFolder, dialog.Memo);
+            var result = await _backupService.BackupAsync(request);
+
+            var summary = $"バックアップ完了\n\n" +
+                          $"出力先: {result.BackupFolderPath}\n" +
+                          $"コピー: {result.CopiedFileCount} ファイル ({result.TotalBytes:N0} bytes)\n" +
+                          $"除外  : {result.ExcludedFileCount} ファイル";
+            if (result.HasErrors)
+                summary += $"\n\n⚠ エラー {result.Errors.Count} 件（先頭数件）:\n" +
+                           string.Join("\n", result.Errors.Take(5));
+
+            MessageBox.Show(summary, "バックアップ", MessageBoxButton.OK,
+                result.HasErrors ? MessageBoxImage.Warning : MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"バックアップに失敗しました:\n{ex.Message}",
+                "バックアップエラー", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

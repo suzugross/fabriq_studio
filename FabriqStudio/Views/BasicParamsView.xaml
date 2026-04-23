@@ -452,6 +452,22 @@
                 </StackPanel>
             </Border>
 
+            <!-- ===== fabriq バックアップ ===== -->
+            <Border Style="{StaticResource SectionBorderStyle}">
+                <StackPanel>
+                    <TextBlock Text="fabriq バックアップ"
+                               Style="{StaticResource SectionHeaderStyle}" />
+                    <TextBlock Text="PS1 / バージョン管理ファイル等を除外し、ディレクトリ構造を再現したコピーを作成します（素材フォルダは丸ごと保存）"
+                               Style="{StaticResource PathLabelStyle}" />
+                    <Button Content="📦  バックアップ..."
+                            Command="{Binding BackupFabriqCommand}"
+                            HorizontalAlignment="Left"
+                            Padding="16,6" FontSize="12"
+                            Background="#00796B" Foreground="White"
+                            BorderThickness="0" Cursor="Hand" />
+                </StackPanel>
+            </Border>
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>
