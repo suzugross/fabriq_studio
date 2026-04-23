@@ -196,11 +196,21 @@
                         </TextBlock.Text>
                     </TextBlock>
 
-                    <!-- モジュール ListBox -->
+                    <!-- モジュール ListBox
+                         ItemContainerStyle + EventSetter で ListBoxItem の MouseDoubleClick を
+                         code-behind にフック（ListBox レベルの MouseBinding は ListBoxItem に
+                         イベントを消化されて発火しないため、item-level で拾う）。
+                         空領域ダブルクリックは ListBoxItem が存在しないため発火しない。 -->
                     <ListBox ItemsSource="{Binding FilteredModules}"
                              SelectedItem="{Binding SelectedAvailable, Mode=TwoWay}"
                              BorderBrush="#DDDDDD" BorderThickness="1"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <EventSetter Event="MouseDoubleClick"
+                                             Handler="ModuleItem_MouseDoubleClick" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <StackPanel Margin="2,3">
