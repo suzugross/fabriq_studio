@@ -10,6 +10,7 @@ using FabriqStudio.Helpers;
 using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
+using FabriqStudio.Views;
 
 namespace FabriqStudio.ViewModels;
 
@@ -19,9 +20,10 @@ namespace FabriqStudio.ViewModels;
 /// </summary>
 public partial class HostListViewModel : ObservableObject
 {
-    private readonly ICsvService    _csvService;
-    private readonly IFileService   _fileService;
-    private readonly ICryptoService _crypto;
+    private readonly ICsvService             _csvService;
+    private readonly IFileService            _fileService;
+    private readonly ICryptoService          _crypto;
+    private readonly IHostListExportService _exportService;
 
     [ObservableProperty] private ObservableCollection<HostEntry> _hosts        = [];
 
@@ -45,11 +47,17 @@ public partial class HostListViewModel : ObservableObject
     [ObservableProperty] private bool    _isLoading;
     [ObservableProperty] private string? _errorMessage;
 
-    public HostListViewModel(ICsvService csvService, IFileService fileService, IWorkspaceService workspace, ICryptoService crypto)
+    public HostListViewModel(
+        ICsvService             csvService,
+        IFileService            fileService,
+        IWorkspaceService       workspace,
+        ICryptoService          crypto,
+        IHostListExportService exportService)
     {
-        _csvService  = csvService;
-        _fileService = fileService;
-        _crypto      = crypto;
+        _csvService    = csvService;
+        _fileService   = fileService;
+        _crypto        = crypto;
+        _exportService = exportService;
         workspace.WorkspaceChanged += (_, e) =>
         {
             if (e.NewPath is null) { Hosts.Clear(); return; }
@@ -179,6 +187,74 @@ public partial class HostListViewModel : ObservableObject
         }
 
         IsDirty = true;
+    }
+
+    // ── 端末リスト エクスポート ──────────────────────────────────
+    /// <summary>
+    /// 現在表示中の端末一覧をタイムスタンプ付きフォルダへ書き出す。
+    /// 変更は UI の Hosts に反映されない（クローンで出力するため）。
+    /// ロック状態に関わらず実行可（読み取り専用操作）。
+    /// </summary>
+    [RelayCommand]
+    private async Task ExportHostListAsync()
+    {
+        if (Hosts.Count == 0)
+        {
+            MessageBox.Show("端末データがありません。", "エクスポート",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var encryptedCells = CountEncryptedCells();
+        var dialog = HostListExportDialog.Show(
+            Hosts.Count, encryptedCells, _crypto.HasPassphrase,
+            Application.Current.MainWindow);
+
+        if (dialog is null) return;
+
+        try
+        {
+            var request = new HostListExportRequest(
+                Hosts.ToList(), dialog.ParentFolder, dialog.Memo, dialog.Decrypt);
+            var result  = await _exportService.ExportAsync(request);
+
+            var summary = $"エクスポート完了\n\n" +
+                          $"出力先: {result.ExportFolderPath}\n" +
+                          $"端末数: {result.HostCount}\n";
+            if (dialog.Decrypt)
+                summary += $"復号セル: {result.DecryptedCells}\n";
+            summary += $"残 ENC セル: {result.RemainingEncCells}";
+            if (result.HasErrors)
+                summary += $"\n\n⚠ エラー {result.Errors.Count} 件:\n" +
+                           string.Join("\n", result.Errors.Take(10));
+
+            MessageBox.Show(summary, "エクスポート", MessageBoxButton.OK,
+                result.HasErrors ? MessageBoxImage.Warning : MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"エクスポートに失敗しました:\n{ex.Message}",
+                "エクスポートエラー", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    /// <summary>現在の Hosts に含まれる ENC: プレフィクス付きセルの総数を数える。</summary>
+    private int CountEncryptedCells()
+    {
+        var props = typeof(HostEntry)
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => p.PropertyType == typeof(string) && p.CanRead
+                     && CryptoHelper.IsEncryptableColumn(p.Name))
+            .ToList();
+
+        int count = 0;
+        foreach (var host in Hosts)
+            foreach (var prop in props)
+            {
+                var v = prop.GetValue(host)?.ToString() ?? "";
+                if (v.StartsWith("ENC:", StringComparison.Ordinal)) count++;
+            }
+        return count;
     }
 
     private bool CanSave() => IsDirty && !IsLocked;

@@ -52,6 +52,7 @@ public partial class App : Application
         services.AddSingleton<IPrinterDriverDetectorService, PrinterDriverDetectorService>();
         services.AddSingleton<ICryptoService, CryptoService>();
         services.AddSingleton<IModulePresetService, ModulePresetService>();
+        services.AddSingleton<IHostListExportService, HostListExportService>();
 
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();
