@@ -88,6 +88,16 @@
                     BorderThickness="0" Cursor="Hand"
                     Margin="0,0,8,0" />
 
+            <!-- 右: エクスポートボタン -->
+            <Button DockPanel.Dock="Right"
+                    Content="📤 エクスポート"
+                    Command="{Binding ExportHostListCommand}"
+                    ToolTip="タイムスタンプ付きフォルダへ hostlist.csv + README.txt を書き出す"
+                    Padding="12,4" FontSize="11"
+                    Background="#00796B" Foreground="White"
+                    BorderThickness="0" Cursor="Hand"
+                    Margin="0,0,8,0" />
+
             <!-- 右: 追加ボタン -->
             <Button DockPanel.Dock="Right"
                     Content="＋ 端末追加"
