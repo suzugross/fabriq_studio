@@ -24,6 +24,41 @@ public record SpecialCommandDef(string Command, string Description)
 }
 
 /// <summary>
+/// 左ペイン「利用可能モジュール」の表示用 VM エントリ。
+/// 通常モジュール（<see cref="Module"/>）または特殊コマンド（<see cref="Special"/>）のいずれかを保持する
+/// 判別ユニオン相当で、単一コレクションでフィルター・選択・追加を扱えるようにする。
+/// </summary>
+public sealed class AvailableItem
+{
+    public string             DisplayName { get; }
+    public string             KindLabel   { get; }
+    public string             Category    { get; }
+    public string             SubText     { get; }
+    public ModuleMasterEntry? Module      { get; }
+    public SpecialCommandDef? Special     { get; }
+
+    public bool IsSpecial => Special is not null;
+
+    private AvailableItem(
+        string displayName, string kindLabel, string category, string subText,
+        ModuleMasterEntry? module, SpecialCommandDef? special)
+    {
+        DisplayName = displayName;
+        KindLabel   = kindLabel;
+        Category    = category;
+        SubText     = subText;
+        Module      = module;
+        Special     = special;
+    }
+
+    public static AvailableItem FromModule(ModuleMasterEntry m)
+        => new(m.MenuName, m.Kind, m.Category, m.ModuleDir, m, null);
+
+    public static AvailableItem FromSpecial(SpecialCommandDef cmd)
+        => new(cmd.Command, "特殊", "特殊コマンド", cmd.Description, null, cmd);
+}
+
+/// <summary>
 /// プロファイル編集画面
 ///   - 左ペイン: 利用可能モジュール一覧（フィルター付き ListBox）
 ///   - 右ペイン: プロファイル構成 DataGrid（追加/削除/上下移動/特殊コマンド）
@@ -53,13 +88,13 @@ public partial class ProfileDetailViewModel : ObservableObject
     // ─── 対象プロファイル ─────────────────────────────────────────
     [ObservableProperty] private ProfileEntry? _profile;
 
-    // ─── 左ペイン: 利用可能モジュール ────────────────────────────
-    [ObservableProperty] private ObservableCollection<ModuleMasterEntry> _availableModules = [];
-    [ObservableProperty] private ObservableCollection<ModuleMasterEntry> _filteredModules  = [];
+    // ─── 左ペイン: 利用可能モジュール（通常モジュール + 特殊コマンド） ────────
+    [ObservableProperty] private ObservableCollection<AvailableItem> _availableModules = [];
+    [ObservableProperty] private ObservableCollection<AvailableItem> _filteredModules  = [];
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AddModuleCommand))]
-    private ModuleMasterEntry? _selectedAvailable;
+    private AvailableItem? _selectedAvailable;
 
     [ObservableProperty] private string _filterText = "";
 
@@ -152,8 +187,11 @@ public partial class ProfileDetailViewModel : ObservableObject
             SubscribeDirty(entries);
             Modules = entries;
 
-            // 左ペイン: 利用可能モジュール（全種別）
-            AvailableModules = new ObservableCollection<ModuleMasterEntry>(allModulesTask.Result);
+            // 左ペイン: 特殊コマンドを先頭に、続いて全モジュール種別を表示
+            var items = new List<AvailableItem>();
+            items.AddRange(SpecialCommands.Select(AvailableItem.FromSpecial));
+            items.AddRange(allModulesTask.Result.Select(AvailableItem.FromModule));
+            AvailableModules = new ObservableCollection<AvailableItem>(items);
             ApplyFilter();
 
             // ロード完了後に必ずクリーン状態にリセット
@@ -200,16 +238,17 @@ public partial class ProfileDetailViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(FilterText))
         {
-            FilteredModules = new ObservableCollection<ModuleMasterEntry>(AvailableModules);
+            FilteredModules = new ObservableCollection<AvailableItem>(AvailableModules);
         }
         else
         {
             var f = FilterText.Trim();
-            FilteredModules = new ObservableCollection<ModuleMasterEntry>(
-                AvailableModules.Where(m =>
-                    m.MenuName.Contains(f, StringComparison.OrdinalIgnoreCase) ||
-                    m.Category.Contains(f, StringComparison.OrdinalIgnoreCase) ||
-                    m.ModuleDir.Contains(f, StringComparison.OrdinalIgnoreCase)));
+            FilteredModules = new ObservableCollection<AvailableItem>(
+                AvailableModules.Where(i =>
+                    i.DisplayName.Contains(f, StringComparison.OrdinalIgnoreCase) ||
+                    i.KindLabel.Contains(f,   StringComparison.OrdinalIgnoreCase) ||
+                    i.Category.Contains(f,    StringComparison.OrdinalIgnoreCase) ||
+                    i.SubText.Contains(f,     StringComparison.OrdinalIgnoreCase)));
         }
     }
 
@@ -221,16 +260,33 @@ public partial class ProfileDetailViewModel : ObservableObject
     {
         if (SelectedAvailable is null) return;
 
-        var nextOrder  = Modules.Count > 0 ? Modules.Max(m => m.Order) + 10 : 10;
-        // ScriptPath は "kind/moduleDir/script" 形式で構築
-        var scriptPath = $"{SelectedAvailable.Kind}/{SelectedAvailable.ModuleDir}/{SelectedAvailable.Script}";
+        var nextOrder = Modules.Count > 0 ? Modules.Max(m => m.Order) + 10 : 10;
+
+        string scriptPath;
+        string description;
+        if (SelectedAvailable.Special is { } sp)
+        {
+            // 特殊コマンド: ScriptPath にマーカーそのものを、Description にマスター説明を転記
+            scriptPath  = sp.Command;
+            description = sp.Description;
+        }
+        else if (SelectedAvailable.Module is { } m)
+        {
+            // 通常モジュール: ScriptPath は "kind/moduleDir/script" 形式で構築
+            scriptPath  = $"{m.Kind}/{m.ModuleDir}/{m.Script}";
+            description = m.MenuName;
+        }
+        else
+        {
+            return;
+        }
 
         Modules.Add(new ProfileScriptEntry
         {
             Order       = nextOrder,
             ScriptPath  = scriptPath,
             Enabled     = "1",
-            Description = SelectedAvailable.MenuName
+            Description = description,
         });
     }
 
@@ -408,8 +464,10 @@ public partial class ProfileDetailViewModel : ObservableObject
         var moduleDir = ExtractModuleDirectory(entry.ScriptPath);
         if (moduleDir is null) return;
 
-        var module = AvailableModules.FirstOrDefault(m =>
-            string.Equals(m.ModuleDir, moduleDir, StringComparison.OrdinalIgnoreCase));
+        var module = AvailableModules
+            .Select(i => i.Module)
+            .FirstOrDefault(m => m is not null
+                && string.Equals(m.ModuleDir, moduleDir, StringComparison.OrdinalIgnoreCase));
 
         if (module is null)
         {
