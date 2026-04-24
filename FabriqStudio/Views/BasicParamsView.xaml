@@ -459,12 +459,21 @@
                                Style="{StaticResource SectionHeaderStyle}" />
                     <TextBlock Text="PS1 / バージョン管理ファイル等を除外し、ディレクトリ構造を再現したコピーを作成します（素材フォルダは丸ごと保存）"
                                Style="{StaticResource PathLabelStyle}" />
-                    <Button Content="📦  バックアップ..."
-                            Command="{Binding BackupFabriqCommand}"
-                            HorizontalAlignment="Left"
-                            Padding="16,6" FontSize="12"
-                            Background="#00796B" Foreground="White"
-                            BorderThickness="0" Cursor="Hand" />
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="📦  バックアップ..."
+                                Command="{Binding BackupFabriqCommand}"
+                                Padding="16,6" FontSize="12"
+                                Background="#00796B" Foreground="White"
+                                BorderThickness="0" Cursor="Hand"
+                                Margin="0,0,8,0" />
+
+                        <Button Content="🔄  Update fabriq from template..."
+                                Command="{Binding UpdateFromTemplateCommand}"
+                                ToolTip="Template fabriq から site-specific CSV を保持したまま framework を差し替える"
+                                Padding="16,6" FontSize="12"
+                                Background="#007ACC" Foreground="White"
+                                BorderThickness="0" Cursor="Hand" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
 

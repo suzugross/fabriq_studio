@@ -20,6 +20,7 @@ public partial class BasicParamsViewModel : ObservableObject
     private readonly ICryptoService       _crypto;
     private readonly IWorkspaceService    _workspace;
     private readonly IFabriqBackupService _backupService;
+    private readonly IFabriqUpdateService _updateService;
 
     [ObservableProperty] private ObservableCollection<WorkerEntry> _workers         = [];
     [ObservableProperty] private bool                              _isWorkersLoading;
@@ -94,7 +95,8 @@ public partial class BasicParamsViewModel : ObservableObject
         IProfileService      profileService,
         IWorkspaceService    workspace,
         ICryptoService       crypto,
-        IFabriqBackupService backupService)
+        IFabriqBackupService backupService,
+        IFabriqUpdateService updateService)
     {
         _csvService     = csvService;
         _fileService    = fileService;
@@ -102,6 +104,7 @@ public partial class BasicParamsViewModel : ObservableObject
         _crypto         = crypto;
         _workspace      = workspace;
         _backupService  = backupService;
+        _updateService  = updateService;
         workspace.WorkspaceChanged += (_, e) =>
         {
             if (e.NewPath is null) { ClearAll(); return; }
@@ -551,5 +554,16 @@ public partial class BasicParamsViewModel : ObservableObject
             MessageBox.Show($"バックアップに失敗しました:\n{ex.Message}",
                 "バックアップエラー", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    // ─── Update fabriq from template ─────────────────────────────
+    /// <summary>
+    /// fabriq 公開契約 § 9 準拠の「Update fabriq from template」ダイアログを開く。
+    /// 現在のワークスペースを target の初期値として渡す。
+    /// </summary>
+    [RelayCommand]
+    private void UpdateFromTemplate()
+    {
+        FabriqUpdateDialog.Show(_updateService, _workspace.RootPath, Application.Current.MainWindow);
     }
 }
