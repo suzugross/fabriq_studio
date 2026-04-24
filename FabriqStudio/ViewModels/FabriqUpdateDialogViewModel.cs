@@ -64,7 +64,11 @@ public partial class FabriqUpdateDialogViewModel : ObservableObject
 
     // ─── Execution ─────────────────────────────────────────────
 
-    [ObservableProperty] private bool    _isRunning;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ComputePlanCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ApplyCommand))]
+    [NotifyCanExecuteChangedFor(nameof(DryRunCommand))]
+    private bool _isRunning;
     [ObservableProperty] private string? _statusMessage;
     [ObservableProperty] private string  _logBuffer  = "";
 
@@ -137,8 +141,16 @@ public partial class FabriqUpdateDialogViewModel : ObservableObject
         }
     }
 
-    /// <summary>チェック変更時に Preflight を再評価するためのエントリポイント。</summary>
-    public void OnSelectionChanged() => RunPreflight();
+    /// <summary>
+    /// チェック変更時に呼ばれる。Preflight の再評価と
+    /// Apply / DryRun ボタンの CanExecute 再評価を行う。
+    /// </summary>
+    public void OnSelectionChanged()
+    {
+        RunPreflight();
+        ApplyCommand.NotifyCanExecuteChanged();
+        DryRunCommand.NotifyCanExecuteChanged();
+    }
 
     // ===================================================================
     // Apply / DryRun
@@ -205,9 +217,11 @@ public partial class FabriqUpdateDialogViewModel : ObservableObject
             HasReport  = true;
             StatusMessage = dryRun ? "Dry-run complete." : "Apply complete.";
 
-            MessageBox.Show(ReportText, dryRun ? "Dry-run 結果" : "Update 結果",
-                MessageBoxButton.OK,
-                result.FailureCount > 0 ? MessageBoxImage.Warning : MessageBoxImage.Information);
+            // スクロール可能な専用ダイアログで表示（MessageBox は長文で画面外にはみ出す）
+            Views.ReportDialog.Show(
+                dryRun ? "Dry-run 結果" : "Update 結果",
+                ReportText,
+                Application.Current.MainWindow);
         }
         catch (Exception ex)
         {

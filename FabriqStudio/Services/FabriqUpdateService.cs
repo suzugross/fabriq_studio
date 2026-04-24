@@ -231,11 +231,17 @@ public class FabriqUpdateService : IFabriqUpdateService
     private FabriqUpdateResult ApplyCore(FabriqUpdateRequest request, IProgress<string>? progress)
     {
         var logLines = new List<string>();
+
+        // summary 用: UI 進捗にも通知
         void Log(string msg)
         {
             logLines.Add($"[{DateTime.Now:HH:mm:ss}] {msg}");
             progress?.Report(msg);
         }
+
+        // per-file 用: ログファイルにのみ記録（UI 通知しない）。
+        // 数千ファイルの通知で UI スレッド上の文字列連結が O(n²) になるのを回避する。
+        void FileLog(string msg) => logLines.Add($"[{DateTime.Now:HH:mm:ss}] {msg}");
 
         var plan  = request.Plan;
         var rules = plan.Rules;
@@ -245,24 +251,30 @@ public class FabriqUpdateService : IFabriqUpdateService
         Log($"target   : {plan.TargetRoot}");
         Log($"bundles  : {request.SelectedBundles.Count} selected");
 
-        // ── バックアップ ──
-        try
+        // ── バックアップ（dry-run ではスキップ: 目的は「書き込まずに計画を確認」なため） ──
+        if (!request.DryRun)
         {
-            Log($"Creating backup zip -> {request.BackupZipPath}");
-            var parent = Path.GetDirectoryName(request.BackupZipPath);
-            if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
+            try
+            {
+                Log($"Creating backup zip -> {request.BackupZipPath}");
+                var parent = Path.GetDirectoryName(request.BackupZipPath);
+                if (!string.IsNullOrEmpty(parent)) Directory.CreateDirectory(parent);
 
-            // tmp folder 経由で .git 等も含めて zip 化
-            if (File.Exists(request.BackupZipPath)) File.Delete(request.BackupZipPath);
-            ZipFile.CreateFromDirectory(plan.TargetRoot, request.BackupZipPath,
-                CompressionLevel.Optimal, includeBaseDirectory: false);
-            Log($"Backup OK ({new FileInfo(request.BackupZipPath).Length:N0} bytes)");
+                if (File.Exists(request.BackupZipPath)) File.Delete(request.BackupZipPath);
+                ZipFile.CreateFromDirectory(plan.TargetRoot, request.BackupZipPath,
+                    CompressionLevel.Optimal, includeBaseDirectory: false);
+                Log($"Backup OK ({new FileInfo(request.BackupZipPath).Length:N0} bytes)");
+            }
+            catch (Exception ex)
+            {
+                Log($"Backup FAILED: {ex.Message}");
+                WriteLog(request.LogFilePath, logLines);
+                throw;
+            }
         }
-        catch (Exception ex)
+        else
         {
-            Log($"Backup FAILED: {ex.Message}");
-            WriteLog(request.LogFilePath, logLines);
-            throw;
+            Log("Dry-run: skipping backup zip creation");
         }
 
         // ── 各 bundle を overlay ──
@@ -288,8 +300,9 @@ public class FabriqUpdateService : IFabriqUpdateService
             try
             {
                 BundleUpdateResult r = bundle.BundleKey == "kernel"
-                    ? OverlayKernel(plan, rules, bundle, request.DryRun, Log)
-                    : OverlayModule(plan, rules, bundle, request.DryRun, Log);
+                    ? OverlayKernel(plan, rules, bundle, request.DryRun, FileLog)
+                    : OverlayModule(plan, rules, bundle, request.DryRun, FileLog);
+                Log($"  → {r.TouchedFileCount} touched, {r.SkippedCount} skipped, {r.Errors.Count} errors");
                 bundleResults.Add(r);
             }
             catch (Exception ex)
