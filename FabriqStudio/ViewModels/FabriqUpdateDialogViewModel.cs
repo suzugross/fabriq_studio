@@ -25,17 +25,31 @@ public partial class FabriqUpdateDialogViewModel : ObservableObject
 
     public FabriqUpdateDialogViewModel(IFabriqUpdateService service, string? initialTarget)
     {
-        _service     = service;
-        _targetPath  = initialTarget ?? "";
-        _backupPath  = BuildDefaultBackupPath(initialTarget);
-        _logPath     = BuildDefaultLogPath();
+        _service      = service;
+        _templatePath = ResolveDefaultTemplatePath();
+        _targetPath   = initialTarget ?? "";
+        _backupPath   = BuildDefaultBackupPath(initialTarget);
+        _logPath      = BuildDefaultLogPath();
+    }
+
+    /// <summary>
+    /// 既定の template fabriq パスを解決する。
+    /// 実行ファイルと同階層に <c>template/template_fabriq/fabriq/</c> が配置されていればそれを採用。
+    /// プロジェクト直は gitignore で未追跡のため、存在しない場合は空文字（手動選択を促す）。
+    /// </summary>
+    private static string ResolveDefaultTemplatePath()
+    {
+        var candidate = Path.Combine(
+            AppDomain.CurrentDomain.BaseDirectory,
+            "template", "template_fabriq", "fabriq");
+        return Directory.Exists(candidate) ? candidate : "";
     }
 
     // ─── パス ──────────────────────────────────────────────────
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ComputePlanCommand))]
-    private string _templatePath = "";
+    private string _templatePath;
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(ComputePlanCommand))]
@@ -253,6 +267,11 @@ public partial class FabriqUpdateDialogViewModel : ObservableObject
     private static string BuildReportText(FabriqUpdateResult result, bool dryRun)
     {
         var sb = new System.Text.StringBuilder();
+        if (dryRun)
+        {
+            sb.AppendLine("=== DRY-RUN (no files were modified, no backup zip was created) ===");
+            sb.AppendLine();
+        }
         sb.AppendLine(dryRun ? "Dry-run complete." : "Update complete.");
         sb.AppendLine();
 
@@ -294,7 +313,9 @@ public partial class FabriqUpdateDialogViewModel : ObservableObject
             sb.AppendLine();
         }
 
-        sb.AppendLine($"Backup: {result.BackupZipPath}");
+        sb.AppendLine(dryRun
+            ? $"Backup: (not created — dry-run)"
+            : $"Backup: {result.BackupZipPath}");
         sb.AppendLine($"Log   : {result.LogFilePath}");
         return sb.ToString();
     }
