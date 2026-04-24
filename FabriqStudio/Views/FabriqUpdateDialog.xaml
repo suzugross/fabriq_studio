@@ -1,0 +1,267 @@
+<Window x:Class="FabriqStudio.Views.FabriqUpdateDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:sys="clr-namespace:System;assembly=mscorlib"
+        Title="Update fabriq from template"
+        Width="920" Height="720"
+        MinWidth="800" MinHeight="620"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#2D2D30">
+
+    <Window.Resources>
+        <Style x:Key="DlgButtonStyle" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor"          Value="Hand" />
+            <Setter Property="FontSize"        Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="3">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.70" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DarkTextBox" TargetType="TextBox">
+            <Setter Property="Background"      Value="#3C3C3C" />
+            <Setter Property="Foreground"      Value="#FFFFFF" />
+            <Setter Property="CaretBrush"      Value="#FFFFFF" />
+            <Setter Property="BorderBrush"     Value="#555555" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding"         Value="8,6" />
+            <Setter Property="FontSize"        Value="12" />
+        </Style>
+
+        <Style x:Key="HeaderLabel" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="10" />
+            <Setter Property="Foreground" Value="#AAAAAA" />
+            <Setter Property="Margin"     Value="0,0,0,3" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="10" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="10" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="10" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="10" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="10" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="10" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Row 0: Template path -->
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="Template fabriq（コピー元）" Style="{StaticResource HeaderLabel}" />
+            <DockPanel>
+                <Button x:Name="BrowseTemplateBtn" DockPanel.Dock="Right"
+                        Style="{StaticResource DlgButtonStyle}" Content="参照..."
+                        Background="#3E3E42" Foreground="#CCCCCC"
+                        Padding="14,6" Margin="8,0,0,0"
+                        Click="BrowseTemplateBtn_Click" />
+                <TextBox Text="{Binding TemplatePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource DarkTextBox}" />
+            </DockPanel>
+        </StackPanel>
+
+        <!-- Row 2: Target path -->
+        <StackPanel Grid.Row="2">
+            <TextBlock Text="Target fabriq（更新対象）" Style="{StaticResource HeaderLabel}" />
+            <DockPanel>
+                <Button x:Name="BrowseTargetBtn" DockPanel.Dock="Right"
+                        Style="{StaticResource DlgButtonStyle}" Content="参照..."
+                        Background="#3E3E42" Foreground="#CCCCCC"
+                        Padding="14,6" Margin="8,0,0,0"
+                        Click="BrowseTargetBtn_Click" />
+                <TextBox Text="{Binding TargetPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource DarkTextBox}" />
+            </DockPanel>
+        </StackPanel>
+
+        <!-- Row 4: Compute Plan / summary -->
+        <DockPanel Grid.Row="4" LastChildFill="True">
+            <Button DockPanel.Dock="Left"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="Plan を計算"
+                    Command="{Binding ComputePlanCommand}"
+                    Background="#007ACC" Foreground="White"
+                    Padding="16,6" />
+            <TextBlock Text="{Binding PlanSummary}"
+                       Foreground="#BBBBBB" FontSize="11"
+                       VerticalAlignment="Center"
+                       Margin="12,0,0,0"
+                       TextTrimming="CharacterEllipsis" />
+        </DockPanel>
+
+        <!-- Row 6: Plan DataGrid -->
+        <Border Grid.Row="6" Background="#252526" BorderBrush="#3E3E42" BorderThickness="1" CornerRadius="3">
+            <DataGrid x:Name="PlanGrid"
+                      ItemsSource="{Binding PlanItems}"
+                      AutoGenerateColumns="False"
+                      CanUserAddRows="False"
+                      CanUserDeleteRows="False"
+                      CanUserReorderColumns="False"
+                      CanUserResizeColumns="True"
+                      CanUserSortColumns="True"
+                      GridLinesVisibility="Horizontal"
+                      HeadersVisibility="Column"
+                      Background="#252526"
+                      Foreground="#DDDDDD"
+                      BorderThickness="0"
+                      RowBackground="#2D2D30"
+                      AlternatingRowBackground="#333337"
+                      SelectionMode="Single">
+                <DataGrid.Resources>
+                    <!-- ヘッダー色 -->
+                    <Style TargetType="DataGridColumnHeader">
+                        <Setter Property="Background"  Value="#3E3E42" />
+                        <Setter Property="Foreground"  Value="#DDDDDD" />
+                        <Setter Property="Padding"     Value="6,4" />
+                        <Setter Property="BorderBrush" Value="#555555" />
+                        <Setter Property="BorderThickness" Value="0,0,1,1" />
+                    </Style>
+                </DataGrid.Resources>
+                <DataGrid.Columns>
+                    <!-- ☑ -->
+                    <DataGridTemplateColumn Header="☑" Width="36">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding CanSelect}"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          Checked="ItemSelection_Changed"
+                                          Unchecked="ItemSelection_Changed" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+
+                    <DataGridTextColumn Header="Bundle"   Binding="{Binding DisplayName}"        Width="2*" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Target"   Binding="{Binding TargetVersionText}"   Width="80" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Template" Binding="{Binding TemplateVersionText}" Width="80" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Action"   Binding="{Binding ActionText}"          Width="160" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Warning"  Binding="{Binding WarningMessage}"      Width="*" IsReadOnly="True" />
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+
+        <!-- Row 8: Preflight message + always-preserved -->
+        <Grid Grid.Row="8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0"
+                    Background="#252526" BorderBrush="#3E3E42" BorderThickness="1"
+                    CornerRadius="3" Padding="10,8">
+                <StackPanel>
+                    <TextBlock Text="Preflight" Style="{StaticResource HeaderLabel}" />
+                    <TextBlock Text="{Binding PreflightMessage}"
+                               Foreground="#CCCCCC" FontSize="11"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="2"
+                    Background="#252526" BorderBrush="#3E3E42" BorderThickness="1"
+                    CornerRadius="3" Padding="10,8">
+                <StackPanel>
+                    <TextBlock Text="Will NOT touch (always preserved)" Style="{StaticResource HeaderLabel}" />
+                    <TextBlock Foreground="#888888" FontSize="10" TextWrapping="Wrap">
+                        · profiles/ (entire directory)<LineBreak />
+                        · kernel/csv/{hostlist,workers,log_destinations}.csv<LineBreak />
+                        · kernel/json/* runtime artifacts<LineBreak />
+                        · kernel/txt/{passphrase_verify.txt,silence.flag}<LineBreak />
+                        · modules/**/_list.csv etc. (non-whitelist CSVs)<LineBreak />
+                        · .git/, .claude/, evidence/, logs/
+                    </TextBlock>
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <!-- Row 10: Backup / Log paths -->
+        <Grid Grid.Row="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="0">
+                <TextBlock Text="Backup zip の保存先" Style="{StaticResource HeaderLabel}" />
+                <DockPanel>
+                    <Button x:Name="BrowseBackupBtn" DockPanel.Dock="Right"
+                            Style="{StaticResource DlgButtonStyle}" Content="..."
+                            Background="#3E3E42" Foreground="#CCCCCC"
+                            Padding="10,6" Margin="6,0,0,0"
+                            Click="BrowseBackupBtn_Click" />
+                    <TextBox Text="{Binding BackupPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                             Style="{StaticResource DarkTextBox}" />
+                </DockPanel>
+            </StackPanel>
+
+            <StackPanel Grid.Column="2">
+                <TextBlock Text="ログファイルの保存先" Style="{StaticResource HeaderLabel}" />
+                <TextBox Text="{Binding LogPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         Style="{StaticResource DarkTextBox}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- Row 12: Action buttons + status -->
+        <DockPanel Grid.Row="12" LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left"
+                       Text="{Binding StatusMessage}"
+                       Foreground="#AAAAAA" FontSize="11"
+                       VerticalAlignment="Center" />
+
+            <Button DockPanel.Dock="Right"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="閉じる"
+                    Background="#3E3E42" Foreground="#CCCCCC"
+                    Padding="16,6"
+                    IsCancel="True"
+                    Click="CloseBtn_Click"
+                    Margin="8,0,0,0" />
+
+            <Button DockPanel.Dock="Right"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="Apply"
+                    Command="{Binding ApplyCommand}"
+                    Background="#00796B" Foreground="White"
+                    Padding="20,6"
+                    Margin="8,0,0,0" />
+
+            <Button DockPanel.Dock="Right"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="Dry-run"
+                    Command="{Binding DryRunCommand}"
+                    Background="#3E3E42" Foreground="#DDDDDD"
+                    Padding="16,6" />
+        </DockPanel>
+    </Grid>
+</Window>

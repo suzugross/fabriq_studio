@@ -54,6 +54,7 @@ public partial class App : Application
         services.AddSingleton<IModulePresetService, ModulePresetService>();
         services.AddSingleton<IHostListExportService, HostListExportService>();
         services.AddSingleton<IFabriqBackupService, FabriqBackupService>();
+        services.AddSingleton<IFabriqUpdateService, FabriqUpdateService>();
 
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();
