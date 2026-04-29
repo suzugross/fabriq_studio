@@ -115,10 +115,6 @@ public partial class ProfileDetailViewModel : ObservableObject
         new("__ASYNC__",      "Async runspace (since kernel 2.1.0)"),
         new("__RESTART__",    "Restart"),
         new("__REEXPLORER__", "Restart Explorer"),
-        new("__STOPLOG__",    "Stop Transcript"),
-        new("__STARTLOG__",   "Start Transcript"),
-        new("__SHUTDOWN__",   "Shutdown"),
-        new("__PAUSE__",      "Pause (Enter wait)"),
     ];
 
     [ObservableProperty]
