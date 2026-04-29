@@ -27,7 +27,7 @@ public class SpecialMarkerToBackgroundConverter : IValueConverter
         if (value is not string scriptPath)
             return Brushes.Transparent;
 
-        // __ で始まり __ で終わる（__RESTART__, __PAUSE__ 等）→ 共通の青色
+        // __ で始まり __ で終わる（__RESTART__, __AUTOPILOT__ 等）→ 共通の青色
         if (scriptPath.StartsWith("__", StringComparison.Ordinal) &&
             scriptPath.EndsWith("__",   StringComparison.Ordinal))
             return SystemCommandBrush;
