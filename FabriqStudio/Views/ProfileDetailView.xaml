@@ -329,10 +329,16 @@
                         <!-- AlternatingRowBackground は SpecialMarkerToBackgroundConverter と競合するため使用しない -->
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
-                                <!-- Background: ScriptPath を Converter に渡し種別ごとに色分け -->
-                                <Setter Property="Background"
-                                        Value="{Binding ScriptPath,
-                                            Converter={StaticResource SpecialMarkerToBackgroundConverter}}" />
+                                <!-- Background: ScriptPath + Group を MultiConverter で評価
+                                     優先順 (1) 特殊マーカー → 青 (2) Group 値あり → パレット色 (3) その他 → 透明 -->
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{StaticResource GroupRowBackgroundConverter}">
+                                            <Binding Path="ScriptPath" />
+                                            <Binding Path="Group" />
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
                                 <Style.Triggers>
                                     <!-- FontStyle: 特殊マーカー行すべてにイタリックを適用 -->
                                     <DataTrigger Binding="{Binding IsSystemCommand}" Value="True">
@@ -382,6 +388,23 @@
                             <DataGridTextColumn Header="セグメント"
                                                 Binding="{Binding Segment}"
                                                 Width="80" />
+                            <!-- Group: kernel 3.2.0 任意列。プリセット 5 種 + 自由入力可（IsEditable=True）。
+                                 DataGridComboBoxColumn では IsEditable が素直に効かないため Template 列で実装。 -->
+                            <DataGridTemplateColumn Header="Group" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox IsEditable="True"
+                                                  Text="{Binding Group, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                  ItemsSource="{Binding DataContext.AvailableGroups,
+                                                      RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                  IsHitTestVisible="{Binding DataContext.IsLocked,
+                                                      RelativeSource={RelativeSource AncestorType=DataGrid},
+                                                      Converter={StaticResource InverseBooleanConverter}}"
+                                                  BorderThickness="0" Background="Transparent"
+                                                  Padding="2,0" FontSize="11" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <DataGridTextColumn Header="メモ"
                                                 Binding="{Binding Note, UpdateSourceTrigger=LostFocus}"
                                                 Width="150" />

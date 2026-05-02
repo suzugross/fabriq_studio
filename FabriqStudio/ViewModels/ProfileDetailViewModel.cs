@@ -121,6 +121,19 @@ public partial class ProfileDetailViewModel : ObservableObject
     [NotifyCanExecuteChangedFor(nameof(AddSpecialCommandCommand))]
     private SpecialCommandDef? _selectedSpecialCommand;
 
+    // ─── Group 候補 ────────────────────────────────────────────
+    /// <summary>静的プリセット 5 個。Modules 内のカスタム値とマージして AvailableGroups を構成する。</summary>
+    private static readonly string[] StaticGroupPresets =
+        ["Group1", "Group2", "Group3", "Group4", "Group5"];
+
+    /// <summary>
+    /// Group 列の編集 ComboBox の ItemsSource。
+    /// 静的プリセット 5 個 + 現在の Modules 内の非空 Group 値（distinct）を結合。
+    /// 比較は Ordinal（kernel common.ps1 が .Trim() 後に case-sensitive 比較するのに合わせる）。
+    /// インスタンスは固定で Clear+Add で更新（再代入は ComboBox のドロップダウン状態を壊す）。
+    /// </summary>
+    public ObservableCollection<string> AvailableGroups { get; } = [];
+
     // ─── ロック ────────────────────────────────────────────────────
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
@@ -190,6 +203,9 @@ public partial class ProfileDetailViewModel : ObservableObject
             AvailableModules = new ObservableCollection<AvailableItem>(items);
             ApplyFilter();
 
+            // Group ComboBox 候補を構築（プリセット + プロファイル内のカスタム値）
+            RebuildAvailableGroups();
+
             // ロード完了後に必ずクリーン状態にリセット
             IsDirty = false;
         }
@@ -218,6 +234,9 @@ public partial class ProfileDetailViewModel : ObservableObject
             if (e.NewItems is not null)
                 foreach (ProfileScriptEntry m in e.NewItems)
                     m.PropertyChanged += OnModuleItemChanged;
+
+            // 行追加・削除・移動で Group 候補が変わる可能性がある
+            if (!_isInitializing) RebuildAvailableGroups();
         };
     }
 
@@ -225,6 +244,45 @@ public partial class ProfileDetailViewModel : ObservableObject
     {
         // 初期化中（ロード・保存の Order 書き換え）は無視する
         if (!_isInitializing) IsDirty = true;
+
+        // Group 値が変わったら ComboBox 候補を更新
+        if (!_isInitializing && e.PropertyName == nameof(ProfileScriptEntry.Group))
+            RebuildAvailableGroups();
+    }
+
+    /// <summary>
+    /// AvailableGroups を再構築する。静的プリセット 5 個 + Modules 内の非空 Group 値 (distinct, Ordinal)
+    /// を結合し、プリセット → カスタム値（昇順）の順で並べる。
+    ///
+    /// 重要: Clear+Add は使わない。AvailableGroups は全行の ComboBox の ItemsSource として
+    /// 共有されており、Clear が発する CollectionChanged.Reset を受けた他行の ComboBox は
+    /// SelectedItem が null 化され、IsEditable=True の表示テキストが一時的に空白になる
+    /// （Group プロパティ自体は無事だが視覚バグになる）。差分マージで既存項目を温存する。
+    /// </summary>
+    private void RebuildAvailableGroups()
+    {
+        var desired = StaticGroupPresets
+            .Concat(Modules
+                .Select(m => m.Group)
+                .Where(g => !string.IsNullOrEmpty(g) &&
+                            !StaticGroupPresets.Contains(g, StringComparer.Ordinal))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(g => g, StringComparer.Ordinal))
+            .ToList();
+
+        // 1. desired に無い項目を削除（後ろから走査してインデックス崩れを回避）
+        for (int i = AvailableGroups.Count - 1; i >= 0; i--)
+        {
+            if (!desired.Contains(AvailableGroups[i], StringComparer.Ordinal))
+                AvailableGroups.RemoveAt(i);
+        }
+
+        // 2. desired にあって AvailableGroups に無い項目を追加
+        foreach (var g in desired)
+        {
+            if (!AvailableGroups.Contains(g, StringComparer.Ordinal))
+                AvailableGroups.Add(g);
+        }
     }
 
     // ─── フィルター ───────────────────────────────────────────────
@@ -406,7 +464,8 @@ public partial class ProfileDetailViewModel : ObservableObject
                     Enabled     = src.Enabled,
                     Description = src.Description,
                     Segment     = src.Segment,
-                    Note        = src.Note
+                    Note        = src.Note,
+                    Group       = src.Group,
                 });
             }
 
