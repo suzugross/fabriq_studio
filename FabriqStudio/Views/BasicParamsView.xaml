@@ -181,10 +181,16 @@
                         <!-- AlternatingRowBackground は SpecialMarkerToBackgroundConverter と競合するため使用しない -->
                         <DataGrid.RowStyle>
                             <Style TargetType="DataGridRow">
-                                <!-- Background: ScriptPath を Converter に渡し種別ごとに色分け -->
-                                <Setter Property="Background"
-                                        Value="{Binding ScriptPath,
-                                            Converter={StaticResource SpecialMarkerToBackgroundConverter}}" />
+                                <!-- Background: ScriptPath + Group を MultiConverter で評価
+                                     ProfileDetailView と同期した規約 -->
+                                <Setter Property="Background">
+                                    <Setter.Value>
+                                        <MultiBinding Converter="{StaticResource GroupRowBackgroundConverter}">
+                                            <Binding Path="ScriptPath" />
+                                            <Binding Path="Group" />
+                                        </MultiBinding>
+                                    </Setter.Value>
+                                </Setter>
                                 <Style.Triggers>
                                     <!-- FontStyle: 特殊マーカー行すべてにイタリックを適用 -->
                                     <DataTrigger Binding="{Binding IsSystemCommand}" Value="True">
@@ -227,6 +233,9 @@
                             <DataGridTextColumn Header="説明"
                                                 Binding="{Binding Description}"
                                                 Width="200" />
+                            <DataGridTextColumn Header="Group"
+                                                Binding="{Binding Group}"
+                                                Width="100" />
                         </DataGrid.Columns>
                     </DataGrid>
                 </StackPanel>

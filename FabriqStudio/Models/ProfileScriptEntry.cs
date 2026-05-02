@@ -22,6 +22,11 @@ public partial class ProfileScriptEntry : ObservableObject
     [ObservableProperty] [property: Optional] private string _note      = "";
     [ObservableProperty] [property: Optional] private string _errorMode = "";
 
+    // kernel 3.2.0 で追加された任意列（KERNEL_API.md §4.1）。
+    // 同一値の行群が FrexProfile dashboard の [Run: <Group>] ボタンに集約される。
+    // 列は CSV 末尾に配置する契約のため、プロパティ宣言順も末尾。
+    [ObservableProperty] [property: Optional] private string _group     = "";
+
     /// <summary>
     /// Enabled ("0"/"1") の bool ラッパー。CheckBox バインド用。
     /// setter は Enabled を更新するため、既存の Dirty 追跡がそのまま発火する。
