@@ -231,6 +231,11 @@
                         <StackPanel Grid.Column="1"
                                     Orientation="Horizontal"
                                     VerticalAlignment="Center">
+                            <TextBlock Text="{Binding TestRunStatus}"
+                                       FontSize="11"
+                                       Foreground="#2C8A3F"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0" />
                             <TextBlock Text="{Binding SaveStatus}"
                                        FontSize="11"
                                        Foreground="#107C10"
@@ -243,6 +248,27 @@
                                        Margin="0,0,12,0"
                                        TextWrapping="Wrap"
                                        MaxWidth="400" />
+                            <Button Content="▶ テスト実行"
+                                    Command="{Binding TestRunCommand}"
+                                    Padding="14,6"
+                                    FontSize="12"
+                                    Margin="0,0,8,0"
+                                    Background="#2C8A3F"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    ToolTip="現在の Pianist Profile を fabriq エンジンで実行します（実 SendKeys を流す本番動作）" />
+                            <Button Content="■ 中止"
+                                    Command="{Binding CancelTestRunCommand}"
+                                    Padding="10,6"
+                                    FontSize="12"
+                                    Margin="0,0,8,0"
+                                    Background="#A03030"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Cursor="Hand"
+                                    Visibility="{Binding IsTestRunning, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    ToolTip="テスト実行を中止する（プロセスツリー全体を Kill）" />
                             <Button Content="💾 保存"
                                     Command="{Binding SaveCommand}"
                                     Padding="14,6"
@@ -297,9 +323,13 @@
                     <!-- ─── タブ 1: メタ (pianist.json) ─── -->
                     <TabItem Header="メタ">
                         <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                            <!-- 入力欄が小さくなりすぎないよう MinWidth を設定。MaxWidth で
+                                 上限も付け、HorizontalAlignment=Left は付けない（付けると
+                                 中身が縮んで TextBox 幅が文字列の長さに依存してしまう） -->
                             <StackPanel DataContext="{Binding CurrentData.Metadata}"
+                                        MinWidth="600"
                                         MaxWidth="780"
-                                        HorizontalAlignment="Left">
+                                        HorizontalAlignment="Stretch">
 
                                 <TextBlock Text="pianist.json"
                                            FontSize="11" FontWeight="SemiBold"

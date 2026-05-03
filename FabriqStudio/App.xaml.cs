@@ -54,6 +54,7 @@ public partial class App : Application
         services.AddSingleton<IFabriqBackupService, FabriqBackupService>();
         services.AddSingleton<IFabriqUpdateService, FabriqUpdateService>();
         services.AddSingleton<IPianistProfileService, PianistProfileService>();
+        services.AddSingleton<IPianistTestRunService, PianistTestRunService>();
 
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();

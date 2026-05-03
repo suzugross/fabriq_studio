@@ -1,0 +1,178 @@
+<Window x:Class="FabriqStudio.Views.PianistTestRunDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Pianist テスト実行"
+        Width="560"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#F5F5F5">
+
+    <Window.Resources>
+        <Style x:Key="DlgButtonStyle" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor"          Value="Hand" />
+            <Setter Property="FontSize"        Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.70" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="22,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="18" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- ヘッダ: profile 名 -->
+        <StackPanel Grid.Row="0">
+            <TextBlock x:Name="ProfileNameText"
+                       FontSize="16" FontWeight="SemiBold"
+                       Foreground="#222222" />
+            <TextBlock x:Name="ProfilePathText"
+                       FontSize="10" Foreground="#888888"
+                       Margin="0,2,0,0"
+                       TextTrimming="CharacterEllipsis" />
+        </StackPanel>
+
+        <!-- 実行ホスト選択 -->
+        <StackPanel Grid.Row="2">
+            <TextBlock FontSize="11" Foreground="#555555"
+                       Text="$env:SELECTED_NEW_PCNAME に渡すホスト名（values.csv の行解決に使用）" />
+            <ComboBox x:Name="HostBox"
+                      Margin="0,6,0,0"
+                      Padding="8,4"
+                      FontSize="13"
+                      Background="#FFFFFF"
+                      Foreground="#222222"
+                      BorderBrush="#BBBBBB" />
+            <TextBlock FontSize="10" Foreground="#888888"
+                       Margin="0,4,0,0"
+                       TextWrapping="Wrap"
+                       Text='"*" を選ぶと共通行（* 行）のみで実行（個別ホスト解決なし）' />
+        </StackPanel>
+
+        <!-- profile サマリ -->
+        <Border Grid.Row="4"
+                Padding="12,10"
+                Background="#F0F4F8"
+                BorderBrush="#C8D4E0"
+                BorderThickness="1"
+                CornerRadius="4">
+            <StackPanel>
+                <TextBlock FontSize="11" FontWeight="SemiBold"
+                           Foreground="#1A4F7A"
+                           Text="この profile の実行内容" />
+                <TextBlock x:Name="SummaryText"
+                           FontSize="11"
+                           Foreground="#1A4F7A"
+                           Margin="0,4,0,0"
+                           TextWrapping="Wrap" />
+            </StackPanel>
+        </Border>
+
+        <!-- パスフレーズ警告（必要なときだけ表示） -->
+        <Border Grid.Row="6"
+                x:Name="PassphraseWarning"
+                Padding="12,10"
+                Background="#FFF4D8"
+                BorderBrush="#E0C176"
+                BorderThickness="1"
+                CornerRadius="4"
+                Visibility="Collapsed">
+            <TextBlock FontSize="11" Foreground="#7A5A1A" TextWrapping="Wrap">
+                <Run Text="⚠" FontWeight="Bold" />
+                <Run Text=" ENC: セルが含まれていますがパスフレーズが未設定です。" />
+                <Run Text=" 暗号化セルは復号失敗（空文字）として実行されます。" />
+                <LineBreak />
+                <Run Text="左ペイン下部の「🔑 パスフレーズ」から設定してください。" Foreground="#9A7A3A" />
+            </TextBlock>
+        </Border>
+
+        <!-- 副作用警告（常時表示） -->
+        <Border Grid.Row="8"
+                Padding="12,10"
+                Background="#FFE8E8"
+                BorderBrush="#E0A0A0"
+                BorderThickness="1"
+                CornerRadius="4">
+            <StackPanel>
+                <TextBlock FontSize="11" FontWeight="SemiBold"
+                           Foreground="#A03030"
+                           Text="⚠ テスト実行は本番動作です" />
+                <TextBlock FontSize="11" Foreground="#A03030"
+                           Margin="0,4,0,0"
+                           TextWrapping="Wrap"
+                           Text="Step Action（Open / Type / Key / Paste / Screenshot / WaitWin / AppFocus）は実際にアプリを起動・SendKeys を実行します。Studio の入力に干渉する可能性があります。実行直前に Studio ウィンドウを最小化することを推奨します。" />
+            </StackPanel>
+        </Border>
+
+        <!-- ボタン群（独立配置） -->
+        <Grid Grid.Row="9" Margin="0,18,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*"    />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <CheckBox Grid.Column="0"
+                      x:Name="MinimizeCheckBox"
+                      IsChecked="True"
+                      VerticalAlignment="Center"
+                      Foreground="#444444"
+                      FontSize="11"
+                      Content="実行直前に Studio ウィンドウを最小化" />
+
+            <Button Grid.Column="2"
+                    x:Name="CancelBtn"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="キャンセル"
+                    Background="#E0E0E0"
+                    Foreground="#333333"
+                    Padding="16,6"
+                    IsCancel="True"
+                    Click="CancelBtn_Click" />
+            <Button Grid.Column="3"
+                    x:Name="OkBtn"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="▶ 実行"
+                    Background="#2C8A3F"
+                    Foreground="#FFFFFF"
+                    Padding="16,6"
+                    Margin="8,0,0,0"
+                    IsDefault="True"
+                    Click="OkBtn_Click" />
+        </Grid>
+    </Grid>
+</Window>
