@@ -17,6 +17,11 @@
             <converters:GroupRowBackgroundConverter            x:Key="GroupRowBackgroundConverter" />
             <converters:InverseBooleanConverter               x:Key="InverseBooleanConverter" />
             <converters:StringOneToBoolConverter              x:Key="StringOneToBoolConverter" />
+            <converters:PianistColorToBrushConverter          x:Key="PianistColorToBrushConverter" />
+            <converters:PianistCellDisplayConverter           x:Key="PianistCellDisplayConverter" />
+            <converters:PianistCellInheritedConverter         x:Key="PianistCellInheritedConverter" />
+            <converters:PianistValidationSeverityConverter    x:Key="PianistValidationSeverityConverter" />
+            <converters:PianistActionCodeToLabelConverter     x:Key="PianistActionCodeToLabelConverter" />
 
             <!-- ViewModel → View の DataTemplate マッピング -->
             <DataTemplate DataType="{x:Type vm:BasicParamsViewModel}">
@@ -69,6 +74,10 @@
 
             <DataTemplate DataType="{x:Type vm:PrinterDriverDetectorViewModel}">
                 <views:PrinterDriverDetectorView />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vm:PianistProfileEditorViewModel}">
+                <views:PianistProfileEditorView />
             </DataTemplate>
 
         </ResourceDictionary>

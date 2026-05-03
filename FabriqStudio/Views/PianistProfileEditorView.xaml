@@ -1,0 +1,893 @@
+<UserControl x:Class="FabriqStudio.Views.PianistProfileEditorView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:FabriqStudio.ViewModels"
+             xmlns:helpers="clr-namespace:FabriqStudio.Helpers">
+
+    <!--
+        Phase 3: 右ペインを TabControl 化（メタ / Phase 一覧 / 変数 / ショートカット / プレビュー）。
+        メタタブと Phase 一覧タブは表示まで実装、残り 3 タブは後続フェーズのプレースホルダ。
+        書き込み（保存）は Phase 5、列リネーム / Phase 操作は Phase 6 以降で導入する。
+    -->
+
+    <UserControl.Resources>
+        <!-- ラベル列の TextBlock 共通スタイル（メタタブ用） -->
+        <Style x:Key="MetaLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"          Value="11" />
+            <Setter Property="Foreground"        Value="#888888" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin"            Value="0,0,12,0" />
+        </Style>
+        <Style x:Key="MetaInputStyle" TargetType="TextBox">
+            <Setter Property="FontSize"          Value="12" />
+            <Setter Property="Padding"           Value="6,4" />
+            <Setter Property="BorderBrush"       Value="#CCCCCC" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <!-- ─── Step グリッド: Value 列の編集テンプレ（Action 別） ─── -->
+        <DataTemplate x:Key="ValueDefaultEditTemplate">
+            <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                     BorderThickness="0" Padding="4,0"
+                     VerticalContentAlignment="Center" />
+        </DataTemplate>
+        <DataTemplate x:Key="ValueKeyEditTemplate">
+            <ComboBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}"
+                      IsEditable="True"
+                      IsTextSearchEnabled="True"
+                      StaysOpenOnEdit="True"
+                      ItemsSource="{x:Static vm:PianistProfileEditorViewModel.KeyPresets}"
+                      ToolTip="特殊キー (SendKeys 形式) — 自由入力可" />
+        </DataTemplate>
+        <DataTemplate x:Key="ValueVarRefEditTemplate">
+            <ComboBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}"
+                      IsEditable="True"
+                      IsTextSearchEnabled="True"
+                      StaysOpenOnEdit="True"
+                      ItemsSource="{Binding DataContext.VariableReferences,
+                                    RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                      ToolTip="$VarName (values.csv 列) からサジェスト — 自由入力可" />
+        </DataTemplate>
+        <DataTemplate x:Key="ValueWaitEditTemplate">
+            <ComboBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}"
+                      IsEditable="True"
+                      IsTextSearchEnabled="True"
+                      StaysOpenOnEdit="True"
+                      ItemsSource="{x:Static vm:PianistProfileEditorViewModel.WaitPresets}"
+                      ToolTip="停止時間 (ms) — Wait Action は Value 列に書きます (§4.4)" />
+        </DataTemplate>
+
+        <!-- ─── Step グリッド: Wait 列のテンプレ（編集／表示の両方） ─── -->
+        <DataTemplate x:Key="WaitNumericEditTemplate">
+            <ComboBox Text="{Binding Wait, UpdateSourceTrigger=LostFocus}"
+                      IsEditable="True"
+                      IsTextSearchEnabled="True"
+                      StaysOpenOnEdit="True"
+                      ItemsSource="{x:Static vm:PianistProfileEditorViewModel.WaitPresets}"
+                      ToolTip="WaitWin: タイムアウト (ms, 未入力時 10000 既定) / 他: 実行後の待機 (ms, 任意)" />
+        </DataTemplate>
+        <DataTemplate x:Key="WaitDisabledEditTemplate">
+            <TextBlock Text="(Value 列を使用)"
+                       VerticalAlignment="Center"
+                       Margin="6,0"
+                       Foreground="#999999"
+                       FontStyle="Italic" />
+        </DataTemplate>
+
+        <!-- DataTemplate を Action 値で動的に選ぶセレクタ群 -->
+        <helpers:PianistValueTemplateSelector x:Key="PianistValueTemplateSelector"
+            DefaultTemplate="{StaticResource ValueDefaultEditTemplate}"
+            KeyTemplate="{StaticResource ValueKeyEditTemplate}"
+            VarRefTemplate="{StaticResource ValueVarRefEditTemplate}"
+            WaitTemplate="{StaticResource ValueWaitEditTemplate}" />
+        <helpers:PianistWaitTemplateSelector x:Key="PianistWaitTemplateSelector"
+            NumericTemplate="{StaticResource WaitNumericEditTemplate}"
+            DisabledTemplate="{StaticResource WaitDisabledEditTemplate}" />
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280" />
+            <ColumnDefinition Width="*"   />
+        </Grid.ColumnDefinitions>
+
+        <!-- ===== 左ペイン: Profile 一覧 ===== -->
+        <Border Grid.Column="0"
+                Background="#F5F5F5"
+                BorderBrush="#DDDDDD"
+                BorderThickness="0,0,1,0">
+            <DockPanel>
+
+                <Border DockPanel.Dock="Top"
+                        Padding="14,12"
+                        Background="#FFFFFF"
+                        BorderBrush="#DDDDDD"
+                        BorderThickness="0,0,0,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="🎹  Pianist Profile"
+                                       FontSize="13" FontWeight="Bold"
+                                       Foreground="#333333" />
+                            <TextBlock Text="modules/extended/pianist/profiles/"
+                                       FontSize="10"
+                                       Foreground="#999999"
+                                       Margin="0,2,0,0" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="+ 新規"
+                                Command="{Binding CreateNewProfileCommand}"
+                                Padding="10,4"
+                                FontSize="11"
+                                VerticalAlignment="Center"
+                                ToolTip="Pianist Profile を新規作成（テンプレートから生成）" />
+                    </Grid>
+                </Border>
+
+                <ListBox ItemsSource="{Binding Profiles}"
+                         SelectedItem="{Binding SelectedProfile}"
+                         BorderThickness="0"
+                         Background="Transparent"
+                         Padding="0"
+                         HorizontalContentAlignment="Stretch">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="14,8" Orientation="Vertical">
+                                <TextBlock Text="{Binding Name}"
+                                           FontSize="13"
+                                           Foreground="#222222" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+            </DockPanel>
+        </Border>
+
+        <!-- ===== 右ペイン: TabControl ===== -->
+        <Grid Grid.Column="1" Background="White">
+
+            <!-- 通常時: profile が選択されている -->
+            <DockPanel Visibility="{Binding HasCurrentData,
+                                    Converter={StaticResource BoolToVisibilityConverter}}">
+
+                <!-- ヘッダー: profile 名 + フォルダパス + 保存ボタン -->
+                <Border DockPanel.Dock="Top"
+                        Padding="20,14"
+                        Background="#FAFAFA"
+                        BorderBrush="#DDDDDD"
+                        BorderThickness="0,0,0,1">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" DataContext="{Binding CurrentData}">
+                            <TextBlock Text="{Binding Entry.Name}"
+                                       FontSize="18" FontWeight="Bold"
+                                       Foreground="#222222" />
+                            <TextBlock Text="{Binding Entry.FolderPath}"
+                                       FontSize="10"
+                                       Foreground="#888888"
+                                       Margin="0,2,0,0"
+                                       TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1"
+                                    Orientation="Horizontal"
+                                    VerticalAlignment="Center">
+                            <TextBlock Text="{Binding SaveStatus}"
+                                       FontSize="11"
+                                       Foreground="#107C10"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0" />
+                            <TextBlock Text="{Binding SaveError}"
+                                       FontSize="11"
+                                       Foreground="#A03030"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,12,0"
+                                       TextWrapping="Wrap"
+                                       MaxWidth="400" />
+                            <Button Content="💾 保存"
+                                    Command="{Binding SaveCommand}"
+                                    Padding="14,6"
+                                    FontSize="12"
+                                    Background="#007ACC"
+                                    Foreground="White"
+                                    BorderThickness="0"
+                                    Cursor="Hand" />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
+                <!-- 旧 long format 警告 + 変換ボタン -->
+                <Border DockPanel.Dock="Top"
+                        Padding="20,8"
+                        Background="#FFF4D8"
+                        BorderBrush="#E0C176"
+                        BorderThickness="0,0,0,1"
+                        Visibility="{Binding IsLegacyValuesDetected,
+                                     Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0"
+                                   Foreground="#7A5A1A" FontSize="11"
+                                   VerticalAlignment="Center"
+                                   TextWrapping="Wrap">
+                            <Run Text="⚠" FontWeight="Bold" />
+                            <Run Text=" 旧形式の values.csv (Key,Value,Encrypted,Note) を検出しました。pianist は読めますが、Studio で編集するには新形式 (wide format) への変換が必要です。" />
+                        </TextBlock>
+                        <Button Grid.Column="1"
+                                Content="新形式に変換..."
+                                Command="{Binding MigrateLegacyValuesCommand}"
+                                Padding="14,4"
+                                Margin="14,0,0,0"
+                                FontSize="11"
+                                VerticalAlignment="Center"
+                                Background="#7A5A1A"
+                                Foreground="White"
+                                BorderThickness="0"
+                                Cursor="Hand" />
+                    </Grid>
+                </Border>
+
+                <!-- TabControl 本体 -->
+                <TabControl Background="White"
+                            BorderThickness="0"
+                            Padding="0">
+
+                    <!-- ─── タブ 1: メタ (pianist.json) ─── -->
+                    <TabItem Header="メタ">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20">
+                            <StackPanel DataContext="{Binding CurrentData.Metadata}"
+                                        MaxWidth="780"
+                                        HorizontalAlignment="Left">
+
+                                <TextBlock Text="pianist.json"
+                                           FontSize="11" FontWeight="SemiBold"
+                                           Foreground="#666666"
+                                           Margin="0,0,0,10" />
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="120" />
+                                        <ColumnDefinition Width="*"   />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0" Grid.Column="0" Text="schema"
+                                               Style="{StaticResource MetaLabelStyle}"
+                                               Margin="0,4,12,4" />
+                                    <TextBlock Grid.Row="0" Grid.Column="1"
+                                               Text="{Binding Schema}"
+                                               FontSize="12" Foreground="#444444"
+                                               VerticalAlignment="Center" Margin="0,4" />
+
+                                    <TextBlock Grid.Row="1" Grid.Column="0" Text="label"
+                                               Style="{StaticResource MetaLabelStyle}"
+                                               Margin="0,4,12,4" />
+                                    <TextBox   Grid.Row="1" Grid.Column="1"
+                                               Text="{Binding Label, UpdateSourceTrigger=PropertyChanged}"
+                                               Style="{StaticResource MetaInputStyle}"
+                                               Margin="0,4" />
+
+                                    <TextBlock Grid.Row="2" Grid.Column="0" Text="description"
+                                               Style="{StaticResource MetaLabelStyle}"
+                                               VerticalAlignment="Top"
+                                               Margin="0,8,12,4" />
+                                    <TextBox   Grid.Row="2" Grid.Column="1"
+                                               Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
+                                               Style="{StaticResource MetaInputStyle}"
+                                               TextWrapping="Wrap"
+                                               AcceptsReturn="True"
+                                               Height="60"
+                                               VerticalScrollBarVisibility="Auto"
+                                               Margin="0,4" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="0" Text="target_app"
+                                               Style="{StaticResource MetaLabelStyle}"
+                                               Margin="0,4,12,4" />
+                                    <TextBox   Grid.Row="3" Grid.Column="1"
+                                               Text="{Binding TargetApp, UpdateSourceTrigger=PropertyChanged}"
+                                               Style="{StaticResource MetaInputStyle}"
+                                               Margin="0,4" />
+
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Text="default_phase"
+                                               Style="{StaticResource MetaLabelStyle}"
+                                               Margin="0,4,12,4" />
+                                    <TextBox   Grid.Row="4" Grid.Column="1"
+                                               Text="{Binding DefaultPhase, UpdateSourceTrigger=PropertyChanged}"
+                                               Style="{StaticResource MetaInputStyle}"
+                                               Margin="0,4" />
+
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Text="version"
+                                               Style="{StaticResource MetaLabelStyle}"
+                                               Margin="0,4,12,4" />
+                                    <TextBox   Grid.Row="5" Grid.Column="1"
+                                               Text="{Binding Version, UpdateSourceTrigger=PropertyChanged}"
+                                               Style="{StaticResource MetaInputStyle}"
+                                               Margin="0,4" />
+                                </Grid>
+
+                                <Border Padding="12,8"
+                                        Background="#EAF3FB"
+                                        BorderBrush="#B8D7EE"
+                                        BorderThickness="1"
+                                        CornerRadius="4"
+                                        Margin="0,12,0,0">
+                                    <TextBlock FontSize="11" Foreground="#1A4F7A" TextWrapping="Wrap">
+                                        <Run Text="ℹ" FontWeight="Bold" />
+                                        <Run Text=" メタ編集は表示・両方向バインドのみ実装中。実ファイルへの保存は Phase 5 で実装します（§10 規約: BOM なし + LF + 末尾改行で正規化）。" />
+                                    </TextBlock>
+                                </Border>
+
+                            </StackPanel>
+                        </ScrollViewer>
+                    </TabItem>
+
+                    <!-- ─── タブ 2: Phase 一覧 (procedure.csv) ─── -->
+                    <TabItem Header="Phase 一覧">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="240" />
+                                <ColumnDefinition Width="*"   />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Phase リスト -->
+                            <Border Grid.Column="0"
+                                    Background="#FAFAFA"
+                                    BorderBrush="#DDDDDD"
+                                    BorderThickness="0,0,1,0">
+                                <DockPanel>
+                                    <Grid DockPanel.Dock="Top" Margin="14,12,14,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0"
+                                                   Text="Phase 一覧"
+                                                   FontSize="11" FontWeight="SemiBold"
+                                                   Foreground="#666666"
+                                                   VerticalAlignment="Center" />
+                                        <Button Grid.Column="1"
+                                                Content="+ 新規"
+                                                Click="AddPhase_Click"
+                                                Padding="10,2"
+                                                FontSize="11"
+                                                ToolTip="Phase を新規作成（PhaseID + Label + Color を入力 / instructions/.txt は自動生成）" />
+                                    </Grid>
+                                    <ListBox ItemsSource="{Binding Phases}"
+                                             SelectedItem="{Binding SelectedPhase}"
+                                             BorderThickness="0"
+                                             Background="Transparent"
+                                             HorizontalContentAlignment="Stretch">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Grid Margin="0,4">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="6"  />
+                                                        <ColumnDefinition Width="*"  />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Grid.ContextMenu>
+                                                        <ContextMenu>
+                                                            <MenuItem Header="✏ Phase を編集 / リネーム" Click="EditPhase_Click" />
+                                                            <MenuItem Header="🗑 Phase を削除"           Click="DeletePhase_Click" />
+                                                        </ContextMenu>
+                                                    </Grid.ContextMenu>
+                                                    <!-- 色帯（Color → Brush converter） -->
+                                                    <Border Grid.Column="0"
+                                                            Width="6"
+                                                            Margin="0,0,8,0"
+                                                            Background="{Binding Color, Converter={StaticResource PianistColorToBrushConverter}}" />
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock FontSize="13" Foreground="#222222">
+                                                            <Run Text="{Binding PhaseID, Mode=OneWay}" FontWeight="Bold" />
+                                                            <Run Text=" " />
+                                                            <Run Text="{Binding PhaseLabel, Mode=OneWay}" />
+                                                        </TextBlock>
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="2"
+                                                               VerticalAlignment="Center"
+                                                               Margin="6,0,0,0"
+                                                               FontSize="10"
+                                                               Foreground="#888888">
+                                                        <Run Text="{Binding StepCount, Mode=OneWay}" />
+                                                        <Run Text="step" />
+                                                    </TextBlock>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </DockPanel>
+                            </Border>
+
+                            <!-- Phase 詳細 -->
+                            <Grid Grid.Column="1">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*"    />
+                                    <RowDefinition Height="180"  />
+                                </Grid.RowDefinitions>
+
+                                <!-- 詳細ヘッダー（Phase メタ + Step 追加ボタン） -->
+                                <Border Grid.Row="0"
+                                        Padding="16,12"
+                                        Background="#FCFCFC"
+                                        BorderBrush="#DDDDDD"
+                                        BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" DataContext="{Binding SelectedPhase}">
+                                            <TextBlock>
+                                                <Run Text="{Binding PhaseID, Mode=OneWay}" FontWeight="Bold" FontSize="14" />
+                                                <Run Text=" — " Foreground="#999999" />
+                                                <Run Text="{Binding PhaseLabel, Mode=OneWay}" FontSize="13" />
+                                            </TextBlock>
+                                            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <Border Width="14" Height="14"
+                                                        CornerRadius="2"
+                                                        Background="{Binding Color, Converter={StaticResource PianistColorToBrushConverter}}" />
+                                                <TextBlock Text="{Binding Color}"
+                                                           FontSize="11" Foreground="#888888"
+                                                           VerticalAlignment="Center"
+                                                           Margin="6,0,0,0" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                        <Button Grid.Column="1"
+                                                Content="+ Step 追加"
+                                                Command="{Binding AddStepCommand}"
+                                                Padding="12,4"
+                                                FontSize="11"
+                                                VerticalAlignment="Center"
+                                                ToolTip="現在の Phase に Step を追加（StepNo は最大 + 1, Action=Wait/Value=0 の placeholder）" />
+                                    </Grid>
+                                </Border>
+
+                                <!-- Step グリッド（編集可: Action 別に Value/Wait セルが切替・§4.3/§4.4） -->
+                                <DataGrid x:Name="StepGrid"
+                                          Grid.Row="1"
+                                          ItemsSource="{Binding CurrentPhaseStepsView}"
+                                          AutoGenerateColumns="False"
+                                          HeadersVisibility="Column"
+                                          GridLinesVisibility="Horizontal"
+                                          HorizontalGridLinesBrush="#EEEEEE"
+                                          BorderThickness="0"
+                                          RowHeight="28"
+                                          FontSize="12"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="True">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Step"
+                                                            Binding="{Binding StepNo, UpdateSourceTrigger=PropertyChanged}"
+                                                            Width="50" />
+                                        <!-- Action 列: TemplateColumn にして UpdateSourceTrigger=PropertyChanged で
+                                             step.Action を ComboBox 選択直後に確実に更新する（Value/Wait
+                                             列の DataTemplateSelector が正しい Action 値で評価できるよう） -->
+                                        <DataGridTemplateColumn Header="Action" Width="180">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Action, Converter={StaticResource PianistActionCodeToLabelConverter}}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="6,0"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding Action, StringFormat='Action code: {0}'}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                            <DataGridTemplateColumn.CellEditingTemplate>
+                                                <DataTemplate>
+                                                    <ComboBox SelectedValue="{Binding Action, UpdateSourceTrigger=PropertyChanged, Mode=TwoWay}"
+                                                              SelectedValuePath="Code"
+                                                              DisplayMemberPath="Label"
+                                                              ItemsSource="{x:Static vm:PianistProfileEditorViewModel.ActionOptions}"
+                                                              VerticalContentAlignment="Center" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellEditingTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!-- Value 列: Action 別にエディタ切替（§4.3 / §4.4） -->
+                                        <DataGridTemplateColumn Header="Value" Width="*">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding Value}"
+                                                               VerticalAlignment="Center"
+                                                               Margin="6,0"
+                                                               TextTrimming="CharacterEllipsis" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                            <DataGridTemplateColumn.CellEditingTemplate>
+                                                <DataTemplate>
+                                                    <ContentControl Content="{Binding}"
+                                                                    ContentTemplateSelector="{StaticResource PianistValueTemplateSelector}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellEditingTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <!-- Wait 列: Wait Action のみ "(→ Value)" 表示、他は数値（§4.4） -->
+                                        <DataGridTemplateColumn Header="Wait" Width="90">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock VerticalAlignment="Center"
+                                                               Margin="6,0"
+                                                               TextTrimming="CharacterEllipsis">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Text" Value="{Binding Wait}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding Action}" Value="Wait">
+                                                                        <Setter Property="Text"       Value="(→ Value)" />
+                                                                        <Setter Property="Foreground" Value="#999999" />
+                                                                        <Setter Property="FontStyle"  Value="Italic" />
+                                                                        <Setter Property="ToolTip"    Value="Wait Action では停止時間を Value 列に書きます (§4.4)" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                            <DataGridTemplateColumn.CellEditingTemplate>
+                                                <DataTemplate>
+                                                    <ContentControl Content="{Binding}"
+                                                                    ContentTemplateSelector="{StaticResource PianistWaitTemplateSelector}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellEditingTemplate>
+                                        </DataGridTemplateColumn>
+
+                                        <DataGridTextColumn Header="Note"
+                                                            Binding="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
+                                                            Width="*" />
+                                        <DataGridTextColumn Header="Screenshot"
+                                                            Binding="{Binding Screenshot, UpdateSourceTrigger=PropertyChanged}"
+                                                            Width="120" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <!-- Instructions テキストエリア -->
+                                <Grid Grid.Row="2">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="*"    />
+                                    </Grid.RowDefinitions>
+                                    <Border Grid.Row="0"
+                                            Padding="16,8"
+                                            Background="#F5F5F5"
+                                            BorderBrush="#DDDDDD"
+                                            BorderThickness="0,1,0,0">
+                                        <TextBlock FontSize="11" Foreground="#666666">
+                                            <Run Text="📄" />
+                                            <Run Text=" instructions/" />
+                                            <Run Text="{Binding SelectedPhase.PhaseID, Mode=OneWay, FallbackValue=''}" />
+                                            <Run Text=".txt" />
+                                        </TextBlock>
+                                    </Border>
+                                    <TextBox Grid.Row="1"
+                                             Text="{Binding CurrentInstructions, UpdateSourceTrigger=PropertyChanged}"
+                                             AcceptsReturn="True"
+                                             AcceptsTab="True"
+                                             TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto"
+                                             FontFamily="Consolas, Yu Gothic UI"
+                                             FontSize="12"
+                                             BorderThickness="0"
+                                             Padding="16,10" />
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </TabItem>
+
+                    <!-- ─── タブ 3: 変数 (values.csv wide grid, Phase 4) ─── -->
+                    <TabItem Header="変数">
+                        <DockPanel>
+
+                            <!-- ツールバー: 行追加 + 列追加 -->
+                            <Border DockPanel.Dock="Top"
+                                    Padding="14,10"
+                                    Background="#FAFAFA"
+                                    BorderBrush="#DDDDDD"
+                                    BorderThickness="0,0,0,1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Grid Grid.Column="0">
+                                        <!-- 通常時: 候補あり → ComboBox + 行追加ボタン -->
+                                        <StackPanel Orientation="Horizontal"
+                                                    Visibility="{Binding HasAvailableHostNames,
+                                                                 Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock Text="行追加 (NewPCName):"
+                                                       FontSize="11" Foreground="#666666"
+                                                       VerticalAlignment="Center"
+                                                       Margin="0,0,8,0" />
+                                            <ComboBox ItemsSource="{Binding AvailableNewPCNames}"
+                                                      SelectedItem="{Binding SelectedNewPCName}"
+                                                      Width="200"
+                                                      VerticalAlignment="Center" />
+                                            <Button Content="追加"
+                                                    Command="{Binding AddRowCommand}"
+                                                    Padding="14,4"
+                                                    Margin="6,0,0,0"
+                                                    VerticalAlignment="Center" />
+                                        </StackPanel>
+
+                                        <!-- ケース 1: hostlist.csv に NewPCName が 0 件 -->
+                                        <StackPanel Orientation="Horizontal"
+                                                    Visibility="{Binding HostListEmpty,
+                                                                 Converter={StaticResource BoolToVisibilityConverter}}">
+                                            <TextBlock VerticalAlignment="Center"
+                                                       FontSize="11" Foreground="#A03030">
+                                                <Run Text="⚠ hostlist.csv に NewPCName が登録されていません。" />
+                                            </TextBlock>
+                                            <Button Content="端末一覧で追加"
+                                                    Command="{Binding NavigateToHostListCommand}"
+                                                    Padding="14,4"
+                                                    Margin="10,0,0,0"
+                                                    VerticalAlignment="Center" />
+                                        </StackPanel>
+
+                                        <!-- ケース 2: 全 NewPCName が values.csv に消費済み -->
+                                        <TextBlock Text="ℹ 追加できる NewPCName がありません（hostlist の全 PC 名が既に values.csv に登録済み）"
+                                                   FontSize="11" Foreground="#888888"
+                                                   VerticalAlignment="Center"
+                                                   Visibility="{Binding HostListAllConsumed,
+                                                                Converter={StaticResource BoolToVisibilityConverter}}" />
+                                    </Grid>
+
+                                    <!-- 列追加ボタン -->
+                                    <Button Grid.Column="1"
+                                            Content="+ 列追加"
+                                            Click="AddColumn_Click"
+                                            Padding="12,4"
+                                            FontSize="11"
+                                            VerticalAlignment="Center"
+                                            ToolTip="変数列を追加（^[A-Za-z_][A-Za-z0-9_]*$）" />
+                                </Grid>
+                            </Border>
+
+                            <!-- 操作の案内 -->
+                            <Border DockPanel.Dock="Top"
+                                    Padding="14,6"
+                                    Background="#F9F9F9"
+                                    BorderBrush="#EEEEEE"
+                                    BorderThickness="0,0,0,1">
+                                <TextBlock FontSize="10" Foreground="#888888" TextWrapping="Wrap">
+                                    <Run Text="セルを右クリック →" FontWeight="SemiBold" />
+                                    <Run Text=" 🔒 暗号化／🔓 復号（セル/列/行 単位）" />
+                                    <Run Text=" / ✏ 列リネーム" />
+                                    <Run Text=" / 🗑 列削除" />
+                                    <LineBreak />
+                                    <Run Text="🔑 パスフレーズは左ペイン下のボタンから事前設定が必要（暗号化操作で利用）。" Foreground="#AAAAAA" />
+                                </TextBlock>
+                            </Border>
+
+                            <!-- DataGrid: 動的カラムは code-behind で生成 -->
+                            <DataGrid x:Name="ValuesGrid"
+                                      ItemsSource="{Binding CurrentData.Values.Rows}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      CanUserReorderColumns="False"
+                                      CanUserResizeRows="False"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="All"
+                                      HorizontalGridLinesBrush="#EEEEEE"
+                                      VerticalGridLinesBrush="#EEEEEE"
+                                      RowHeight="26"
+                                      FontSize="12"
+                                      EnableRowVirtualization="False"
+                                      BorderThickness="0" />
+                        </DockPanel>
+                    </TabItem>
+
+                    <!-- ─── タブ 4: ショートカット (shortcuts.csv) ─── -->
+                    <TabItem Header="ショートカット">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top"
+                                    Padding="14,8"
+                                    Background="#F9F9F9"
+                                    BorderBrush="#EEEEEE"
+                                    BorderThickness="0,0,0,1">
+                                <TextBlock FontSize="10" Foreground="#888888" TextWrapping="Wrap">
+                                    <Run Text="ℹ" FontWeight="Bold" />
+                                    <Run Text=" shortcuts.csv は pianist.ps1 v1 では参照のみ（実行 UI から呼ばれない）。Studio はシンプル grid で編集できる程度の対応に留め、将来 Pianist 側に launcher UI が入った際に肉付けする方針（§6）。最終行の 空テンプレート行に入力すれば自動で行追加、削除は行を選択して Delete キー。" />
+                                </TextBlock>
+                            </Border>
+                            <DataGrid ItemsSource="{Binding CurrentData.Shortcuts}"
+                                      AutoGenerateColumns="False"
+                                      CanUserAddRows="True"
+                                      CanUserDeleteRows="True"
+                                      HeadersVisibility="Column"
+                                      GridLinesVisibility="All"
+                                      HorizontalGridLinesBrush="#EEEEEE"
+                                      VerticalGridLinesBrush="#EEEEEE"
+                                      RowHeight="26"
+                                      FontSize="12"
+                                      BorderThickness="0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Label" Binding="{Binding Label, UpdateSourceTrigger=PropertyChanged}" Width="140" />
+                                    <DataGridTextColumn Header="Type"  Binding="{Binding Type,  UpdateSourceTrigger=PropertyChanged}" Width="80"  />
+                                    <DataGridTextColumn Header="Path"  Binding="{Binding Path,  UpdateSourceTrigger=PropertyChanged}" Width="*"   />
+                                    <DataGridTextColumn Header="Args"  Binding="{Binding Args,  UpdateSourceTrigger=PropertyChanged}" Width="*"   />
+                                    <DataGridTextColumn Header="Note"  Binding="{Binding Note,  UpdateSourceTrigger=PropertyChanged}" Width="*"   />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </DockPanel>
+                    </TabItem>
+
+                    <!-- ─── タブ 5: プレビュー（整合性チェック §12） ─── -->
+                    <TabItem Header="プレビュー">
+                        <DockPanel>
+                            <Border DockPanel.Dock="Top"
+                                    Padding="14,10"
+                                    Background="#FAFAFA"
+                                    BorderBrush="#DDDDDD"
+                                    BorderThickness="0,0,0,1">
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="🔍 整合性チェックを実行"
+                                            Command="{Binding RunValidationNowCommand}"
+                                            Padding="14,4"
+                                            FontSize="12"
+                                            VerticalAlignment="Center" />
+                                    <TextBlock VerticalAlignment="Center"
+                                               Margin="14,0,0,0"
+                                               FontSize="11"
+                                               Foreground="#666666"
+                                               Visibility="{Binding HasRunValidation, Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <Run Text="検出: " />
+                                        <Run Text="{Binding ValidationIssues.Count, Mode=OneWay}" FontWeight="Bold" />
+                                        <Run Text=" 件" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- 結果リスト -->
+                            <Grid>
+                                <ListBox ItemsSource="{Binding ValidationIssues}"
+                                         BorderThickness="0"
+                                         Background="White"
+                                         HorizontalContentAlignment="Stretch"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                         Visibility="{Binding HasRunValidation, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,2">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="32"  />
+                                                    <ColumnDefinition Width="80"  />
+                                                    <ColumnDefinition Width="*"   />
+                                                    <ColumnDefinition Width="180" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           FontSize="14"
+                                                           VerticalAlignment="Center"
+                                                           HorizontalAlignment="Center"
+                                                           Text="{Binding Level, Converter={StaticResource PianistValidationSeverityConverter}, ConverterParameter=icon}"
+                                                           Foreground="{Binding Level, Converter={StaticResource PianistValidationSeverityConverter}}" />
+                                                <TextBlock Grid.Column="1"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="#666666"
+                                                           Text="{Binding Category}" />
+                                                <TextBlock Grid.Column="2"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="12"
+                                                           Foreground="#222222"
+                                                           TextWrapping="Wrap"
+                                                           Text="{Binding Message}" />
+                                                <TextBlock Grid.Column="3"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="10"
+                                                           Foreground="#888888"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           Text="{Binding Source, FallbackValue=''}" />
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+
+                                <!-- 空状態（未実行 or 0 件） -->
+                                <StackPanel VerticalAlignment="Center"
+                                            HorizontalAlignment="Center"
+                                            Margin="40">
+                                    <StackPanel.Style>
+                                        <Style TargetType="StackPanel">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding HasRunValidation}" Value="True">
+                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </StackPanel.Style>
+                                    <TextBlock Text="🔍" FontSize="40"
+                                               Foreground="#CCCCCC"
+                                               HorizontalAlignment="Center" />
+                                    <TextBlock Text="未実行"
+                                               FontSize="13"
+                                               Foreground="#888888"
+                                               HorizontalAlignment="Center"
+                                               Margin="0,12,0,4" />
+                                    <TextBlock Text="「整合性チェックを実行」ボタンを押すと §12 の項目を検査します。"
+                                               FontSize="11"
+                                               Foreground="#AAAAAA"
+                                               HorizontalAlignment="Center"
+                                               TextAlignment="Center"
+                                               MaxWidth="400" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </DockPanel>
+                    </TabItem>
+
+                </TabControl>
+            </DockPanel>
+
+            <!-- 空状態: profile 未選択 -->
+            <StackPanel VerticalAlignment="Center"
+                        HorizontalAlignment="Center"
+                        Visibility="{Binding HasCurrentData,
+                                     Converter={StaticResource BoolToCollapsedConverter}}">
+                <TextBlock Text="🎹"
+                           FontSize="48"
+                           Foreground="#CCCCCC"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="Pianist Profile が選択されていません"
+                           FontSize="14"
+                           Foreground="#888888"
+                           HorizontalAlignment="Center"
+                           Margin="0,12,0,4" />
+                <TextBlock Text="左の一覧から profile を選択してください。"
+                           FontSize="11"
+                           Foreground="#AAAAAA"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <!-- ローディング表示 -->
+            <Border Background="#80FFFFFF"
+                    Visibility="{Binding IsLoading,
+                                 Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock Text="読み込み中..."
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"
+                           FontSize="14"
+                           Foreground="#666666" />
+            </Border>
+
+            <!-- エラー表示 -->
+            <Border VerticalAlignment="Top"
+                    HorizontalAlignment="Stretch"
+                    Margin="20,20,20,0"
+                    Padding="14,10"
+                    Background="#FFE8E8"
+                    BorderBrush="#E0A0A0"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Visibility="{Binding LoadError,
+                                 Converter={StaticResource NullToCollapsedConverter}}">
+                <TextBlock Text="{Binding LoadError}"
+                           Foreground="#A03030"
+                           FontSize="12"
+                           TextWrapping="Wrap" />
+            </Border>
+
+        </Grid>
+    </Grid>
+</UserControl>

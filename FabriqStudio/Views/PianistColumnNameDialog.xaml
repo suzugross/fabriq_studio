@@ -1,0 +1,135 @@
+<Window x:Class="FabriqStudio.Views.PianistColumnNameDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="列名"
+        Width="500"
+        SizeToContent="Height"
+        MinHeight="220"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#F5F5F5">
+
+    <Window.Resources>
+        <Style x:Key="DlgButtonStyle" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor"          Value="Hand" />
+            <Setter Property="FontSize"        Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.70" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="22,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="6"    />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14"   />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14"   />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   x:Name="HeaderText"
+                   FontSize="11" Foreground="#555555"
+                   Text="新しい列名（^[A-Za-z_][A-Za-z0-9_]*$）" />
+
+        <TextBox Grid.Row="2"
+                 x:Name="ColumnNameBox"
+                 Background="#FFFFFF"
+                 Foreground="#222222"
+                 CaretBrush="#222222"
+                 BorderBrush="#BBBBBB"
+                 BorderThickness="1"
+                 Padding="8,6"
+                 FontSize="13"
+                 TextChanged="ColumnNameBox_TextChanged" />
+
+        <TextBlock Grid.Row="3"
+                   x:Name="ErrorText"
+                   FontSize="11" Foreground="#C04040"
+                   TextWrapping="Wrap"
+                   Margin="0,4,0,0"
+                   Visibility="Collapsed" />
+
+        <!-- リネーム時のみ表示: procedure.csv 一括書換チェックボックス + プレビューボタン -->
+        <Grid Grid.Row="5"
+              x:Name="RenameOptions"
+              Visibility="Collapsed">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <CheckBox Grid.Column="0"
+                      x:Name="RewriteCheckBox"
+                      IsChecked="True"
+                      Foreground="#444444"
+                      VerticalAlignment="Center">
+                <TextBlock>
+                    <Run Text="procedure.csv の " />
+                    <Run x:Name="OldRefRun" Text="$Old" Foreground="#A05B00" FontFamily="Consolas" />
+                    <Run Text=" を " />
+                    <Run x:Name="NewRefRun" Text="$New" Foreground="#1A7A1A" FontFamily="Consolas" />
+                    <Run Text=" に一括書換" />
+                </TextBlock>
+            </CheckBox>
+            <Button Grid.Column="1"
+                    x:Name="PreviewBtn"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="影響行プレビュー"
+                    Background="#E0E0E0"
+                    Foreground="#333333"
+                    Padding="12,4"
+                    Margin="8,0,0,0"
+                    Click="PreviewBtn_Click" />
+        </Grid>
+
+        <StackPanel Grid.Row="7"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button x:Name="CancelBtn"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="キャンセル"
+                    Background="#E0E0E0"
+                    Foreground="#333333"
+                    Padding="16,6"
+                    IsCancel="True"
+                    Click="CancelBtn_Click" />
+            <Button x:Name="OkBtn"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="OK"
+                    Background="#007ACC"
+                    Foreground="#FFFFFF"
+                    Padding="16,6"
+                    Margin="8,0,0,0"
+                    IsDefault="True"
+                    IsEnabled="False"
+                    Click="OkBtn_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

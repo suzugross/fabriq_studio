@@ -55,6 +55,7 @@ public partial class App : Application
         services.AddSingleton<IHostListExportService, HostListExportService>();
         services.AddSingleton<IFabriqBackupService, FabriqBackupService>();
         services.AddSingleton<IFabriqUpdateService, FabriqUpdateService>();
+        services.AddSingleton<IPianistProfileService, PianistProfileService>();
 
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();
@@ -70,6 +71,7 @@ public partial class App : Application
         services.AddSingleton<WelcomeViewModel>();
         services.AddSingleton<RegistryCollectionViewModel>();
         services.AddSingleton<PrinterDriverDetectorViewModel>();
+        services.AddSingleton<PianistProfileEditorViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // --- Views ---
