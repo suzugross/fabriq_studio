@@ -187,6 +187,12 @@
                     <ListBox.ItemTemplate>
                         <DataTemplate>
                             <StackPanel Margin="14,8" Orientation="Vertical">
+                                <StackPanel.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="🗑 プロファイル削除"
+                                                  Click="DeleteProfile_Click" />
+                                    </ContextMenu>
+                                </StackPanel.ContextMenu>
                                 <TextBlock Text="{Binding Name}"
                                            FontSize="13"
                                            Foreground="#222222" />
