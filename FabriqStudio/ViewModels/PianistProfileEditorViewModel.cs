@@ -100,8 +100,44 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
     /// </summary>
     [ObservableProperty] private ICollectionView? _currentPhaseStepsView;
 
-    /// <summary>選択中 Phase の instructions/&lt;PhaseID&gt;.txt 本文（無ければ空）。</summary>
-    [ObservableProperty] private string _currentInstructions = "";
+    // ─── instructions/<PhaseID>.txt の 4 section（pianist v1.4.0 DSL） ──────────────
+    //
+    // 内部表現: CurrentData.Instructions[PhaseID] には raw text を保持し、Phase 切替時に
+    // PianistInstructionParser でパースして以下のプロパティへ流し込む。
+    // 各プロパティ変更時に再シリアライズ → raw text を Dictionary に書き戻す方式。
+    // これにより Service / 永続化レイヤは触らずに UI だけ 4 sub-tab 化できる。
+
+    /// <summary>[RPA] section の本文。</summary>
+    [ObservableProperty] private string _currentRpa = "";
+
+    /// <summary>[Manual] section の本文。</summary>
+    [ObservableProperty] private string _currentManual = "";
+
+    /// <summary>
+    /// Variables sub-tab のメインリスト。values.csv の VariableColumns から構築され、
+    /// 各エントリは「[Variables] section に含めるか」のチェックボックスを持つ。
+    /// values.csv が変数の絶対参照源 — pianist の Expand-Variables は ValuesDict のみ
+    /// から resolve するため、[Variables] に書ける変数は values.csv 列が前提。
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<PianistVariableSelection> _currentVariableSelections = new();
+
+    /// <summary>
+    /// [Variables] section に書かれているが values.csv に対応する列が存在しない「孤児」エントリ。
+    /// タイポか values.csv の列削除残骸を示す。orphan セクションで赤背景 + 削除ボタンを出す。
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<PianistVariableSelection> _orphanVariableSelections = new();
+
+    /// <summary>
+    /// [Samples] section のエントリ列（編集対象）。<see cref="PianistSampleEntry.File"/> は
+    /// &lt;profile&gt;/screenshots/ 配下のファイル名のみ。
+    /// </summary>
+    [ObservableProperty] private ObservableCollection<PianistSampleEntry> _currentSamples = new();
+
+    /// <summary>
+    /// 現在 Phase の instructions ファイルが legacy（marker なし）形式だったか。
+    /// true の場合 Phase 詳細ヘッダに「保存時に新形式へ変換されます」案内バナーを出す。
+    /// </summary>
+    [ObservableProperty] private bool _currentInstructionsWasLegacy;
 
     // ─── 変数タブ（values.csv） ────────────────────────────────
     /// <summary>hostlist.csv から読み出した全 NewPCName（重複除去 + 空除去）。</summary>
@@ -389,6 +425,13 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
     private void OnVariableColumnsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
         RebuildVariableReferences();
+        // values.csv の列構成が変わったら Variables sub-tab のチェックリストも再構築
+        // （新列が追加 / 削除された場合に追従、既存 IsIncluded 状態は raw text 経由で復元される）
+        DetachInstructionItemSubscriptions();
+        _suppressDirty = true;
+        try { RebuildVariableSelections(); }
+        finally { _suppressDirty = false; }
+        AttachInstructionItemSubscriptions();
         MarkDirty();
     }
 
@@ -509,12 +552,13 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
 
     partial void OnSelectedPhaseChanged(PianistPhaseSummary? value)
     {
+        // 旧 Phase の Variables/Samples 編集購読を解除（Phase 切替時のリーク防止）
+        DetachInstructionItemSubscriptions();
+
         if (value is null || CurrentData is null)
         {
             CurrentPhaseStepsView = null;
-            _suppressDirty = true;
-            try { CurrentInstructions = ""; }
-            finally { _suppressDirty = false; }
+            ResetCurrentInstructionState();
             return;
         }
 
@@ -525,27 +569,238 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
             obj is PianistStep s && string.Equals(s.PhaseID, phaseId, StringComparison.Ordinal);
         CurrentPhaseStepsView = src.View;
 
-        // Phase 切替時の CurrentInstructions 再代入は Dirty 検知の対象外（プログラム的書込み）
+        // raw text → 4 section プロパティへ展開（プログラム的代入は Dirty 検知から除外）
+        var rawText = CurrentData.Instructions.TryGetValue(value.PhaseID, out var t) ? t : "";
+        LoadInstructionsForCurrentPhase(rawText);
+    }
+
+    /// <summary>
+    /// raw instruction text を <see cref="PianistInstructionParser"/> でパースして
+    /// 4 セクションのプロパティへ流し込む。Sample エントリの物理ファイル存在判定もここで行う。
+    /// 内部で <see cref="_suppressDirty"/> を立てて流し込むので Dirty にならない。
+    /// </summary>
+    private void LoadInstructionsForCurrentPhase(string rawText)
+    {
+        var parsed = PianistInstructionParser.Parse(rawText);
+        var screenshotsDir = CurrentData is not null
+            ? System.IO.Path.Combine(CurrentData.Entry.FolderPath, "screenshots")
+            : null;
+
         _suppressDirty = true;
         try
         {
-            CurrentInstructions = CurrentData.Instructions.TryGetValue(value.PhaseID, out var text)
-                ? text
-                : "";
+            CurrentRpa    = parsed.RPA;
+            CurrentManual = parsed.Manual;
+
+            CurrentSamples.Clear();
+            foreach (var s in parsed.Samples)
+            {
+                s.Exists = screenshotsDir is not null
+                    && System.IO.File.Exists(System.IO.Path.Combine(screenshotsDir, s.File));
+                CurrentSamples.Add(s);
+            }
+
+            CurrentInstructionsWasLegacy = parsed.WasLegacyFormat;
+
+            RebuildVariableSelections(parsed.Variables);
+            AttachInstructionItemSubscriptions();
         }
         finally { _suppressDirty = false; }
     }
 
     /// <summary>
-    /// instructions テキスト編集を受けて <see cref="PianistProfileData.Instructions"/> 辞書に書き戻し、
-    /// Dirty フラグを立てる。Phase 切替時のプログラム的代入は <see cref="_suppressDirty"/> で除外する。
+    /// 4 セクションのプロパティ群を空にする（Phase 未選択 / プロファイル未ロード時）。
     /// </summary>
-    partial void OnCurrentInstructionsChanged(string value)
+    private void ResetCurrentInstructionState()
+    {
+        _suppressDirty = true;
+        try
+        {
+            CurrentRpa    = "";
+            CurrentManual = "";
+            CurrentVariableSelections.Clear();
+            OrphanVariableSelections.Clear();
+            CurrentSamples.Clear();
+            CurrentInstructionsWasLegacy = false;
+        }
+        finally { _suppressDirty = false; }
+    }
+
+    /// <summary>RPA section テキスト変更 → 再シリアライズ + Dirty。</summary>
+    partial void OnCurrentRpaChanged(string value) => RewriteCurrentInstructionsRaw();
+
+    /// <summary>Manual section テキスト変更 → 再シリアライズ + Dirty。</summary>
+    partial void OnCurrentManualChanged(string value) => RewriteCurrentInstructionsRaw();
+
+    /// <summary>
+    /// 4 セクションプロパティから raw text を再構築して
+    /// <see cref="PianistProfileData.Instructions"/> 辞書へ書き戻し、Dirty を立てる。
+    ///
+    /// [Variables] 出力規則: <see cref="CurrentVariableSelections"/> +
+    /// <see cref="OrphanVariableSelections"/> のうち <see cref="PianistVariableSelection.IsIncluded"/>
+    /// が true なエントリの Name を 1 行 1 変数で書き出す。auto-discovered なら pianist 側で
+    /// auto-union されるが、ユーザの明示チェック状態を尊重して round-trip を保つ。
+    /// </summary>
+    private void RewriteCurrentInstructionsRaw()
     {
         if (_isInitializing || _suppressDirty) return;
-        if (CurrentData is not null && SelectedPhase is not null)
-            CurrentData.Instructions[SelectedPhase.PhaseID] = value;
+        if (CurrentData is null || SelectedPhase is null) return;
+
+        var data = new PianistInstructionFile
+        {
+            RPA    = CurrentRpa ?? "",
+            Manual = CurrentManual ?? "",
+        };
+        foreach (var v in CurrentVariableSelections)
+            if (v.IsIncluded && !string.IsNullOrWhiteSpace(v.Name))
+                data.Variables.Add(v.Name);
+        foreach (var v in OrphanVariableSelections)
+            if (v.IsIncluded && !string.IsNullOrWhiteSpace(v.Name))
+                data.Variables.Add(v.Name);
+        foreach (var s in CurrentSamples)
+            data.Samples.Add(s);
+
+        CurrentData.Instructions[SelectedPhase.PhaseID] = PianistInstructionParser.Serialize(data);
         MarkDirty();
+    }
+
+    // ─── 4 section プロパティ内のアイテム編集購読 ────────────
+    // CurrentVariables / CurrentSamples の各アイテム PropertyChanged を購読することで
+    // 「変数名を 1 文字書き換えた」「キャプションを変更した」などをすべて Dirty + raw 再書込に流す。
+
+    private void AttachInstructionItemSubscriptions()
+    {
+        CurrentVariableSelections.CollectionChanged += OnInstructionVariableSelectionsChanged;
+        OrphanVariableSelections.CollectionChanged  += OnInstructionVariableSelectionsChanged;
+        CurrentSamples.CollectionChanged            += OnInstructionSamplesChanged;
+        foreach (var v in CurrentVariableSelections) v.PropertyChanged += OnInstructionItemPropChanged;
+        foreach (var v in OrphanVariableSelections)  v.PropertyChanged += OnInstructionItemPropChanged;
+        foreach (var s in CurrentSamples)            s.PropertyChanged += OnInstructionItemPropChanged;
+    }
+
+    private void DetachInstructionItemSubscriptions()
+    {
+        CurrentVariableSelections.CollectionChanged -= OnInstructionVariableSelectionsChanged;
+        OrphanVariableSelections.CollectionChanged  -= OnInstructionVariableSelectionsChanged;
+        CurrentSamples.CollectionChanged            -= OnInstructionSamplesChanged;
+        foreach (var v in CurrentVariableSelections) v.PropertyChanged -= OnInstructionItemPropChanged;
+        foreach (var v in OrphanVariableSelections)  v.PropertyChanged -= OnInstructionItemPropChanged;
+        foreach (var s in CurrentSamples)            s.PropertyChanged -= OnInstructionItemPropChanged;
+    }
+
+    private void OnInstructionVariableSelectionsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+            foreach (PianistVariableSelection v in e.NewItems) v.PropertyChanged += OnInstructionItemPropChanged;
+        if (e.OldItems is not null)
+            foreach (PianistVariableSelection v in e.OldItems) v.PropertyChanged -= OnInstructionItemPropChanged;
+        RewriteCurrentInstructionsRaw();
+    }
+
+    private void OnInstructionSamplesChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+            foreach (PianistSampleEntry s in e.NewItems) s.PropertyChanged += OnInstructionItemPropChanged;
+        if (e.OldItems is not null)
+            foreach (PianistSampleEntry s in e.OldItems) s.PropertyChanged -= OnInstructionItemPropChanged;
+        RewriteCurrentInstructionsRaw();
+    }
+
+    private void OnInstructionItemPropChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        // PianistSampleEntry.Exists は Studio が物理判定で立てるだけのフラグなので Dirty にしない
+        if (sender is PianistSampleEntry &&
+            (e.PropertyName == nameof(PianistSampleEntry.Exists) ||
+             e.PropertyName == nameof(PianistSampleEntry.IsMissing) ||
+             e.PropertyName == nameof(PianistSampleEntry.DisplayName)))
+            return;
+        RewriteCurrentInstructionsRaw();
+    }
+
+    /// <summary>
+    /// procedure.csv の Value/Note 列に出現する <c>$VarName</c> 走査用 regex（pianist の
+    /// Get-PhaseReferencedVariables と同一）。
+    /// </summary>
+    private static readonly Regex VarRefScanRegex = new(@"\$([A-Za-z_][A-Za-z0-9_]*)", RegexOptions.Compiled);
+
+    /// <summary>
+    /// Variables sub-tab のチェックリストを 3 集合の union から再構築する:
+    ///   1. values.csv の VariableColumns（絶対参照源 — メインリスト）
+    ///   2. 同 Phase の procedure.csv $VarName 参照（auto-discovered フラグ）
+    ///   3. パース済 [Variables] section の宣言（IsIncluded フラグ + orphan 判定）
+    ///
+    /// values.csv に存在する列 → CurrentVariableSelections に積む。IsIncluded は
+    /// [Variables] に書かれていれば true、無ければ false。
+    /// values.csv に存在しない [Variables] 宣言 → OrphanVariableSelections に分離。
+    /// </summary>
+    private void RebuildVariableSelections(IEnumerable<string>? explicitVariables = null)
+    {
+        CurrentVariableSelections.Clear();
+        OrphanVariableSelections.Clear();
+        if (CurrentData is null || SelectedPhase is null) return;
+
+        // 1. values.csv 列名（絶対参照源）
+        var valuesCols = CurrentData.Values.VariableColumns.ToList();
+        var valuesColsSet = new HashSet<string>(valuesCols, StringComparer.Ordinal);
+
+        // 2. procedure.csv 由来 auto-discovered（同 Phase のみ）
+        var phaseId = SelectedPhase.PhaseID;
+        var auto = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var step in CurrentData.Steps)
+        {
+            if (!string.Equals(step.PhaseID, phaseId, StringComparison.Ordinal)) continue;
+            foreach (var field in new[] { step.Value ?? "", step.Note ?? "" })
+                foreach (Match m in VarRefScanRegex.Matches(field))
+                    auto.Add(m.Groups[1].Value);
+        }
+
+        // 3. [Variables] section の明示宣言（呼び出し元から渡される）
+        // 渡されなかった場合は現在の raw text を再パースして取得（columns 変化時の rebuild 用）
+        IEnumerable<string> explicit_ = explicitVariables ?? ReparseExplicitVariables();
+        var explicitSet = new HashSet<string>(explicit_, StringComparer.Ordinal);
+
+        // メインリスト: values.csv 列 × IsIncluded（[Variables] にある）× IsAutoDiscovered
+        // sample value: `*` 行のセル値（先頭 60 文字）
+        var starRow = CurrentData.Values.Star;
+        foreach (var col in valuesCols)
+        {
+            var raw = starRow is not null ? starRow[col] : "";
+            var preview = string.IsNullOrEmpty(raw) ? "" : (raw.Length > 60 ? raw.Substring(0, 60) + "..." : raw);
+            CurrentVariableSelections.Add(new PianistVariableSelection
+            {
+                Name             = col,
+                IsIncluded       = explicitSet.Contains(col),
+                IsAutoDiscovered = auto.Contains(col),
+                SampleValue      = preview,
+                IsOrphan         = false,
+            });
+        }
+
+        // Orphan: [Variables] にあるが values.csv に列が無い
+        foreach (var name in explicit_)
+        {
+            if (valuesColsSet.Contains(name)) continue;
+            OrphanVariableSelections.Add(new PianistVariableSelection
+            {
+                Name             = name,
+                IsIncluded       = true,
+                IsAutoDiscovered = auto.Contains(name),
+                SampleValue      = "",
+                IsOrphan         = true,
+            });
+        }
+    }
+
+    /// <summary>
+    /// 現在 Phase の raw instructions を再パースして [Variables] section の宣言名のみ取り出す。
+    /// values.csv の列追加 / 削除イベントで CurrentVariableSelections を再構築する際に
+    /// 既存の IsIncluded 情報を失わないようにする補助。
+    /// </summary>
+    private IEnumerable<string> ReparseExplicitVariables()
+    {
+        if (CurrentData is null || SelectedPhase is null) return Array.Empty<string>();
+        if (!CurrentData.Instructions.TryGetValue(SelectedPhase.PhaseID, out var raw)) return Array.Empty<string>();
+        return PianistInstructionParser.Parse(raw).Variables;
     }
 
     private void ClearPhaseState()
@@ -553,7 +808,8 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
         Phases.Clear();
         SelectedPhase         = null;
         CurrentPhaseStepsView = null;
-        CurrentInstructions   = "";
+        DetachInstructionItemSubscriptions();
+        ResetCurrentInstructionState();
     }
 
     // ─── 変数タブ（values.csv） ────────────────────────────────
@@ -1096,20 +1352,22 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
             Value      = "0",
         });
 
-        // instructions/&lt;PhaseID&gt;.txt: 既存があれば再利用（§7.3）、無ければ空作成
+        // instructions/&lt;PhaseID&gt;.txt: 既存があれば再利用（§7.3）、無ければ 4-section 空雛形を作成
+        // pianist v1.4.0 以降の section marker DSL に揃える（[RPA] / [Manual] のヘッダだけ用意）
         try
         {
             var dir = System.IO.Path.Combine(CurrentData.Entry.FolderPath, "instructions");
             System.IO.Directory.CreateDirectory(dir);
             var path = System.IO.Path.Combine(dir, $"{phaseId}.txt");
+            const string emptyTemplate = "[RPA]\r\n\r\n[Manual]\r\n\r\n";
             if (!System.IO.File.Exists(path))
-                System.IO.File.WriteAllText(path, "", new System.Text.UTF8Encoding(false));
+                System.IO.File.WriteAllText(path, emptyTemplate, new System.Text.UTF8Encoding(false));
 
             // メモリ上の Instructions も同期（既存内容を読み込む）
             if (!CurrentData.Instructions.ContainsKey(phaseId))
                 CurrentData.Instructions[phaseId] = System.IO.File.Exists(path)
                     ? System.IO.File.ReadAllText(path, System.Text.Encoding.UTF8)
-                    : "";
+                    : emptyTemplate;
         }
         catch (Exception ex)
         {
@@ -1505,6 +1763,26 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
                     Message  = $"instructions/{pid}.txt がありません（実行可、手順書欄はプレースホルダ表示）",
                     Source   = pid,
                 });
+        }
+
+        // [Samples] section が参照する画像ファイルが <profile>/screenshots/ に実在するか
+        // pianist runtime は欠損時 "(missing) <name>" placeholder で動くので Warning 扱い
+        var screenshotsDir = System.IO.Path.Combine(CurrentData.Entry.FolderPath, "screenshots");
+        foreach (var (pid, raw) in CurrentData.Instructions)
+        {
+            var parsed = PianistInstructionParser.Parse(raw);
+            foreach (var sample in parsed.Samples)
+            {
+                var path = System.IO.Path.Combine(screenshotsDir, sample.File);
+                if (!System.IO.File.Exists(path))
+                    issues.Add(new PianistValidationIssue
+                    {
+                        Level    = PianistValidationIssue.Severity.Warning,
+                        Category = "Samples",
+                        Message  = $"画像ファイル「screenshots/{sample.File}」が存在しません（pianist で `(missing)` プレースホルダ表示）",
+                        Source   = $"{pid} [Samples]",
+                    });
+            }
         }
 
         // 並び替え: Error → Warning → Info

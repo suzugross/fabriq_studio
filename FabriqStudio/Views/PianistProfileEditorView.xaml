@@ -490,7 +490,8 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="*"    />
-                                    <RowDefinition Height="180"  />
+                                    <RowDefinition Height="6"    />
+                                    <RowDefinition Height="340"  />
                                 </Grid.RowDefinitions>
 
                                 <!-- 詳細ヘッダー（Phase メタ + Step 追加ボタン） -->
@@ -644,18 +645,27 @@
                                         <DataGridTextColumn Header="Note"
                                                             Binding="{Binding Note, UpdateSourceTrigger=PropertyChanged}"
                                                             Width="*" />
-                                        <DataGridTextColumn Header="Screenshot"
-                                                            Binding="{Binding Screenshot, UpdateSourceTrigger=PropertyChanged}"
-                                                            Width="120" />
                                     </DataGrid.Columns>
                                 </DataGrid>
 
-                                <!-- Instructions テキストエリア -->
-                                <Grid Grid.Row="2">
+                                <!-- Step グリッド と Instructions の境界スプリッタ -->
+                                <GridSplitter Grid.Row="2"
+                                              Height="6"
+                                              HorizontalAlignment="Stretch"
+                                              VerticalAlignment="Center"
+                                              Background="#E0E0E0"
+                                              ResizeBehavior="PreviousAndNext"
+                                              ResizeDirection="Rows" />
+
+                                <!-- Instructions エディタ: 4 sub-tab (RPA / Manual / Variables / Samples) -->
+                                <Grid Grid.Row="3">
                                     <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="*"    />
                                     </Grid.RowDefinitions>
+
+                                    <!-- パスバー -->
                                     <Border Grid.Row="0"
                                             Padding="16,8"
                                             Background="#F5F5F5"
@@ -668,16 +678,352 @@
                                             <Run Text=".txt" />
                                         </TextBlock>
                                     </Border>
-                                    <TextBox Grid.Row="1"
-                                             Text="{Binding CurrentInstructions, UpdateSourceTrigger=PropertyChanged}"
-                                             AcceptsReturn="True"
-                                             AcceptsTab="True"
-                                             TextWrapping="Wrap"
-                                             VerticalScrollBarVisibility="Auto"
-                                             FontFamily="Consolas, Yu Gothic UI"
-                                             FontSize="12"
-                                             BorderThickness="0"
-                                             Padding="16,10" />
+
+                                    <!-- legacy バナー: marker なしファイル読込時、保存で自動変換される旨を案内 -->
+                                    <Border Grid.Row="1"
+                                            Padding="14,6"
+                                            Background="#FFF4D8"
+                                            BorderBrush="#E0C176"
+                                            BorderThickness="0,0,0,1"
+                                            Visibility="{Binding CurrentInstructionsWasLegacy,
+                                                         Converter={StaticResource BoolToVisibilityConverter}}">
+                                        <TextBlock FontSize="11" Foreground="#7A5A1A" TextWrapping="Wrap">
+                                            <Run Text="⚠" FontWeight="Bold" />
+                                            <Run Text=" 旧形式 (section marker なし) を検出しました。全文を Manual セクションへ折り込みました。保存すると新形式 ([RPA]/[Manual]/[Variables]/[Samples]) へ自動変換されます。" />
+                                        </TextBlock>
+                                    </Border>
+
+                                    <!-- 4 sub-tab エディタ -->
+                                    <TabControl Grid.Row="2"
+                                                Background="White"
+                                                BorderThickness="0"
+                                                Padding="0">
+
+                                        <!-- ─── RPA ─── -->
+                                        <TabItem Header="RPA">
+                                            <DockPanel>
+                                                <Border DockPanel.Dock="Top"
+                                                        Padding="14,6"
+                                                        Background="#F9F9F9"
+                                                        BorderBrush="#EEEEEE"
+                                                        BorderThickness="0,0,0,1">
+                                                    <TextBlock FontSize="10" Foreground="#888888" TextWrapping="Wrap">
+                                                        <Run Text="Run Phase ボタンで自動実行される操作の説明文。空のまま保存すると section が省略され、Pianist 側で procedure.csv の Step 一覧が fallback 表示されます。" />
+                                                    </TextBlock>
+                                                </Border>
+                                                <TextBox Text="{Binding CurrentRpa, UpdateSourceTrigger=PropertyChanged}"
+                                                         AcceptsReturn="True"
+                                                         AcceptsTab="True"
+                                                         TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         FontFamily="Consolas, Yu Gothic UI"
+                                                         FontSize="12"
+                                                         BorderThickness="0"
+                                                         Padding="16,10" />
+                                            </DockPanel>
+                                        </TabItem>
+
+                                        <!-- ─── Manual ─── -->
+                                        <TabItem Header="Manual">
+                                            <DockPanel>
+                                                <Border DockPanel.Dock="Top"
+                                                        Padding="14,6"
+                                                        Background="#F9F9F9"
+                                                        BorderBrush="#EEEEEE"
+                                                        BorderThickness="0,0,0,1">
+                                                    <TextBlock FontSize="10" Foreground="#888888" TextWrapping="Wrap">
+                                                        <Run Text="operator が目視 / クリック / 確認で実施する手順。RPA で完結しない部分（画面確認、メッセージ目視など）を書きます。" />
+                                                    </TextBlock>
+                                                </Border>
+                                                <TextBox Text="{Binding CurrentManual, UpdateSourceTrigger=PropertyChanged}"
+                                                         AcceptsReturn="True"
+                                                         AcceptsTab="True"
+                                                         TextWrapping="Wrap"
+                                                         VerticalScrollBarVisibility="Auto"
+                                                         FontFamily="Consolas, Yu Gothic UI"
+                                                         FontSize="12"
+                                                         BorderThickness="0"
+                                                         Padding="16,10" />
+                                            </DockPanel>
+                                        </TabItem>
+
+                                        <!-- ─── Variables ─── -->
+                                        <TabItem Header="Variables">
+                                            <DockPanel>
+                                                <Border DockPanel.Dock="Top"
+                                                        Padding="14,6"
+                                                        Background="#F9F9F9"
+                                                        BorderBrush="#EEEEEE"
+                                                        BorderThickness="0,0,0,1">
+                                                    <TextBlock FontSize="10" Foreground="#888888" TextWrapping="Wrap">
+                                                        <Run Text="values.csv の列を [Variables] section に含めるかチェック。Pianist の Copy Values ダイアログに表示したい変数を選びます。" />
+                                                        <Run Text=" 🔍 auto" Foreground="#107C10" />
+                                                        <Run Text=" は同 Phase の procedure.csv で参照されている変数（Pianist が auto-union するため未チェックでも Copy Values に表示）。" />
+                                                    </TextBlock>
+                                                </Border>
+
+                                                <!-- orphan セクション (DockPanel.Dock=Bottom): values.csv に列がない [Variables] 宣言 -->
+                                                <Border DockPanel.Dock="Bottom"
+                                                        Padding="0"
+                                                        BorderBrush="#E0A0A0"
+                                                        BorderThickness="0,1,0,0">
+                                                    <Border.Style>
+                                                        <Style TargetType="Border">
+                                                            <Setter Property="Visibility" Value="Visible" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding OrphanVariableSelections.Count}" Value="0">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </Border.Style>
+                                                    <DockPanel Background="#FFE8E8">
+                                                        <TextBlock DockPanel.Dock="Top"
+                                                                   Padding="14,6"
+                                                                   FontSize="11" FontWeight="SemiBold"
+                                                                   Foreground="#A03030">
+                                                            <Run Text="⚠ values.csv に列がない宣言（タイポ or 列削除残骸）" />
+                                                        </TextBlock>
+                                                        <ItemsControl ItemsSource="{Binding OrphanVariableSelections}"
+                                                                      Padding="14,0,14,8">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Grid Margin="0,2">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="*" />
+                                                                            <ColumnDefinition Width="Auto" />
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <TextBlock Grid.Column="0"
+                                                                                   Text="{Binding Name}"
+                                                                                   FontFamily="Consolas, Yu Gothic UI"
+                                                                                   FontSize="12"
+                                                                                   Foreground="#A03030"
+                                                                                   VerticalAlignment="Center" />
+                                                                        <Button Grid.Column="1"
+                                                                                Content="削除"
+                                                                                Click="DeleteOrphanVariable_Click"
+                                                                                Tag="{Binding}"
+                                                                                Padding="10,2"
+                                                                                FontSize="11"
+                                                                                Background="#A03030"
+                                                                                Foreground="White"
+                                                                                BorderThickness="0"
+                                                                                Cursor="Hand"
+                                                                                ToolTip="この孤児宣言を [Variables] section から削除" />
+                                                                    </Grid>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </DockPanel>
+                                                </Border>
+
+                                                <!-- メインリスト: values.csv 列のチェックリスト -->
+                                                <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                                              HorizontalScrollBarVisibility="Disabled">
+                                                    <Grid>
+                                                        <!-- 空状態: values.csv 列が 0 件 -->
+                                                        <TextBlock Margin="14,12"
+                                                                   FontSize="11" Foreground="#888888"
+                                                                   TextWrapping="Wrap">
+                                                            <TextBlock.Style>
+                                                                <Style TargetType="TextBlock">
+                                                                    <Setter Property="Visibility" Value="Collapsed" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding CurrentVariableSelections.Count}" Value="0">
+                                                                            <Setter Property="Visibility" Value="Visible" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </TextBlock.Style>
+                                                            <Run Text="ℹ" FontWeight="Bold" />
+                                                            <Run Text=" values.csv に変数列がありません。「変数」タブで列を追加してください（変数の絶対参照源は values.csv の列名です）。" />
+                                                        </TextBlock>
+
+                                                        <ItemsControl ItemsSource="{Binding CurrentVariableSelections}"
+                                                                      Padding="0,4">
+                                                            <ItemsControl.ItemTemplate>
+                                                                <DataTemplate>
+                                                                    <Border Padding="14,4" Margin="0,1"
+                                                                            Background="Transparent">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="Auto" />
+                                                                                <ColumnDefinition Width="180" />
+                                                                                <ColumnDefinition Width="60" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+
+                                                                            <CheckBox Grid.Column="0"
+                                                                                      IsChecked="{Binding IsIncluded, UpdateSourceTrigger=PropertyChanged}"
+                                                                                      VerticalAlignment="Center"
+                                                                                      Margin="0,0,12,0" />
+
+                                                                            <TextBlock Grid.Column="1"
+                                                                                       Text="{Binding Name}"
+                                                                                       FontFamily="Consolas, Yu Gothic UI"
+                                                                                       FontSize="12"
+                                                                                       Foreground="#222222"
+                                                                                       VerticalAlignment="Center"
+                                                                                       TextTrimming="CharacterEllipsis" />
+
+                                                                            <TextBlock Grid.Column="2"
+                                                                                       Text="🔍 auto"
+                                                                                       FontSize="10"
+                                                                                       Foreground="#107C10"
+                                                                                       VerticalAlignment="Center"
+                                                                                       ToolTip="同 Phase の procedure.csv で $VarName として参照されています（Pianist が auto-union するため Copy Values に常時表示）"
+                                                                                       Visibility="{Binding IsAutoDiscovered, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                                                                            <TextBlock Grid.Column="3"
+                                                                                       Text="{Binding SampleValue}"
+                                                                                       FontSize="11"
+                                                                                       FontFamily="Consolas, Yu Gothic UI"
+                                                                                       Foreground="#999999"
+                                                                                       VerticalAlignment="Center"
+                                                                                       Margin="12,0,0,0"
+                                                                                       TextTrimming="CharacterEllipsis"
+                                                                                       ToolTip="{Binding SampleValue}" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </DataTemplate>
+                                                            </ItemsControl.ItemTemplate>
+                                                        </ItemsControl>
+                                                    </Grid>
+                                                </ScrollViewer>
+                                            </DockPanel>
+                                        </TabItem>
+
+                                        <!-- ─── Samples ─── -->
+                                        <TabItem Header="Samples">
+                                            <DockPanel>
+                                                <Border DockPanel.Dock="Top"
+                                                        Padding="14,6"
+                                                        Background="#F9F9F9"
+                                                        BorderBrush="#EEEEEE"
+                                                        BorderThickness="0,0,0,1">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0"
+                                                                   FontSize="10" Foreground="#888888"
+                                                                   VerticalAlignment="Center"
+                                                                   TextWrapping="Wrap"
+                                                                   Text="Pianist の Samples タブで表示する見本画像。&lt;profile&gt;/screenshots/ に格納され、サムネイル + キャプションで一覧表示されます。" />
+                                                        <StackPanel Grid.Column="1"
+                                                                    Orientation="Horizontal"
+                                                                    VerticalAlignment="Center">
+                                                            <Button Content="+ 画像追加"
+                                                                    Click="AddSampleImage_Click"
+                                                                    Padding="10,4"
+                                                                    Margin="0,0,4,0"
+                                                                    FontSize="11"
+                                                                    ToolTip="ファイルダイアログから画像を選択して screenshots/ にコピー" />
+                                                            <Button Content="↑"
+                                                                    Click="MoveSampleUp_Click"
+                                                                    Padding="8,4"
+                                                                    Margin="0,0,4,0"
+                                                                    FontSize="11"
+                                                                    ToolTip="選択中の画像を上へ移動" />
+                                                            <Button Content="↓"
+                                                                    Click="MoveSampleDown_Click"
+                                                                    Padding="8,4"
+                                                                    Margin="0,0,4,0"
+                                                                    FontSize="11"
+                                                                    ToolTip="選択中の画像を下へ移動" />
+                                                            <Button Content="🗑 削除"
+                                                                    Click="DeleteSample_Click"
+                                                                    Padding="10,4"
+                                                                    FontSize="11"
+                                                                    ToolTip="選択中エントリを [Samples] section から削除（画像ファイル本体は別途確認）" />
+                                                        </StackPanel>
+                                                    </Grid>
+                                                </Border>
+                                                <ListBox x:Name="SamplesListBox"
+                                                         ItemsSource="{Binding CurrentSamples}"
+                                                         AllowDrop="True"
+                                                         Drop="SamplesListBox_Drop"
+                                                         DragOver="SamplesListBox_DragOver"
+                                                         BorderThickness="0"
+                                                         HorizontalContentAlignment="Stretch"
+                                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                                    <ListBox.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Border Padding="8" Margin="4"
+                                                                    Background="#FAFAFA"
+                                                                    BorderBrush="#DDDDDD"
+                                                                    BorderThickness="1"
+                                                                    CornerRadius="4">
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="120" />
+                                                                        <ColumnDefinition Width="*"   />
+                                                                    </Grid.ColumnDefinitions>
+
+                                                                    <!-- サムネイル（欠損時はプレースホルダ） -->
+                                                                    <Border Grid.Column="0"
+                                                                            Width="110" Height="80"
+                                                                            Background="#F0F0F0"
+                                                                            BorderBrush="#CCCCCC"
+                                                                            BorderThickness="1">
+                                                                        <Grid>
+                                                                            <Image Stretch="Uniform"
+                                                                                   Visibility="{Binding Exists,
+                                                                                                Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                                <Image.Source>
+                                                                                    <MultiBinding Converter="{StaticResource SampleFileToImageConverter}">
+                                                                                        <Binding Path="File" />
+                                                                                        <Binding Path="DataContext.CurrentData.Entry.FolderPath"
+                                                                                                 RelativeSource="{RelativeSource AncestorType=ListBox}" />
+                                                                                    </MultiBinding>
+                                                                                </Image.Source>
+                                                                            </Image>
+                                                                            <TextBlock Text="(missing)"
+                                                                                       FontSize="11"
+                                                                                       Foreground="#A03030"
+                                                                                       HorizontalAlignment="Center"
+                                                                                       VerticalAlignment="Center"
+                                                                                       Visibility="{Binding IsMissing,
+                                                                                                    Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                                        </Grid>
+                                                                    </Border>
+
+                                                                    <!-- ファイル名 + キャプション -->
+                                                                    <Grid Grid.Column="1" Margin="12,0,0,0">
+                                                                        <Grid.RowDefinitions>
+                                                                            <RowDefinition Height="Auto" />
+                                                                            <RowDefinition Height="Auto" />
+                                                                            <RowDefinition Height="*"    />
+                                                                        </Grid.RowDefinitions>
+                                                                        <TextBlock Grid.Row="0"
+                                                                                   Text="{Binding DisplayName}"
+                                                                                   FontSize="12" FontWeight="SemiBold"
+                                                                                   Foreground="#222222"
+                                                                                   TextTrimming="CharacterEllipsis" />
+                                                                        <TextBlock Grid.Row="1"
+                                                                                   Text="Caption:"
+                                                                                   FontSize="10" Foreground="#888888"
+                                                                                   Margin="0,4,0,2" />
+                                                                        <TextBox  Grid.Row="2"
+                                                                                  Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged}"
+                                                                                  FontSize="11"
+                                                                                  Background="White"
+                                                                                  BorderBrush="#CCCCCC"
+                                                                                  BorderThickness="1"
+                                                                                  Padding="6,3"
+                                                                                  VerticalAlignment="Top"
+                                                                                  TextWrapping="Wrap"
+                                                                                  AcceptsReturn="False" />
+                                                                    </Grid>
+                                                                </Grid>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </ListBox.ItemTemplate>
+                                                </ListBox>
+                                            </DockPanel>
+                                        </TabItem>
+                                    </TabControl>
                                 </Grid>
                             </Grid>
                         </Grid>

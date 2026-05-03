@@ -247,6 +247,9 @@ public class PianistProfileService : IPianistProfileService
         var folder = Path.Combine(GetRoot(), PianistProfilesRel, name);
         Directory.CreateDirectory(folder);
         Directory.CreateDirectory(Path.Combine(folder, "instructions"));
+        // [Samples] section が参照する画像置き場（pianist v1.5.0 以降）。
+        // 空でも作っておくことで Studio の画像追加 UX が初回からスムーズになる。
+        Directory.CreateDirectory(Path.Combine(folder, "screenshots"));
 
         var entry = new PianistProfileEntry { Name = name, FolderPath = folder };
 
@@ -279,8 +282,10 @@ public class PianistProfileService : IPianistProfileService
         // values.csv: NewPCName 列のみ + `*` 行（変数列ゼロ）
         data.Values.EnsureStarRow();
 
-        // instructions/P01.txt: 空ファイル
-        data.Instructions["P01"] = "";
+        // instructions/P01.txt: 4-section DSL の空雛形（pianist v1.4.0 以降）。
+        // [RPA] / [Manual] / [Variables] / [Samples] が空でも明示しておくと
+        // Studio で開いた瞬間に編集 UI の各サブタブにフォーカスできる。
+        data.Instructions["P01"] = "[RPA]\r\n\r\n[Manual]\r\n\r\n";
 
         // §10 規約で全ファイル書き出し
         await SaveMetadataAsync(folder, data.Metadata);

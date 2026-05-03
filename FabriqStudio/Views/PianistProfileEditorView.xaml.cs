@@ -499,4 +499,184 @@ public partial class PianistProfileEditorView : UserControl
     // Step 並び替えは Helpers/DataGridRowDragDropBehavior が adorner ライン + 自動スクロールを
     // 含めて一括処理し、Drop 確定時に VM の MoveStepRowCommand へ RowMoveRequest（filter-view
     // index）を渡す。コードビハインド側に手書きハンドラは持たない。
+
+    // ─── Variables sub-tab ─────────────────────────────────────────
+    /// <summary>
+    /// orphan 宣言（values.csv に列がない [Variables] エントリ）を削除。
+    /// CollectionChanged が再シリアライズを発火するので [Variables] section から消える。
+    /// </summary>
+    private void DeleteOrphanVariable_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm is null) return;
+        if (sender is not Button btn) return;
+        if (btn.Tag is not Models.PianistVariableSelection sel) return;
+
+        _vm.OrphanVariableSelections.Remove(sel);
+    }
+
+    // ─── Samples sub-tab (画像管理) ───────────────────────────────
+    /// <summary>サポートする画像拡張子（小文字、ドット付き）。</summary>
+    private static readonly string[] AllowedImageExtensions =
+        { ".png", ".jpg", ".jpeg", ".gif", ".bmp" };
+
+    /// <summary>screenshots/ への画像コピー + [Samples] section へのエントリ追加。</summary>
+    private void AddSampleImage_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm?.CurrentData is null)
+        {
+            MessageBox.Show("プロファイルが選択されていません。", "Sample 画像追加",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var dlg = new Microsoft.Win32.OpenFileDialog
+        {
+            Title  = "Sample 画像を選択",
+            Filter = "画像ファイル (*.png; *.jpg; *.jpeg; *.gif; *.bmp)|*.png;*.jpg;*.jpeg;*.gif;*.bmp",
+            Multiselect = true,
+        };
+        if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+
+        foreach (var src in dlg.FileNames)
+            ImportSampleImage(src);
+    }
+
+    private void DeleteSample_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm is null) return;
+        if (SamplesListBox.SelectedItem is not PianistSampleEntry entry) return;
+
+        var ok = MessageBox.Show(
+            $"Sample エントリ「{entry.File}」を [Samples] section から削除しますか？\n\n" +
+            "この操作は instruction ファイルの参照のみを削除します。\n" +
+            "画像ファイル本体（screenshots/ 配下）の削除は別途行ってください。",
+            "Sample 削除",
+            MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (ok != MessageBoxResult.OK) return;
+
+        _vm.CurrentSamples.Remove(entry);
+    }
+
+    private void MoveSampleUp_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm is null) return;
+        var idx = SamplesListBox.SelectedIndex;
+        if (idx <= 0) return;
+        var item = _vm.CurrentSamples[idx];
+        _vm.CurrentSamples.RemoveAt(idx);
+        _vm.CurrentSamples.Insert(idx - 1, item);
+        SamplesListBox.SelectedIndex = idx - 1;
+    }
+
+    private void MoveSampleDown_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm is null) return;
+        var idx = SamplesListBox.SelectedIndex;
+        if (idx < 0 || idx >= _vm.CurrentSamples.Count - 1) return;
+        var item = _vm.CurrentSamples[idx];
+        _vm.CurrentSamples.RemoveAt(idx);
+        _vm.CurrentSamples.Insert(idx + 1, item);
+        SamplesListBox.SelectedIndex = idx + 1;
+    }
+
+    private void SamplesListBox_DragOver(object sender, System.Windows.DragEventArgs e)
+    {
+        e.Effects = e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)
+            ? System.Windows.DragDropEffects.Copy
+            : System.Windows.DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void SamplesListBox_Drop(object sender, System.Windows.DragEventArgs e)
+    {
+        if (_vm?.CurrentData is null) return;
+        if (!e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)) return;
+
+        var files = (string[])e.Data.GetData(System.Windows.DataFormats.FileDrop);
+        foreach (var src in files)
+            ImportSampleImage(src);
+    }
+
+    /// <summary>
+    /// 1 枚の画像ファイルを <c>&lt;profile&gt;/screenshots/</c> へコピーし、
+    /// 既存に同名がない場合のみ <see cref="PianistProfileEditorViewModel.CurrentSamples"/>
+    /// にエントリ追加する。同名 + 既存エントリありなら更新（上書きコピー + Exists リフレッシュ）。
+    /// </summary>
+    private void ImportSampleImage(string sourcePath)
+    {
+        if (_vm?.CurrentData is null) return;
+        if (!System.IO.File.Exists(sourcePath))
+        {
+            MessageBox.Show($"ファイルが見つかりません: {sourcePath}", "Sample 画像追加",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var ext = System.IO.Path.GetExtension(sourcePath).ToLowerInvariant();
+        if (Array.IndexOf(AllowedImageExtensions, ext) < 0)
+        {
+            MessageBox.Show(
+                $"未対応の拡張子です: {ext}\n対応: {string.Join(", ", AllowedImageExtensions)}",
+                "Sample 画像追加",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        var screenshotsDir = System.IO.Path.Combine(_vm.CurrentData.Entry.FolderPath, "screenshots");
+        try { System.IO.Directory.CreateDirectory(screenshotsDir); }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"screenshots/ 作成に失敗: {ex.Message}", "Sample 画像追加",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        var fileName = System.IO.Path.GetFileName(sourcePath);
+        var dstPath  = System.IO.Path.Combine(screenshotsDir, fileName);
+
+        // 同名既存ファイルへの上書き確認
+        if (System.IO.File.Exists(dstPath) &&
+            !string.Equals(System.IO.Path.GetFullPath(sourcePath),
+                           System.IO.Path.GetFullPath(dstPath), StringComparison.OrdinalIgnoreCase))
+        {
+            var ok = MessageBox.Show(
+                $"screenshots/ に同名ファイル「{fileName}」が既に存在します。上書きしますか？",
+                "Sample 画像追加",
+                MessageBoxButton.OKCancel, MessageBoxImage.Question);
+            if (ok != MessageBoxResult.OK) return;
+        }
+
+        try
+        {
+            // 同一パスの場合はコピー不要（drag-drop で screenshots 内ファイル自身を drop した想定）
+            if (!string.Equals(System.IO.Path.GetFullPath(sourcePath),
+                               System.IO.Path.GetFullPath(dstPath), StringComparison.OrdinalIgnoreCase))
+            {
+                System.IO.File.Copy(sourcePath, dstPath, overwrite: true);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"画像コピーに失敗: {ex.Message}", "Sample 画像追加",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        // 既存エントリがあれば Exists を再判定するだけ、無ければ追加
+        var existing = _vm.CurrentSamples.FirstOrDefault(
+            x => string.Equals(x.File, fileName, StringComparison.OrdinalIgnoreCase));
+        if (existing is not null)
+        {
+            existing.Exists = true;
+        }
+        else
+        {
+            _vm.CurrentSamples.Add(new PianistSampleEntry
+            {
+                File    = fileName,
+                Caption = "",
+                Exists  = true,
+            });
+        }
+    }
 }
