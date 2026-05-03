@@ -713,11 +713,78 @@ public partial class PianistProfileEditorViewModel : ObservableObject
         new PianistActionOption { Code = "Prompt",     Label = "オペレータに確認を求める" },
     };
 
-    /// <summary>Key Action のプリセット（§4.3）。canonical 形式 <c>%{F4}</c> を採用。自由入力も可。</summary>
-    public static IReadOnlyList<string> KeyPresets { get; } = new[]
+    /// <summary>
+    /// Key Action のプリセット（§4.3）。SendKeys 表記の Code と日本語解説をペアで保持する。
+    /// ComboBox 側で <c>TextSearch.TextPath="Code"</c> を指定することで、ドロップダウンには
+    /// 「Code  日本語解説」を 2 列で並べつつ、選択時にセルへ入るのは <see cref="PianistKeyPreset.Code"/>
+    /// のみ。自由入力も従来通り可能（IsEditable=True）。
+    ///
+    /// 修飾子: <c>+</c>=Shift / <c>^</c>=Ctrl / <c>%</c>=Alt。
+    /// 特殊キーは <c>{}</c> 囲み（<c>{TAB}</c>, <c>{F1}</c> 等）。
+    /// 同キー連打は <c>{TAB 3}</c> のように半角スペースで回数を指定。
+    /// </summary>
+    public static IReadOnlyList<PianistKeyPreset> KeyPresets { get; } = new PianistKeyPreset[]
     {
-        "{ENTER}", "{TAB}", "{ESC}", "{BACKSPACE}", "{DELETE}",
-        "^v", "^c", "^s", "^a", "^z", "%{F4}",
+        // ── 基本キー ────────────────────────────────────────────
+        new() { Code = "{ENTER}",     Description = "Enter（決定）" },
+        new() { Code = "{TAB}",       Description = "Tab（次のフィールドへ）" },
+        new() { Code = "+{TAB}",      Description = "Shift + Tab（前のフィールドへ）" },
+        new() { Code = "{ESC}",       Description = "Esc（キャンセル）" },
+        new() { Code = "{BACKSPACE}", Description = "BackSpace（1 文字前を削除）" },
+        new() { Code = "{DELETE}",    Description = "Delete（カーソル位置を削除）" },
+
+        // ── 矢印キー ────────────────────────────────────────────
+        new() { Code = "{UP}",        Description = "↑（上）" },
+        new() { Code = "{DOWN}",      Description = "↓（下）" },
+        new() { Code = "{LEFT}",      Description = "←（左）" },
+        new() { Code = "{RIGHT}",     Description = "→（右）" },
+
+        // ── ナビゲーション ──────────────────────────────────────
+        new() { Code = "{HOME}",      Description = "Home（行頭へ）" },
+        new() { Code = "{END}",       Description = "End（行末へ）" },
+        new() { Code = "{PGUP}",      Description = "Page Up（1 ページ上）" },
+        new() { Code = "{PGDN}",      Description = "Page Down（1 ページ下）" },
+        new() { Code = "{INSERT}",    Description = "Insert（挿入モード切替）" },
+
+        // ── ファンクションキー（よく使うもの） ─────────────────
+        new() { Code = "{F1}",        Description = "F1（ヘルプ）" },
+        new() { Code = "{F2}",        Description = "F2（リネーム）" },
+        new() { Code = "{F5}",        Description = "F5（更新 / 再読込）" },
+        new() { Code = "{F11}",       Description = "F11（全画面切替）" },
+        new() { Code = "%{F4}",       Description = "Alt + F4（ウィンドウを閉じる）" },
+
+        // ── Ctrl 系（編集 / アプリ操作） ───────────────────────
+        new() { Code = "^c",          Description = "Ctrl + C（コピー）" },
+        new() { Code = "^v",          Description = "Ctrl + V（貼り付け）" },
+        new() { Code = "^x",          Description = "Ctrl + X（切り取り）" },
+        new() { Code = "^a",          Description = "Ctrl + A（全選択）" },
+        new() { Code = "^z",          Description = "Ctrl + Z（元に戻す）" },
+        new() { Code = "^y",          Description = "Ctrl + Y（やり直し）" },
+        new() { Code = "^s",          Description = "Ctrl + S（保存）" },
+        new() { Code = "^n",          Description = "Ctrl + N（新規）" },
+        new() { Code = "^o",          Description = "Ctrl + O（開く）" },
+        new() { Code = "^w",          Description = "Ctrl + W（タブ / ウィンドウを閉じる）" },
+        new() { Code = "^t",          Description = "Ctrl + T（新規タブ）" },
+        new() { Code = "^f",          Description = "Ctrl + F（検索）" },
+        new() { Code = "^p",          Description = "Ctrl + P（印刷）" },
+        new() { Code = "^{HOME}",     Description = "Ctrl + Home（文書先頭へ）" },
+        new() { Code = "^{END}",      Description = "Ctrl + End（文書末尾へ）" },
+        new() { Code = "^{LEFT}",     Description = "Ctrl + ←（前の単語へ）" },
+        new() { Code = "^{RIGHT}",    Description = "Ctrl + →（次の単語へ）" },
+
+        // ── Shift 系（選択拡張） ──────────────────────────────
+        new() { Code = "+{LEFT}",     Description = "Shift + ←（左へ選択拡張）" },
+        new() { Code = "+{RIGHT}",    Description = "Shift + →（右へ選択拡張）" },
+        new() { Code = "+{UP}",       Description = "Shift + ↑（上へ選択拡張）" },
+        new() { Code = "+{DOWN}",     Description = "Shift + ↓（下へ選択拡張）" },
+        new() { Code = "+{HOME}",     Description = "Shift + Home（行頭まで選択）" },
+        new() { Code = "+{END}",      Description = "Shift + End（行末まで選択）" },
+
+        // ── Ctrl + Shift 系（単語 / 文書単位の選択） ──────────
+        new() { Code = "^+{LEFT}",    Description = "Ctrl + Shift + ←（前単語まで選択）" },
+        new() { Code = "^+{RIGHT}",   Description = "Ctrl + Shift + →（次単語まで選択）" },
+        new() { Code = "^+{HOME}",    Description = "Ctrl + Shift + Home（文書先頭まで選択）" },
+        new() { Code = "^+{END}",     Description = "Ctrl + Shift + End（文書末尾まで選択）" },
     };
 
     /// <summary>Wait Action / Wait 列の数値プリセット（§4.3、ms 単位）。</summary>

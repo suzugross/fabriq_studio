@@ -32,12 +32,35 @@
                      VerticalContentAlignment="Center" />
         </DataTemplate>
         <DataTemplate x:Key="ValueKeyEditTemplate">
+            <!-- TextSearch.TextPath="Code" によって、ドロップダウン選択時にセルへ書き戻されるのは
+                 PianistKeyPreset.Code（SendKeys 表記）のみ。Description は表示専用。 -->
             <ComboBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}"
                       IsEditable="True"
                       IsTextSearchEnabled="True"
                       StaysOpenOnEdit="True"
+                      TextSearch.TextPath="Code"
                       ItemsSource="{x:Static vm:PianistProfileEditorViewModel.KeyPresets}"
-                      ToolTip="特殊キー (SendKeys 形式) — 自由入力可" />
+                      ToolTip="特殊キー (SendKeys 形式) — 自由入力可。修飾子: + Shift / ^ Ctrl / % Alt">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid MinWidth="320">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="120" />
+                                <ColumnDefinition Width="*"   />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Code}"
+                                       FontFamily="Consolas, Yu Gothic UI"
+                                       Foreground="#0066CC" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Description}"
+                                       Foreground="#666666"
+                                       Margin="10,0,0,0"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Grid>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
         </DataTemplate>
         <DataTemplate x:Key="ValueVarRefEditTemplate">
             <ComboBox Text="{Binding Value, UpdateSourceTrigger=LostFocus}"
