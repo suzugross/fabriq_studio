@@ -501,6 +501,8 @@
                                 <!-- Step グリッド（編集可: Action 別に Value/Wait セルが切替・§4.3/§4.4） -->
                                 <!-- CanUserDeleteRows=False: filtered ICollectionView 経由だと標準削除で
                                      Phases.StepCount が更新されないため、明示的な 🗑 列 + DeleteStepCommand に統一 -->
+                                <!-- DataGridRowDragDropBehavior: 行 D&D による並び替え（青い Adorner ライン
+                                     によるドロップ位置インジケータ + 自動スクロール + セル編集中は抑止） -->
                                 <DataGrid x:Name="StepGrid"
                                           Grid.Row="1"
                                           ItemsSource="{Binding CurrentPhaseStepsView}"
@@ -512,7 +514,9 @@
                                           RowHeight="28"
                                           FontSize="12"
                                           CanUserAddRows="False"
-                                          CanUserDeleteRows="False">
+                                          CanUserDeleteRows="False"
+                                          helpers:DataGridRowDragDropBehavior.IsEnabled="True"
+                                          helpers:DataGridRowDragDropBehavior.MoveCommand="{Binding MoveStepRowCommand}">
                                     <DataGrid.Columns>
                                         <DataGridTemplateColumn Header="" Width="36" CanUserSort="False" CanUserResize="False" IsReadOnly="True">
                                             <DataGridTemplateColumn.CellTemplate>

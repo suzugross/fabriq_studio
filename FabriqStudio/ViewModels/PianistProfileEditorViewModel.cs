@@ -1014,6 +1014,86 @@ public partial class PianistProfileEditorViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Step グリッドのドラッグ&ドロップ Drop 確定時に <see cref="Helpers.DataGridRowDragDropBehavior"/>
+    /// から呼ばれる（ProfileDetailView と同じ Behavior を共有）。
+    ///
+    /// <paramref name="req"/> の SourceIndex / TargetIndex は **filter-view** 上の index
+    /// （CurrentPhaseStepsView 内の位置）。これを裏側の <see cref="PianistProfileData.Steps"/>
+    /// 上の index に翻訳して <see cref="System.Collections.ObjectModel.ObservableCollection{T}.Move"/>
+    /// を呼び、最後に当該 Phase の StepNo を 1, 2, 3... に振り直す。
+    ///
+    /// 異なる Phase 間のドロップは発生しない（DataGrid のフィルタにより同一 Phase の行しか
+    /// 表示されていないため、ドロップ先は必然的に同一 Phase）。
+    ///
+    /// pianist.ps1 は procedure.csv の物理出現順で foreach 実行するため、StepNo の値ではなく
+    /// Steps 内の順序が実行順を決める。StepNo 振り直しは視認性 / 整合性チェック §12 の
+    /// StepNo 重複回避のため。
+    /// </summary>
+    [RelayCommand]
+    private void MoveStepRow(RowMoveRequest? req)
+    {
+        if (req is null || CurrentData is null || SelectedPhase is null) return;
+
+        var phaseId = SelectedPhase.PhaseID;
+        var phaseSteps = CurrentData.Steps
+            .Where(s => string.Equals(s.PhaseID, phaseId, StringComparison.Ordinal))
+            .ToList();
+
+        if (req.SourceIndex < 0 || req.SourceIndex >= phaseSteps.Count) return;
+        var source = phaseSteps[req.SourceIndex];
+
+        // Behavior 側で渡される TargetIndex は ObservableCollection.Move の "抜き取り後 index"
+        // 仕様（filter-view 内）。filter-view から source を抜いた残りリストの TargetIndex 位置に
+        // 挿入したい、と読み替える。
+        var afterRemoval = phaseSteps.Where((_, i) => i != req.SourceIndex).ToList();
+        if (req.TargetIndex < 0 || req.TargetIndex > afterRemoval.Count) return;
+
+        // 裏側 Steps 上の挿入位置を逆算: 末尾なら同 Phase 最終要素の次、それ以外なら anchor の位置
+        int dstIdxInAll;
+        if (req.TargetIndex == afterRemoval.Count)
+        {
+            var lastSamePhase = CurrentData.Steps
+                .Select((s, i) => (s, i))
+                .Where(x => string.Equals(x.s.PhaseID, phaseId, StringComparison.Ordinal)
+                            && !ReferenceEquals(x.s, source))
+                .LastOrDefault();
+            dstIdxInAll = lastSamePhase.s is null
+                ? CurrentData.Steps.Count
+                : lastSamePhase.i + 1;
+        }
+        else
+        {
+            var anchor = afterRemoval[req.TargetIndex];
+            dstIdxInAll = CurrentData.Steps.IndexOf(anchor);
+        }
+
+        var srcIdxInAll = CurrentData.Steps.IndexOf(source);
+        if (srcIdxInAll < 0 || dstIdxInAll < 0) return;
+
+        // ObservableCollection.Move の抜き取り後補正
+        if (srcIdxInAll < dstIdxInAll) dstIdxInAll--;
+        if (srcIdxInAll == dstIdxInAll) return;
+
+        CurrentData.Steps.Move(srcIdxInAll, dstIdxInAll);
+        RenumberPhaseStepNos(phaseId);
+    }
+
+    /// <summary>同 PhaseID の Step を物理出現順で 1, 2, 3... に振り直す。</summary>
+    private void RenumberPhaseStepNos(string phaseId)
+    {
+        if (CurrentData is null) return;
+        int n = 1;
+        foreach (var s in CurrentData.Steps)
+        {
+            if (string.Equals(s.PhaseID, phaseId, StringComparison.Ordinal))
+            {
+                if (s.StepNo != n) s.StepNo = n;
+                n++;
+            }
+        }
+    }
+
+    /// <summary>
     /// Step を 1 件削除する。Step DataGrid の ItemsSource は filtered ICollectionView のため
     /// DataGrid 標準の <c>CanUserDeleteRows</c> では Phases の StepCount が更新されず UX が壊れる。
     /// 明示コマンドで削除し <see cref="RebuildPhases"/> を呼ぶことで Phase 一覧を一貫した状態に保つ。
