@@ -946,6 +946,33 @@ public partial class PianistProfileEditorViewModel : ObservableObject
         SelectedPhase = Phases.FirstOrDefault(p => p.PhaseID == newStep.PhaseID);
     }
 
+    /// <summary>
+    /// Step を 1 件削除する。Step DataGrid の ItemsSource は filtered ICollectionView のため
+    /// DataGrid 標準の <c>CanUserDeleteRows</c> では Phases の StepCount が更新されず UX が壊れる。
+    /// 明示コマンドで削除し <see cref="RebuildPhases"/> を呼ぶことで Phase 一覧を一貫した状態に保つ。
+    /// 当該 Phase の最後の Step を消すと Phase ごと一覧から消える（PhaseID が procedure.csv に
+    /// 存在しなくなるため）。
+    /// </summary>
+    [RelayCommand]
+    private void DeleteStep(PianistStep? step)
+    {
+        if (step is null || CurrentData is null) return;
+
+        var ok = MessageBox.Show(
+            $"Step {step.StepNo} ({step.Action}) を削除しますか？\nこの操作は保存するまで実ファイルには反映されません。",
+            "Step 削除の確認",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Question);
+        if (ok != MessageBoxResult.OK) return;
+
+        var phaseId = step.PhaseID;
+        CurrentData.Steps.Remove(step);
+
+        RebuildPhases();
+        // 同じ Phase を選択し直す（最後の Step だった場合は Phase 自体が無くなるため先頭にフォールバック）
+        SelectedPhase = Phases.FirstOrDefault(p => p.PhaseID == phaseId) ?? Phases.FirstOrDefault();
+    }
+
     // ─── バリデーション（§12） ──────────────────────────────────
 
     /// <summary>pianist の正規アクション 10 種（§4.2）。</summary>

@@ -480,4 +480,19 @@ public partial class PianistProfileEditorView : UserControl
         if (error is not null)
             MessageBox.Show(error, "Phase 削除", MessageBoxButton.OK, MessageBoxImage.Warning);
     }
+
+    // ─── Window Picker（WaitWin / AppFocus 用） ────────────────────
+    //
+    // Step 編集セルで Action="WaitWin"/"AppFocus" のとき表示される 🔍 ボタンの click。
+    // 直接 step.Value を書き換えるため、TextBox 経由の TwoWay binding に依存しない
+    // （Picker ダイアログにフォーカスが移ることでセル編集モードが exit しても安全）。
+
+    private void WindowPickerButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Button btn) return;
+        if (btn.DataContext is not PianistStep step) return;
+
+        var picked = PianistWindowPickerDialog.Show(step.Value, Window.GetWindow(this));
+        if (picked is not null) step.Value = picked;
+    }
 }

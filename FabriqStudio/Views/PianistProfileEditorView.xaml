@@ -56,6 +56,19 @@
                       ItemsSource="{x:Static vm:PianistProfileEditorViewModel.WaitPresets}"
                       ToolTip="停止時間 (ms) — Wait Action は Value 列に書きます (§4.4)" />
         </DataTemplate>
+        <!-- WaitWin / AppFocus: タイトル部分一致サブストリングを Window Picker から挿入できる -->
+        <DataTemplate x:Key="ValueWindowPickerEditTemplate">
+            <DockPanel LastChildFill="True">
+                <Button DockPanel.Dock="Right"
+                        Content="🔍"
+                        Padding="8,0"
+                        Click="WindowPickerButton_Click"
+                        ToolTip="現在開いているウィンドウタイトルから選択（WaitWin / AppFocus 用）" />
+                <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}"
+                         BorderThickness="0" Padding="4,0"
+                         VerticalContentAlignment="Center" />
+            </DockPanel>
+        </DataTemplate>
 
         <!-- ─── Step グリッド: Wait 列のテンプレ（編集／表示の両方） ─── -->
         <DataTemplate x:Key="WaitNumericEditTemplate">
@@ -79,7 +92,8 @@
             DefaultTemplate="{StaticResource ValueDefaultEditTemplate}"
             KeyTemplate="{StaticResource ValueKeyEditTemplate}"
             VarRefTemplate="{StaticResource ValueVarRefEditTemplate}"
-            WaitTemplate="{StaticResource ValueWaitEditTemplate}" />
+            WaitTemplate="{StaticResource ValueWaitEditTemplate}"
+            WindowPickerTemplate="{StaticResource ValueWindowPickerEditTemplate}" />
         <helpers:PianistWaitTemplateSelector x:Key="PianistWaitTemplateSelector"
             NumericTemplate="{StaticResource WaitNumericEditTemplate}"
             DisabledTemplate="{StaticResource WaitDisabledEditTemplate}" />
@@ -462,6 +476,8 @@
                                 </Border>
 
                                 <!-- Step グリッド（編集可: Action 別に Value/Wait セルが切替・§4.3/§4.4） -->
+                                <!-- CanUserDeleteRows=False: filtered ICollectionView 経由だと標準削除で
+                                     Phases.StepCount が更新されないため、明示的な 🗑 列 + DeleteStepCommand に統一 -->
                                 <DataGrid x:Name="StepGrid"
                                           Grid.Row="1"
                                           ItemsSource="{Binding CurrentPhaseStepsView}"
@@ -473,8 +489,23 @@
                                           RowHeight="28"
                                           FontSize="12"
                                           CanUserAddRows="False"
-                                          CanUserDeleteRows="True">
+                                          CanUserDeleteRows="False">
                                     <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="" Width="36" CanUserSort="False" CanUserResize="False" IsReadOnly="True">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <Button Content="🗑"
+                                                            Padding="2,0"
+                                                            Margin="2"
+                                                            FontSize="11"
+                                                            Cursor="Hand"
+                                                            ToolTip="この Step を削除"
+                                                            Command="{Binding DataContext.DeleteStepCommand,
+                                                                      RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                                            CommandParameter="{Binding}" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
                                         <DataGridTextColumn Header="Step"
                                                             Binding="{Binding StepNo, UpdateSourceTrigger=PropertyChanged}"
                                                             Width="50" />
