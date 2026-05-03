@@ -374,18 +374,6 @@
                                                Margin="0,4" />
                                 </Grid>
 
-                                <Border Padding="12,8"
-                                        Background="#EAF3FB"
-                                        BorderBrush="#B8D7EE"
-                                        BorderThickness="1"
-                                        CornerRadius="4"
-                                        Margin="0,12,0,0">
-                                    <TextBlock FontSize="11" Foreground="#1A4F7A" TextWrapping="Wrap">
-                                        <Run Text="ℹ" FontWeight="Bold" />
-                                        <Run Text=" メタ編集は表示・両方向バインドのみ実装中。実ファイルへの保存は Phase 5 で実装します（§10 規約: BOM なし + LF + 末尾改行で正規化）。" />
-                                    </TextBlock>
-                                </Border>
-
                             </StackPanel>
                         </ScrollViewer>
                     </TabItem>
