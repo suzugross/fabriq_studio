@@ -1,5 +1,7 @@
+using System.ComponentModel;
 using System.Windows;
 using CommunityToolkit.Mvvm.Messaging;
+using FabriqStudio.Helpers;
 using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
@@ -44,16 +46,34 @@ public partial class ModuleSettingsDialog : Window
         DetailContent.Content = vm;
 
         // NavigateBackMessage をインターセプトしてダイアログを閉じる
-        // （MainViewModel への伝播を防止）
+        // （MainViewModel への伝播は MainViewModel 側のモーダルガードで防いでいる）
         Loaded   += (_, _) => WeakReferenceMessenger.Default.Register<NavigateBackMessage>(this, OnNavigateBack);
         Unloaded += (_, _) => WeakReferenceMessenger.Default.Unregister<NavigateBackMessage>(this);
     }
 
     private void OnNavigateBack(object recipient, NavigateBackMessage msg)
     {
-        // ダイアログ内の「← 戻る」はウィンドウを閉じる動作にする
+        // ダイアログ内の「← 戻る」: 未保存の変更があれば確認する。
+        // OK 時に DiscardChanges → DialogResult=true で閉じる（OnClosing 経由で再確認はしない）。
+        if (!DirtyConfirmHelper.ConfirmDiscard(DetailContent.Content as IDirtyAwareViewModel))
+            return;
         WeakReferenceMessenger.Default.Unregister<NavigateBackMessage>(this);
         DialogResult = true;
+    }
+
+    /// <summary>
+    /// X ボタン / Esc / Alt+F4 等での閉鎖時に未保存編集を破棄して良いか確認する。
+    /// 「← 戻る」経由（DialogResult=true 設定後）の場合、DiscardChanges 済みなので
+    /// HasUnsavedChanges=false となり Helper は即 true を返す（多重ダイアログにならない）。
+    /// </summary>
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!DirtyConfirmHelper.ConfirmDiscard(DetailContent.Content as IDirtyAwareViewModel))
+        {
+            e.Cancel = true;
+            return;
+        }
+        base.OnClosing(e);
     }
 
     /// <summary>
