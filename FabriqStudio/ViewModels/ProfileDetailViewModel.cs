@@ -77,8 +77,31 @@ public sealed class AvailableItem
 ///   LoadAsync の全処理と SaveAsync の保存呼び出しをこのフラグでガードし、
 ///   完了後に必ず IsDirty = false にリセットする。
 /// </summary>
-public partial class ProfileDetailViewModel : ObservableObject
+public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewModel
 {
+    // ─── IDirtyAwareViewModel ───────────────────────────────────────
+    public bool HasUnsavedChanges => IsDirty;
+    public string DirtyDescription => Profile is not null
+        ? $"プロファイル: {Profile.Name}"
+        : "プロファイル編集";
+
+    /// <summary>
+    /// プロファイル CSV をディスクから再読み込みして in-memory 編集を破棄する。
+    /// Modules コレクションはこの画面ローカルなので、親 (BasicParams) へのリークはない。
+    /// </summary>
+    public void DiscardChanges()
+    {
+        if (Profile is not null)
+        {
+            // LoadAsync は _isInitializing で Dirty 検知をバイパスし、最後に IsDirty=false にする
+            _ = LoadAsync(Profile);
+        }
+        else
+        {
+            IsDirty = false;
+        }
+    }
+
     private readonly IModuleService  _moduleService;
     private readonly IProfileService _profileService;
 

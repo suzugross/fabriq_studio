@@ -10,8 +10,30 @@ using FabriqStudio.Views;
 
 namespace FabriqStudio.ViewModels;
 
-public partial class DigitalGyotaqEditorViewModel : ObservableObject
+public partial class DigitalGyotaqEditorViewModel : ObservableObject, IDirtyAwareViewModel
 {
+    // ─── IDirtyAwareViewModel ───────────────────────────────────────
+    public bool HasUnsavedChanges => IsDirty;
+    public string DirtyDescription => string.IsNullOrEmpty(ModuleName)
+        ? "デジタル魚拓"
+        : $"デジタル魚拓 ({ModuleName})";
+
+    /// <summary>
+    /// 編集中の魚拓タスクをクリアする（New と同等）。
+    /// このエディタは固定の保存先を持たないため、破棄＝クリアの意味になる。
+    /// </summary>
+    public void DiscardChanges()
+    {
+        Tasks.Clear();
+        RenumberTaskIds();
+        ModuleName       = "";
+        _currentFilePath = null;
+        IsDirty          = false;
+        StatusMessage    = null;
+        ErrorMessage     = null;
+        ExportCommand.NotifyCanExecuteChanged();
+    }
+
     private readonly IDigitalGyotaqService _gyotaqService;
 
     // ── コレクション ────────────────────────────────────────────────────────

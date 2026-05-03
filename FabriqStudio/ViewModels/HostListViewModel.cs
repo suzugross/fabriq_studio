@@ -18,8 +18,19 @@ namespace FabriqStudio.ViewModels;
 /// 端末一覧モード — hostlist.csv を表示する。
 /// 行をダブルクリックすると ShowHostDetailMessage を送信して詳細画面へ遷移する。
 /// </summary>
-public partial class HostListViewModel : ObservableObject
+public partial class HostListViewModel : ObservableObject, IDirtyAwareViewModel
 {
+    // ─── IDirtyAwareViewModel ───────────────────────────────────────
+    public bool HasUnsavedChanges => IsDirty;
+    public string DirtyDescription => "端末一覧";
+
+    /// <summary>hostlist.csv をディスクから再読み込みして in-memory の追加・削除・暗号化編集を破棄する。</summary>
+    public void DiscardChanges()
+    {
+        _ = LoadAsync();
+        IsDirty = false;
+    }
+
     private readonly ICsvService             _csvService;
     private readonly IFileService            _fileService;
     private readonly ICryptoService          _crypto;

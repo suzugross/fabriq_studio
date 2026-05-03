@@ -12,8 +12,33 @@ using FabriqStudio.Views;
 
 namespace FabriqStudio.ViewModels;
 
-public partial class BasicParamsViewModel : ObservableObject
+public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewModel
 {
+    // ─── IDirtyAwareViewModel ───────────────────────────────────────
+    public bool HasUnsavedChanges => IsWorkersDirty || IsLogDestDirty;
+    public string DirtyDescription
+    {
+        get
+        {
+            var sections = new List<string>();
+            if (IsWorkersDirty)  sections.Add("作業者");
+            if (IsLogDestDirty)  sections.Add("ログ送信先");
+            return sections.Count > 0
+                ? $"基本パラメータ ({string.Join(" / ", sections)})"
+                : "基本パラメータ";
+        }
+    }
+
+    /// <summary>
+    /// Workers / LogDestinations を CSV から再読み込みして編集を破棄する。
+    /// Profiles はこの画面で編集対象ではないのでリロード不要。
+    /// </summary>
+    public void DiscardChanges()
+    {
+        if (IsWorkersDirty) _ = LoadWorkersAsync();   // 内部で IsWorkersDirty=false にリセット
+        if (IsLogDestDirty) _ = LoadLogDestAsync();   // 内部で IsLogDestDirty=false にリセット
+    }
+
     private readonly ICsvService          _csvService;
     private readonly IFileService         _fileService;
     private readonly IProfileService      _profileService;

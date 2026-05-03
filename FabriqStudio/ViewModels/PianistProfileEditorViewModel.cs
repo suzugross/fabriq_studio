@@ -25,8 +25,42 @@ namespace FabriqStudio.ViewModels;
 /// Singleton 登録: ワークスペースを切り替えても VM 自体は再構築せず、
 /// <see cref="IWorkspaceService.WorkspaceChanged"/> を購読して内部状態を refresh する。
 /// </summary>
-public partial class PianistProfileEditorViewModel : ObservableObject
+public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwareViewModel
 {
+    // ─── IDirtyAwareViewModel ───────────────────────────────────────
+    public bool HasUnsavedChanges => IsDirty;
+    public string DirtyDescription => SelectedProfile is not null
+        ? $"Pianist Profile: {SelectedProfile.Name}"
+        : "Pianist Profile";
+
+    /// <summary>
+    /// 現在のプロファイルをディスクから再読み込みして in-memory 編集を破棄する。
+    /// 同期的に IsDirty=false にしてからバックグラウンドで再読込する（fire-and-forget）。
+    /// </summary>
+    public void DiscardChanges()
+    {
+        IsDirty = false;
+        if (SelectedProfile is not null)
+            _ = LoadCurrentProfileAsync(SelectedProfile);
+    }
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _isDirty;
+
+    /// <summary>ロード完了までは Dirty 検知を全面抑制する。</summary>
+    private bool _isInitializing;
+
+    /// <summary>Phase 切替時の <see cref="CurrentInstructions"/> 再代入など、
+    /// プログラム的な書込みで一時的に Dirty 検知を抑制するためのフラグ。</summary>
+    private bool _suppressDirty;
+
+    /// <summary>左ペインのプロファイル切替時、未保存破棄ガードのために前回確定値を保持。</summary>
+    private PianistProfileEntry? _confirmedProfile;
+
+    /// <summary>ガードでのロールバック中にハンドラ再入を抑止するフラグ。</summary>
+    private bool _ignoreSelectedProfileChange;
+
     private readonly IPianistProfileService _pianistService;
     private readonly IWorkspaceService      _workspace;
     private readonly ICsvService            _csvService;
@@ -213,6 +247,44 @@ public partial class PianistProfileEditorViewModel : ObservableObject
 
     partial void OnSelectedProfileChanged(PianistProfileEntry? value)
     {
+        // ロールバック中は自分の再代入なのでスキップ
+        if (_ignoreSelectedProfileChange) return;
+
+        // 別 Profile（= 名前が異なる）への切替で、かつ未保存編集があれば確認
+        // value=null は撤去操作（ワークスペース解除等）なのでガードしない
+        if (IsDirty
+            && _confirmedProfile is not null
+            && value is not null
+            && !string.Equals(_confirmedProfile.Name, value.Name, StringComparison.Ordinal))
+        {
+            var result = MessageBox.Show(
+                $"「Pianist Profile: {_confirmedProfile.Name}」に未保存の変更があります。\n\n" +
+                "別のプロファイルに切り替えると、変更内容は失われます。\n" +
+                "破棄して切り替えますか？",
+                "未保存の変更",
+                MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+            if (result != MessageBoxResult.OK)
+            {
+                // キャンセル時のロールバックは Dispatcher.BeginInvoke で次サイクルに遅延させる。
+                // 同期的に SelectedProfile を戻すと、ListBox 側のクリック処理がまだ進行中で
+                // ListBoxItem.IsSelected がクリック先（B）に再アサートされ、見た目のハイライトが
+                // 戻らない（編集画面は元のままなのに左ペインだけ移動先に張り付く）現象が起きる。
+                var rollbackTo = _confirmedProfile;
+                System.Windows.Application.Current?.Dispatcher.BeginInvoke(
+                    new Action(() =>
+                    {
+                        _ignoreSelectedProfileChange = true;
+                        try { SelectedProfile = rollbackTo; }
+                        finally { _ignoreSelectedProfileChange = false; }
+                    }),
+                    System.Windows.Threading.DispatcherPriority.Background);
+                return;
+            }
+            // OK: そのまま破棄して新 Profile をロード
+        }
+
+        _confirmedProfile = value;
+
         if (value is null)
         {
             CurrentData = null;
@@ -229,11 +301,13 @@ public partial class PianistProfileEditorViewModel : ObservableObject
 
     private async Task LoadCurrentProfileAsync(PianistProfileEntry entry)
     {
+        _isInitializing = true;
         IsLoading = true;
         LoadError = null;
         IsLegacyValuesDetected = false;
 
-        // 旧 Values.Rows / VariableColumns への購読を解除（profile 切替時のリーク防止）
+        // 旧データの購読を解除（profile 切替時のリーク防止）
+        DetachDirtyTracking(CurrentData);
         if (_subscribedRows is not null)
         {
             _subscribedRows.CollectionChanged -= OnValueRowsChanged;
@@ -260,6 +334,11 @@ public partial class PianistProfileEditorViewModel : ObservableObject
             _subscribedRows = data.Values.Rows;
             data.Values.VariableColumns.CollectionChanged += OnVariableColumnsChanged;
             _subscribedColumns = data.Values.VariableColumns;
+
+            // Metadata / Steps / Shortcuts と既存 Rows の Dirty 検知購読
+            AttachDirtyTracking(data);
+
+            IsDirty = false;
         }
         catch (Exception ex)
         {
@@ -271,23 +350,107 @@ public partial class PianistProfileEditorViewModel : ObservableObject
         finally
         {
             IsLoading = false;
+            _isInitializing = false;
         }
     }
 
     private void OnValueRowsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-        => RebuildAvailableHostNames();
+    {
+        // 既存: 行追加・削除後の候補再計算
+        RebuildAvailableHostNames();
+
+        // 新規: 各行の PropertyChanged を購読/解除して Dirty 検知に組み込む
+        if (e.NewItems is not null)
+            foreach (PianistValueRow r in e.NewItems)
+                r.PropertyChanged += OnDirtyTrigger;
+        if (e.OldItems is not null)
+            foreach (PianistValueRow r in e.OldItems)
+                r.PropertyChanged -= OnDirtyTrigger;
+
+        MarkDirty();
+    }
 
     private void OnVariableColumnsChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-        => RebuildVariableReferences();
+    {
+        RebuildVariableReferences();
+        MarkDirty();
+    }
+
+    /// <summary>
+    /// Pianist Profile 全データへの Dirty 検知購読を 1 箇所で一括設定する。
+    /// values.csv の Rows / VariableColumns は <see cref="OnValueRowsChanged"/> /
+    /// <see cref="OnVariableColumnsChanged"/> 側で別途扱うため、ここでは Metadata / Steps /
+    /// Shortcuts と既存 Rows のアイテム購読のみを担当する。
+    /// </summary>
+    private void AttachDirtyTracking(PianistProfileData data)
+    {
+        data.Metadata.PropertyChanged       += OnDirtyTrigger;
+        data.Steps.CollectionChanged        += OnStepsCollectionChanged;
+        foreach (var step in data.Steps)
+            step.PropertyChanged             += OnDirtyTrigger;
+        foreach (var row in data.Values.Rows)
+            row.PropertyChanged              += OnDirtyTrigger;
+        data.Shortcuts.CollectionChanged    += OnShortcutsCollectionChanged;
+        foreach (var sc in data.Shortcuts)
+            sc.PropertyChanged               += OnDirtyTrigger;
+    }
+
+    private void DetachDirtyTracking(PianistProfileData? data)
+    {
+        if (data is null) return;
+        data.Metadata.PropertyChanged       -= OnDirtyTrigger;
+        data.Steps.CollectionChanged        -= OnStepsCollectionChanged;
+        foreach (var step in data.Steps)
+            step.PropertyChanged             -= OnDirtyTrigger;
+        foreach (var row in data.Values.Rows)
+            row.PropertyChanged              -= OnDirtyTrigger;
+        data.Shortcuts.CollectionChanged    -= OnShortcutsCollectionChanged;
+        foreach (var sc in data.Shortcuts)
+            sc.PropertyChanged               -= OnDirtyTrigger;
+    }
+
+    private void OnStepsCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+            foreach (PianistStep s in e.NewItems)
+                s.PropertyChanged += OnDirtyTrigger;
+        if (e.OldItems is not null)
+            foreach (PianistStep s in e.OldItems)
+                s.PropertyChanged -= OnDirtyTrigger;
+        MarkDirty();
+    }
+
+    private void OnShortcutsCollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems is not null)
+            foreach (PianistShortcut s in e.NewItems)
+                s.PropertyChanged += OnDirtyTrigger;
+        if (e.OldItems is not null)
+            foreach (PianistShortcut s in e.OldItems)
+                s.PropertyChanged -= OnDirtyTrigger;
+        MarkDirty();
+    }
+
+    private void OnDirtyTrigger(object? sender, System.ComponentModel.PropertyChangedEventArgs e) => MarkDirty();
+
+    /// <summary>初期化中・抑制フラグ中以外で IsDirty=true をセットする。</summary>
+    private void MarkDirty()
+    {
+        if (_isInitializing || _suppressDirty) return;
+        IsDirty = true;
+    }
 
     private void ClearAll()
     {
+        DetachDirtyTracking(CurrentData);
         Profiles.Clear();
         SelectedProfile = null;
         CurrentData = null;
         LoadError = null;
         IsLegacyValuesDetected = false;
         ClearPhaseState();
+        _confirmedProfile = null;
+        IsDirty           = false;
     }
 
     // ─── Phase 集約 ────────────────────────────────────────────────
@@ -333,7 +496,9 @@ public partial class PianistProfileEditorViewModel : ObservableObject
         if (value is null || CurrentData is null)
         {
             CurrentPhaseStepsView = null;
-            CurrentInstructions   = "";
+            _suppressDirty = true;
+            try { CurrentInstructions = ""; }
+            finally { _suppressDirty = false; }
             return;
         }
 
@@ -344,9 +509,27 @@ public partial class PianistProfileEditorViewModel : ObservableObject
             obj is PianistStep s && string.Equals(s.PhaseID, phaseId, StringComparison.Ordinal);
         CurrentPhaseStepsView = src.View;
 
-        CurrentInstructions = CurrentData.Instructions.TryGetValue(value.PhaseID, out var text)
-            ? text
-            : "";
+        // Phase 切替時の CurrentInstructions 再代入は Dirty 検知の対象外（プログラム的書込み）
+        _suppressDirty = true;
+        try
+        {
+            CurrentInstructions = CurrentData.Instructions.TryGetValue(value.PhaseID, out var text)
+                ? text
+                : "";
+        }
+        finally { _suppressDirty = false; }
+    }
+
+    /// <summary>
+    /// instructions テキスト編集を受けて <see cref="PianistProfileData.Instructions"/> 辞書に書き戻し、
+    /// Dirty フラグを立てる。Phase 切替時のプログラム的代入は <see cref="_suppressDirty"/> で除外する。
+    /// </summary>
+    partial void OnCurrentInstructionsChanged(string value)
+    {
+        if (_isInitializing || _suppressDirty) return;
+        if (CurrentData is not null && SelectedPhase is not null)
+            CurrentData.Instructions[SelectedPhase.PhaseID] = value;
+        MarkDirty();
     }
 
     private void ClearPhaseState()
@@ -1318,7 +1501,7 @@ public partial class PianistProfileEditorViewModel : ObservableObject
 
     // ─── 保存（§10） ────────────────────────────────────────────
 
-    private bool CanSave() => !IsSaving && CurrentData is not null;
+    private bool CanSave() => IsDirty && !IsSaving && CurrentData is not null;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task SaveAsync()
@@ -1356,6 +1539,7 @@ public partial class PianistProfileEditorViewModel : ObservableObject
             else
             {
                 SaveStatus = $"✓ 保存しました ({DateTime.Now:HH:mm:ss})";
+                IsDirty    = false;
             }
         }
         catch (Exception ex)
@@ -1465,15 +1649,30 @@ public partial class PianistProfileEditorViewModel : ObservableObject
             wide.Rows.Add(star);
             wide.EnsureStarRow();
 
-            // 旧 Values に紐づいていた CollectionChanged を解除し、新テーブルを差し替え
+            // 旧 Values に紐づいていた購読（CollectionChanged + 各行 PropertyChanged）を解除
             if (_subscribedRows is not null)
             {
+                foreach (var r in _subscribedRows) r.PropertyChanged -= OnDirtyTrigger;
                 _subscribedRows.CollectionChanged -= OnValueRowsChanged;
                 _subscribedRows = null;
             }
+            if (_subscribedColumns is not null)
+            {
+                _subscribedColumns.CollectionChanged -= OnVariableColumnsChanged;
+                _subscribedColumns = null;
+            }
+
             CurrentData.Values = wide;
+
+            // 新テーブルへの購読（Rows / 各行 / VariableColumns）を貼り直す
             CurrentData.Values.Rows.CollectionChanged += OnValueRowsChanged;
+            foreach (var r in CurrentData.Values.Rows) r.PropertyChanged += OnDirtyTrigger;
             _subscribedRows = CurrentData.Values.Rows;
+            CurrentData.Values.VariableColumns.CollectionChanged += OnVariableColumnsChanged;
+            _subscribedColumns = CurrentData.Values.VariableColumns;
+
+            // 移行操作自体を未保存編集としてマーク（保存ボタンで wide format 書出し）
+            MarkDirty();
 
             IsLegacyValuesDetected = false;
             // CurrentData の Values 差し替えだけでは binding 一部が再評価されないため、

@@ -8,8 +8,29 @@ using FabriqStudio.Services;
 
 namespace FabriqStudio.ViewModels;
 
-public partial class LooperEditorViewModel : ObservableObject
+public partial class LooperEditorViewModel : ObservableObject, IDirtyAwareViewModel
 {
+    // ─── IDirtyAwareViewModel ───────────────────────────────────────
+    public bool HasUnsavedChanges => IsDirty;
+    public string DirtyDescription => string.IsNullOrEmpty(ModuleName)
+        ? "Script Looper"
+        : $"Script Looper ({ModuleName})";
+
+    /// <summary>
+    /// 編集中の Looper エントリをクリアする（New と同等）。
+    /// このエディタは固定の保存先を持たないため、破棄＝クリアの意味になる。
+    /// </summary>
+    public void DiscardChanges()
+    {
+        Rows.Clear();
+        ModuleName    = "";
+        IsDirty       = false;
+        StatusMessage = null;
+        ErrorMessage  = null;
+        ExportCommand.NotifyCanExecuteChanged();
+        TestRunCommand.NotifyCanExecuteChanged();
+    }
+
     private readonly ILooperService _looperService;
 
     // ── コレクション ────────────────────────────────────────────────────────
