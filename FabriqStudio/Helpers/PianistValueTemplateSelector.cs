@@ -12,19 +12,21 @@ namespace FabriqStudio.Helpers;
 /// </summary>
 public class PianistValueTemplateSelector : DataTemplateSelector
 {
-    public DataTemplate? DefaultTemplate { get; set; }
-    public DataTemplate? KeyTemplate     { get; set; }
-    public DataTemplate? VarRefTemplate  { get; set; }
-    public DataTemplate? WaitTemplate    { get; set; }
+    public DataTemplate? DefaultTemplate      { get; set; }
+    public DataTemplate? KeyTemplate          { get; set; }
+    public DataTemplate? VarRefTemplate       { get; set; }
+    public DataTemplate? WaitTemplate         { get; set; }
+    public DataTemplate? WindowPickerTemplate { get; set; }
 
     public override DataTemplate? SelectTemplate(object? item, DependencyObject container)
     {
         if (item is not PianistStep step) return DefaultTemplate;
         return step.Action switch
         {
-            "Key"                                       => KeyTemplate    ?? DefaultTemplate,
-            "Type" or "Paste" or "Copy" or "Prompt"     => VarRefTemplate ?? DefaultTemplate,
-            "Wait"                                      => WaitTemplate   ?? DefaultTemplate,
+            "Key"                                       => KeyTemplate          ?? DefaultTemplate,
+            "Type" or "Paste" or "Copy" or "Prompt"     => VarRefTemplate       ?? DefaultTemplate,
+            "Wait"                                      => WaitTemplate         ?? DefaultTemplate,
+            "WaitWin" or "AppFocus"                     => WindowPickerTemplate ?? DefaultTemplate,
             _                                           => DefaultTemplate,
         };
     }
