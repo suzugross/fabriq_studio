@@ -140,28 +140,42 @@
                         Background="#FFFFFF"
                         BorderBrush="#DDDDDD"
                         BorderThickness="0,0,0,1">
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="🎹  Pianist Profile"
+                    <!-- ボタンを 1 段目（タイトル右）、subtitle を 2 段目に分けて全幅化。
+                         「📋 一覧」追加でボタン列が広くなり subtitle が圧迫される問題への対策。 -->
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       Text="🎹  Pianist Profile"
                                        FontSize="13" FontWeight="Bold"
-                                       Foreground="#333333" />
-                            <TextBlock Text="modules/extended/pianist/profiles/"
-                                       FontSize="10"
-                                       Foreground="#999999"
-                                       Margin="0,2,0,0" />
-                        </StackPanel>
-                        <Button Grid.Column="1"
-                                Content="+ 新規"
-                                Command="{Binding CreateNewProfileCommand}"
-                                Padding="10,4"
-                                FontSize="11"
-                                VerticalAlignment="Center"
-                                ToolTip="Pianist Profile を新規作成（テンプレートから生成）" />
-                    </Grid>
+                                       Foreground="#333333"
+                                       VerticalAlignment="Center" />
+                            <StackPanel Grid.Column="1"
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                <Button Content="📋 一覧"
+                                        Command="{Binding EditPianistListCommand}"
+                                        Padding="10,4"
+                                        FontSize="11"
+                                        Margin="0,0,6,0"
+                                        ToolTip="pianist_list.csv を編集（全 profile 横断のカタログ）" />
+                                <Button Content="+ 新規"
+                                        Command="{Binding CreateNewProfileCommand}"
+                                        Padding="10,4"
+                                        FontSize="11"
+                                        ToolTip="Pianist Profile を新規作成（テンプレートから生成）" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Text="modules/extended/pianist/profiles/"
+                                   FontSize="10"
+                                   Foreground="#999999"
+                                   Margin="0,4,0,0"
+                                   TextTrimming="CharacterEllipsis"
+                                   ToolTip="modules/extended/pianist/profiles/" />
+                    </StackPanel>
                 </Border>
 
                 <ListBox ItemsSource="{Binding Profiles}"

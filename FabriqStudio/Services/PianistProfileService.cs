@@ -431,4 +431,82 @@ public class PianistProfileService : IPianistProfileService
             File.WriteAllText(path, normalized, Utf8NoBom);
         }
     }
+
+    // ─── pianist_list.csv I/O ─────────────────────────────────────
+    /// <summary>workspace ルートからの pianist_list.csv 相対パス。</summary>
+    private const string PianistListRel = "modules/extended/pianist/pianist_list.csv";
+
+    /// <summary>
+    /// CsvHelper シリアライズ専用 DTO。Studio 内のモデル（<see cref="PianistListEntry"/>）は
+    /// Enabled を bool で扱うが CSV 上は "1"/"0" 文字列のため、間にこの DTO を挟んで変換する。
+    /// </summary>
+    private class PianistListCsvRow
+    {
+        public string Enabled     { get; set; } = "";
+        public string ProfileName { get; set; } = "";
+        public string Group       { get; set; } = "";
+        public string Description { get; set; } = "";
+        public string Segment     { get; set; } = "";
+    }
+
+    public async Task<IReadOnlyList<PianistListEntry>> LoadPianistListAsync()
+    {
+        var path = Path.Combine(GetRoot(), PianistListRel);
+        if (!File.Exists(path))
+            return Array.Empty<PianistListEntry>();
+
+        return await Task.Run<IReadOnlyList<PianistListEntry>>(() =>
+        {
+            using var reader = new StreamReader(path, Encoding.UTF8);
+            using var csv    = new CsvReader(reader, TolerantReadConfig);
+            var rows = csv.GetRecords<PianistListCsvRow>().ToList();
+            return rows.Select(r => new PianistListEntry
+            {
+                Enabled     = string.Equals(r.Enabled?.Trim(), "1", StringComparison.Ordinal),
+                ProfileName = r.ProfileName ?? "",
+                Group       = r.Group       ?? "",
+                Description = r.Description ?? "",
+                Segment     = r.Segment     ?? "",
+            }).ToList();
+        });
+    }
+
+    public async Task<string?> SavePianistListAsync(IEnumerable<PianistListEntry> entries)
+    {
+        var path = Path.Combine(GetRoot(), PianistListRel);
+        var dir  = Path.GetDirectoryName(path);
+        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+            return $"pianist モジュールディレクトリが存在しません: {dir}";
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                using var writer = new StreamWriter(path, append: false, encoding: Utf8WithBom);
+                using var csv    = new CsvWriter(writer, CsvWriteConfig);
+
+                csv.WriteField("Enabled");
+                csv.WriteField("ProfileName");
+                csv.WriteField("Group");
+                csv.WriteField("Description");
+                csv.WriteField("Segment");
+                csv.NextRecord();
+
+                foreach (var e in entries)
+                {
+                    csv.WriteField(e.Enabled ? "1" : "0");
+                    csv.WriteField(e.ProfileName);
+                    csv.WriteField(e.Group);
+                    csv.WriteField(e.Description);
+                    csv.WriteField(e.Segment);
+                    csv.NextRecord();
+                }
+            });
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"pianist_list.csv の保存に失敗: {ex.Message}";
+        }
+    }
 }

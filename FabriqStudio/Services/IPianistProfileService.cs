@@ -51,4 +51,17 @@ public interface IPianistProfileService
     /// 初期内容は最小限の placeholder（P01 に Wait 1000ms の Step 1 件 + `*` 行のみの空 values.csv）。
     /// </summary>
     Task<PianistProfileEntry> CreateNewProfileAsync(string name);
+
+    /// <summary>
+    /// modules/extended/pianist/pianist_list.csv を読む。
+    /// ファイルが無い場合は空リストを返す（新規作成扱い）。
+    /// </summary>
+    Task<IReadOnlyList<PianistListEntry>> LoadPianistListAsync();
+
+    /// <summary>
+    /// modules/extended/pianist/pianist_list.csv を §10 規約（BOM 付き UTF-8 + CRLF）で書き出す。
+    /// 検証（ProfileName 重複・実在チェック）は呼び出し側で済ませてある前提。
+    /// </summary>
+    /// <returns>null=成功 / 非 null = エラーメッセージ（呼び出し側で表示）</returns>
+    Task<string?> SavePianistListAsync(IEnumerable<PianistListEntry> entries);
 }

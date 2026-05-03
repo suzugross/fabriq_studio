@@ -137,6 +137,22 @@ public partial class PianistProfileEditorViewModel : ObservableObject
         => _pianistService.ValidateNewProfileName(name);
 
     /// <summary>
+    /// pianist_list.csv 編集ダイアログを開く（左ペインヘッダの「📋 一覧」ボタン）。
+    /// 全 profile 横断のカタログで、特定 profile に紐付かないため独立ダイアログとして提供。
+    /// </summary>
+    [RelayCommand]
+    private void EditPianistList()
+    {
+        if (!_workspace.IsOpen)
+        {
+            MessageBox.Show("ワークスペースが開かれていません。", "pianist_list.csv 編集",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        PianistListEditDialog.Show(_pianistService);
+    }
+
+    /// <summary>
     /// プロファイル新規作成ダイアログを開き、作成後にリストへ追加 + 自動選択する。
     /// 既存の <see cref="WelcomeViewModel.CreateNewWorkspaceAsync"/> と同じく VM がダイアログを
     /// 直接呼ぶパターン（fabriq studio 内で一貫している）。
