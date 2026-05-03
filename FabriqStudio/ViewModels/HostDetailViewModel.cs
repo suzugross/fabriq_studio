@@ -28,8 +28,30 @@ namespace FabriqStudio.ViewModels;
 ///   hostlist.csv 全行を read-modify-write（元のAdminIDで行を特定）。
 ///   保存後にスナップショットを更新して Dirty をリセット。
 /// </summary>
-public partial class HostDetailViewModel : ObservableObject
+public partial class HostDetailViewModel : ObservableObject, IDirtyAwareViewModel
 {
+    // ─── IDirtyAwareViewModel ───────────────────────────────────────
+    public bool HasUnsavedChanges => IsDirty;
+    public string DirtyDescription => Host is not null
+        ? $"端末詳細 ({(string.IsNullOrEmpty(Host.NewPCName) ? Host.AdminID : Host.NewPCName)})"
+        : "端末詳細";
+
+    /// <summary>
+    /// OriginalHost のスナップショットから Host の全プロパティをコピーし直す。
+    /// HostEntry は ObservableObject なので PropertyChanged が発火し、HostList の DataGrid にも即座に反映される。
+    /// </summary>
+    public void DiscardChanges()
+    {
+        if (Host is null || OriginalHost is null) return;
+        foreach (var prop in typeof(HostEntry).GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (!prop.CanWrite || prop.PropertyType != typeof(string)) continue;
+            prop.SetValue(Host, prop.GetValue(OriginalHost));
+        }
+        // OnHostPropertyChanged 経由で IsDirty は false になるが、明示しておく
+        IsDirty = false;
+    }
+
     private readonly ICsvService    _csvService;
     private readonly ICryptoService _crypto;
 

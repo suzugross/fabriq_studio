@@ -27,8 +27,61 @@ namespace FabriqStudio.ViewModels;
 /// 保存:
 ///   CanExecute = (IsGuideDirty || HasCsvChanges || HasModuleCsvChanges) &amp;&amp; !IsLocked
 /// </summary>
-public partial class ModuleDetailViewModel : ObservableObject
+public partial class ModuleDetailViewModel : ObservableObject, IDirtyAwareViewModel
 {
+    // ─── IDirtyAwareViewModel ───────────────────────────────────────
+    public bool HasUnsavedChanges => IsGuideDirty || HasCsvChanges || HasModuleCsvChanges;
+    public string DirtyDescription => Module is not null
+        ? $"モジュール: {(string.IsNullOrEmpty(Module.MenuName) ? Module.ModuleDir : Module.MenuName)}"
+        : "モジュール詳細";
+
+    /// <summary>
+    /// 3 系統の編集すべてをロールバックする。
+    /// Module は ModuleEdit のリストとインスタンス共有しているため、フィールドコピーで戻す。
+    /// </summary>
+    public void DiscardChanges()
+    {
+        // module.csv 行（メニュー名・カテゴリ等）— View の TextChanged が再発火するので一時抑制
+        if (Module is not null && _originalModule is not null)
+        {
+            _suppressModuleCsvDirty = true;
+            Module.MenuName = _originalModule.MenuName;
+            Module.Category = _originalModule.Category;
+            Module.Script   = _originalModule.Script;
+            Module.Order    = _originalModule.Order;
+            Module.Enabled  = _originalModule.Enabled;
+            _suppressModuleCsvDirty = false;
+        }
+        HasModuleCsvChanges = false;
+
+        // guide.txt — OriginalGuideText に戻すと IsGuideDirty が自動で false になる
+        if (HasGuideText)
+            GuideText = OriginalGuideText;
+
+        // 汎用 CSV — RejectChanges が RowChanged を再発火するのでハンドラを一時解除
+        if (HasConfigCsv)
+        {
+            ConfigCsvData.RowChanged -= OnCsvRowChanged;
+            ConfigCsvData.RowDeleted -= OnCsvRowChanged;
+            ConfigCsvData.RejectChanges();
+            ConfigCsvData.RowChanged += OnCsvRowChanged;
+            ConfigCsvData.RowDeleted += OnCsvRowChanged;
+        }
+        HasCsvChanges = false;
+    }
+
+    /// <summary>module.csv カラムのみを浅くコピーした破棄用スナップショットを返す。</summary>
+    private static ModuleMasterEntry CloneModuleSnapshot(ModuleMasterEntry src) => new()
+    {
+        MenuName  = src.MenuName,
+        Category  = src.Category,
+        Script    = src.Script,
+        Order     = src.Order,
+        Enabled   = src.Enabled,
+        ModuleDir = src.ModuleDir,
+        Kind      = src.Kind,
+    };
+
     private readonly IFileService                _fileService;
     private readonly ICsvService                 _csvService;
     private readonly IWorkspaceService            _workspace;
@@ -40,6 +93,9 @@ public partial class ModuleDetailViewModel : ObservableObject
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(OpenInExplorerCommand))]
     private ModuleMasterEntry? _module;
+
+    /// <summary>module.csv 編集の破棄時に復元するためのスナップショット（Load 時に取得）。</summary>
+    private ModuleMasterEntry? _originalModule;
 
     /// <summary>現在のモジュールがレジストリ設定モジュール（reg_hklm_config / reg_hkcu_config）か。</summary>
     [ObservableProperty]
@@ -155,6 +211,7 @@ public partial class ModuleDetailViewModel : ObservableObject
     {
         _suppressModuleCsvDirty = true;
         Module     = module;
+        _originalModule = CloneModuleSnapshot(module);
         IsLocked   = true;
         SaveStatus = null;
         SaveError  = null;

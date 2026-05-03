@@ -8,8 +8,29 @@ using FabriqStudio.Services;
 
 namespace FabriqStudio.ViewModels;
 
-public partial class AutokeyRecipeEditorViewModel : ObservableObject
+public partial class AutokeyRecipeEditorViewModel : ObservableObject, IDirtyAwareViewModel
 {
+    // ─── IDirtyAwareViewModel ───────────────────────────────────────
+    public bool HasUnsavedChanges => IsDirty;
+    public string DirtyDescription => string.IsNullOrEmpty(ModuleName)
+        ? "Autokey レシピ"
+        : $"Autokey レシピ ({ModuleName})";
+
+    /// <summary>
+    /// 編集中レシピをクリアする（New と同等）。
+    /// このエディタは固定の保存先を持たないため、破棄＝クリアの意味になる。
+    /// </summary>
+    public void DiscardChanges()
+    {
+        Rows.Clear();           // CollectionChanged → IsDirty=true（直後に上書き）
+        ModuleName    = "";
+        IsDirty       = false;
+        StatusMessage = null;
+        ErrorMessage  = null;
+        ExportCommand.NotifyCanExecuteChanged();
+        TestRunCommand.NotifyCanExecuteChanged();
+    }
+
     private readonly IAutokeyService _autokeyService;
 
     // ── コレクション ────────────────────────────────────────────────────────

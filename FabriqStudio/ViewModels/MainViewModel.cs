@@ -111,12 +111,14 @@ public partial class MainViewModel : ObservableObject
         // ── 詳細画面への遷移 ──────────────────────────────────────────────
         WeakReferenceMessenger.Default.Register<ShowHostDetailMessage>(this, (_, msg) =>
         {
+            if (!ConfirmDiscardIfDirty()) return;
             _hostDetailVm.Load(msg.Value);
             CurrentPage = _hostDetailVm;
         });
 
         WeakReferenceMessenger.Default.Register<ShowModuleDetailMessage>(this, (_, msg) =>
         {
+            if (!ConfirmDiscardIfDirty()) return;
             var dir = msg.Value.ModuleDir ?? "";
             var dirName = Path.GetFileName(dir.TrimEnd('\\', '/'));
             if (dirName.Equals("app_config", StringComparison.OrdinalIgnoreCase))
@@ -133,6 +135,7 @@ public partial class MainViewModel : ObservableObject
 
         WeakReferenceMessenger.Default.Register<ShowProfileDetailMessage>(this, (_, msg) =>
         {
+            if (!ConfirmDiscardIfDirty()) return;
             _profileDetailVm.Load(msg.Value);
             CurrentPage = _profileDetailVm;
         });
@@ -140,6 +143,7 @@ public partial class MainViewModel : ObservableObject
         // ── 一覧画面への戻り ─────────────────────────────────────────────
         WeakReferenceMessenger.Default.Register<NavigateBackMessage>(this, (_, msg) =>
         {
+            if (!ConfirmDiscardIfDirty()) return;
             CurrentPage = msg.Value switch
             {
                 "HostList"    => (object)_hostListVm,
@@ -150,9 +154,37 @@ public partial class MainViewModel : ObservableObject
         });
     }
 
+    /// <summary>
+    /// 現在のページに未保存の変更があるか確認し、ある場合はユーザーに破棄確認を求める。
+    /// 画面遷移／ワークスペース切替／アプリ終了など、編集が失われ得るすべての操作の前に呼び出す。
+    /// OK が選択された場合は in-memory 状態をロールバック（DiscardChanges）してから true を返す。
+    /// </summary>
+    /// <returns>遷移してよい場合 true、ユーザーがキャンセルした場合 false。</returns>
+    public bool ConfirmDiscardIfDirty()
+    {
+        if (CurrentPage is not IDirtyAwareViewModel dirty || !dirty.HasUnsavedChanges)
+            return true;
+
+        var result = MessageBox.Show(
+            $"「{dirty.DirtyDescription}」に未保存の変更があります。\n\n" +
+            "このまま操作を続けると、変更内容は失われます。\n" +
+            "破棄して続行しますか？",
+            "未保存の変更",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.OK) return false;
+
+        // ユーザーが破棄を選択 → in-memory 状態を確実にロールバックしてから遷移を許可
+        // （HostDetail のような親リストと共有しているエンティティが編集値のまま残るのを防ぐ）
+        dirty.DiscardChanges();
+        return true;
+    }
+
     [RelayCommand]
     private void Navigate(string? page)
     {
+        if (!ConfirmDiscardIfDirty()) return;
         CurrentPage = page switch
         {
             "BasicParams"            => (object)_basicParamsVm,
@@ -243,7 +275,11 @@ public partial class MainViewModel : ObservableObject
     /// WorkspaceChanged（NewPath = null）が発火し、UI が自動更新される。
     /// </summary>
     [RelayCommand]
-    private void CloseWorkspace() => _workspace.Close();
+    private void CloseWorkspace()
+    {
+        if (!ConfirmDiscardIfDirty()) return;
+        _workspace.Close();
+    }
 
     /// <summary>
     /// 現在のワークスペースのデータを最新の情報に更新する。
@@ -272,6 +308,9 @@ public partial class MainViewModel : ObservableObject
     [RelayCommand]
     private async Task CreateNewWorkspaceAsync()
     {
+        // 0. 現在のページに未保存の変更があれば破棄確認
+        if (!ConfirmDiscardIfDirty()) return;
+
         // 1. 作成先の親フォルダを選択
         var parentDialog = new Microsoft.Win32.OpenFolderDialog
         {

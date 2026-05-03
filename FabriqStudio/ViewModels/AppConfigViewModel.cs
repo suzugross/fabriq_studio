@@ -18,8 +18,36 @@ namespace FabriqStudio.ViewModels;
 /// CSV カラム: Enabled, AppName, FileName, Type, SilentArgs, Description
 /// 対応 Type: exe, msi, bat
 /// </summary>
-public partial class AppConfigViewModel : ObservableObject
+public partial class AppConfigViewModel : ObservableObject, IDirtyAwareViewModel
 {
+    // ─── IDirtyAwareViewModel ───────────────────────────────────────
+    public bool HasUnsavedChanges => IsGuideDirty || HasCsvChanges;
+    public string DirtyDescription => Module is not null
+        ? $"アプリ設定: {(string.IsNullOrEmpty(Module.MenuName) ? Module.ModuleDir : Module.MenuName)}"
+        : "アプリ設定";
+
+    /// <summary>
+    /// guide.txt と CSV の編集をロールバックする。
+    /// Module 自体はこの画面で編集対象としていないためスナップショット不要。
+    /// </summary>
+    public void DiscardChanges()
+    {
+        // guide.txt — OriginalGuideText に戻すと IsGuideDirty が自動で false になる
+        if (HasGuideText)
+            GuideText = OriginalGuideText;
+
+        // CSV — RejectChanges が RowChanged を再発火するのでハンドラを一時解除
+        if (HasConfigCsv)
+        {
+            ConfigCsvData.RowChanged -= OnCsvRowChanged;
+            ConfigCsvData.RowDeleted -= OnCsvRowChanged;
+            ConfigCsvData.RejectChanges();
+            ConfigCsvData.RowChanged += OnCsvRowChanged;
+            ConfigCsvData.RowDeleted += OnCsvRowChanged;
+        }
+        HasCsvChanges = false;
+    }
+
     private readonly IFileService      _fileService;
     private readonly IWorkspaceService _workspace;
 
