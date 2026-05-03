@@ -65,6 +65,10 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
     private readonly IWorkspaceService      _workspace;
     private readonly ICsvService            _csvService;
     private readonly ICryptoService         _crypto;
+    private readonly IPianistTestRunService _testRunService;
+
+    /// <summary>テスト実行中のキャンセル用 CTS（ユーザーが「中止」ボタンを押したときに発火）。</summary>
+    private CancellationTokenSource? _testRunCts;
 
     [ObservableProperty] private ObservableCollection<PianistProfileEntry> _profiles = new();
 
@@ -141,16 +145,28 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
     /// <summary>整合性チェックを実行済みか（未実行のときの空状態切替に使用）。</summary>
     [ObservableProperty] private bool _hasRunValidation;
 
+    // ─── テスト実行 ─────────────────────────────────────────────
+    /// <summary>テスト実行中フラグ（ボタン disable / View ヘッダの状態表示に使う）。</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(TestRunCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CancelTestRunCommand))]
+    private bool _isTestRunning;
+
+    /// <summary>テスト実行のステータス文字列（ヘッダに薄字で表示）。</summary>
+    [ObservableProperty] private string? _testRunStatus;
+
     public PianistProfileEditorViewModel(
         IPianistProfileService pianistService,
         IWorkspaceService      workspace,
         ICsvService            csvService,
-        ICryptoService         crypto)
+        ICryptoService         crypto,
+        IPianistTestRunService testRunService)
     {
         _pianistService = pianistService;
         _workspace      = workspace;
         _csvService     = csvService;
         _crypto         = crypto;
+        _testRunService = testRunService;
 
         _workspace.WorkspaceChanged += (_, e) =>
         {
@@ -1598,6 +1614,156 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
         ValidationIssues = new ObservableCollection<PianistValidationIssue>(results);
         HasRunValidation = true;
     }
+
+    // ─── テスト実行（fabriq エンジンへ子プロセスで投入） ─────────
+
+    private bool CanTestRun()
+        => CurrentData is not null
+           && SelectedProfile is not null
+           && !IsTestRunning
+           && !IsSaving
+           && _workspace.IsOpen;
+
+    /// <summary>
+    /// 現在選択中の Pianist Profile を fabriq エンジン（pianist.ps1）に渡してテスト実行する。
+    ///
+    /// フロー:
+    /// 1. Dirty なら「保存して実行 / 破棄して実行 / キャンセル」3 択
+    /// 2. <see cref="RunValidation"/> を実行し Error あれば中断確認
+    /// 3. <see cref="PianistTestRunDialog"/> でホスト選択 + 副作用警告
+    /// 4. 任意で Studio MainWindow を最小化（焦点を逃がす）
+    /// 5. <see cref="IPianistTestRunService.RunAsync"/> 実行（GUI が閉じるまでブロック）
+    /// 6. ログ + ModuleResult を <see cref="LogViewerDialog"/> で表示
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanTestRun))]
+    private async Task TestRunAsync()
+    {
+        if (CurrentData is null || SelectedProfile is null) return;
+
+        // ── 1. Dirty ガード ──────────────────────────────────────
+        if (IsDirty)
+        {
+            var choice = MessageBox.Show(
+                $"「{SelectedProfile.Name}」に未保存の変更があります。\n\n" +
+                "「はい」: 保存してから実行\n" +
+                "「いいえ」: 未保存のまま実行（保存していないファイルは fabriq から見えません）\n" +
+                "「キャンセル」: 実行を中止",
+                "未保存の変更",
+                MessageBoxButton.YesNoCancel, MessageBoxImage.Warning);
+
+            if (choice == MessageBoxResult.Cancel) return;
+            if (choice == MessageBoxResult.Yes)
+            {
+                await SaveAsync();
+                if (IsDirty)
+                {
+                    // 保存に失敗した（orphan キャンセル等）
+                    return;
+                }
+            }
+        }
+
+        // ── 2. バリデーション結果を実行前に提示 ────────────────
+        var issues = RunValidation();
+        var errors = issues.Where(i => i.Level == PianistValidationIssue.Severity.Error).ToList();
+        if (errors.Count > 0)
+        {
+            var lines = string.Join("\n", errors.Take(10).Select(e => $"  - {e.Message}"));
+            var more  = errors.Count > 10 ? $"\n  ... 他 {errors.Count - 10} 件" : "";
+            var ok = MessageBox.Show(
+                $"整合性チェックで Error が {errors.Count} 件検出されました:\n\n{lines}{more}\n\n"
+                + "このまま実行しますか？（pianist.ps1 が読めない / 異常動作する可能性があります）",
+                "整合性 Error 検出",
+                MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+            if (ok != MessageBoxResult.OK) return;
+        }
+
+        // ── 3. 実行ホスト + 副作用警告ダイアログ ──────────────
+        var choice2 = PianistTestRunDialog.Show(
+            profile:        SelectedProfile,
+            data:           CurrentData,
+            availableHosts: _allHostNames,
+            hasPassphrase:  _crypto.HasPassphrase);
+        if (choice2 is null) return;
+
+        // ── 4. オプションで Studio を最小化 ─────────────────────
+        Window? mainWin = Application.Current?.MainWindow;
+        WindowState? originalState = null;
+        if (choice2.MinimizeStudio && mainWin is not null)
+        {
+            originalState     = mainWin.WindowState;
+            mainWin.WindowState = WindowState.Minimized;
+        }
+
+        // ── 5. 実行 ──────────────────────────────────────────────
+        IsTestRunning = true;
+        TestRunStatus = $"▶ テスト実行中… ({SelectedProfile.Name} / {choice2.NewPCName})";
+        _testRunCts   = new CancellationTokenSource();
+
+        PianistTestRunResult? result = null;
+        Exception? launchError = null;
+        try
+        {
+            result = await _testRunService.RunAsync(
+                profileName: SelectedProfile.Name,
+                newPCName:   choice2.NewPCName,
+                ct:          _testRunCts.Token);
+        }
+        catch (Exception ex)
+        {
+            launchError = ex;
+        }
+        finally
+        {
+            IsTestRunning = false;
+            TestRunStatus = null;
+            _testRunCts?.Dispose();
+            _testRunCts = null;
+
+            // 最小化していた場合は元に戻す
+            if (originalState is not null && mainWin is not null)
+                mainWin.WindowState = originalState.Value;
+        }
+
+        // ── 6. 結果表示 ──────────────────────────────────────────
+        if (launchError is not null)
+        {
+            MessageBox.Show(
+                $"テスト実行の起動に失敗しました:\n\n{launchError.Message}",
+                "Pianist テスト実行",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        if (result is null) return;
+
+        var titleSuffix = result.WasCancelled
+            ? "（中止）"
+            : (result.ModuleResultStatus is not null ? $"（{result.ModuleResultStatus}）" : "");
+        var title = $"Pianist テスト実行ログ — {SelectedProfile.Name}{titleSuffix}";
+
+        // ヘッダに ModuleResult Message を追加してから本ログ
+        var displayLog = new System.Text.StringBuilder();
+        displayLog.AppendLine($"Profile : {SelectedProfile.Name}");
+        displayLog.AppendLine($"Host    : {choice2.NewPCName}");
+        displayLog.AppendLine($"Status  : {result.ModuleResultStatus ?? "(unknown)"}");
+        if (result.ModuleResultMessage is not null)
+            displayLog.AppendLine($"Message : {result.ModuleResultMessage}");
+        if (result.ModuleResultVerified is not null)
+            displayLog.AppendLine($"Verified: {result.ModuleResultVerified}");
+        displayLog.AppendLine($"ExitCode: {result.ExitCode}");
+        displayLog.AppendLine(new string('-', 60));
+        displayLog.AppendLine();
+        displayLog.Append(result.Log);
+
+        LogViewerDialog.ShowLog(title, displayLog.ToString());
+    }
+
+    /// <summary>テスト実行の中断（外部 / Phase D で「中止」ボタン経由）。</summary>
+    [RelayCommand(CanExecute = nameof(CanCancelTestRun))]
+    private void CancelTestRun() => _testRunCts?.Cancel();
+
+    private bool CanCancelTestRun() => IsTestRunning && _testRunCts is not null;
 
     // ─── 旧 long format → wide format 移行（§5.5） ───────────────
 
