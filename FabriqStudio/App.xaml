@@ -22,6 +22,7 @@
             <converters:PianistCellInheritedConverter         x:Key="PianistCellInheritedConverter" />
             <converters:PianistValidationSeverityConverter    x:Key="PianistValidationSeverityConverter" />
             <converters:PianistActionCodeToLabelConverter     x:Key="PianistActionCodeToLabelConverter" />
+            <converters:SampleFileToImageConverter            x:Key="SampleFileToImageConverter" />
 
             <!-- ViewModel → View の DataTemplate マッピング -->
             <DataTemplate DataType="{x:Type vm:BasicParamsViewModel}">
