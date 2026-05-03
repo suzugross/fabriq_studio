@@ -1,0 +1,123 @@
+<Window x:Class="FabriqStudio.Views.PianistNewProfileDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Pianist Profile を新規作成"
+        Width="500"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#F5F5F5">
+
+    <Window.Resources>
+        <Style x:Key="DlgButtonStyle" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor"          Value="Hand" />
+            <Setter Property="FontSize"        Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.70" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="22,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="6" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0"
+                   FontSize="11" Foreground="#555555"
+                   Text="プロファイル名（^[A-Za-z0-9_]+$ — 半角英数 + アンダースコアのみ）" />
+
+        <TextBox Grid.Row="2"
+                 x:Name="ProfileNameBox"
+                 Background="#FFFFFF"
+                 Foreground="#222222"
+                 CaretBrush="#222222"
+                 BorderBrush="#BBBBBB"
+                 BorderThickness="1"
+                 Padding="8,6"
+                 FontSize="13"
+                 TextChanged="ProfileNameBox_TextChanged" />
+
+        <TextBlock Grid.Row="3"
+                   x:Name="ErrorText"
+                   FontSize="11" Foreground="#C04040"
+                   TextWrapping="Wrap"
+                   Margin="0,4,0,0"
+                   Visibility="Collapsed" />
+
+        <Border Grid.Row="5"
+                Padding="12,10"
+                Background="#EAF3FB"
+                BorderBrush="#B8D7EE"
+                BorderThickness="1"
+                CornerRadius="4">
+            <TextBlock FontSize="11" Foreground="#1A4F7A" TextWrapping="Wrap">
+                <Run Text="作成される内容:" FontWeight="SemiBold" />
+                <LineBreak />
+                <Run Text="・modules/extended/pianist/profiles/&lt;名前&gt;/ フォルダ" />
+                <LineBreak />
+                <Run Text="・pianist.json（schema=1, default_phase=P01, version=0.1.0）" />
+                <LineBreak />
+                <Run Text="・procedure.csv（P01 に Wait 1000ms の placeholder Step 1 件）" />
+                <LineBreak />
+                <Run Text="・values.csv（NewPCName 列のみ + * 行）" />
+                <LineBreak />
+                <Run Text="・shortcuts.csv（ヘッダのみ）" />
+                <LineBreak />
+                <Run Text="・instructions/P01.txt（空ファイル）" />
+            </TextBlock>
+        </Border>
+
+        <StackPanel Grid.Row="7"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button x:Name="CancelBtn"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="キャンセル"
+                    Background="#E0E0E0"
+                    Foreground="#333333"
+                    Padding="16,6"
+                    IsCancel="True"
+                    Click="CancelBtn_Click" />
+            <Button x:Name="OkBtn"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="作成"
+                    Background="#007ACC"
+                    Foreground="#FFFFFF"
+                    Padding="16,6"
+                    Margin="8,0,0,0"
+                    IsDefault="True"
+                    IsEnabled="False"
+                    Click="OkBtn_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

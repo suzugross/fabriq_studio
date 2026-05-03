@@ -28,6 +28,7 @@ public partial class MainViewModel : ObservableObject
     private readonly WelcomeViewModel                 _welcomeVm;
     private readonly RegistryCollectionViewModel      _registryCollectionVm;
     private readonly PrinterDriverDetectorViewModel   _printerDriverDetectorVm;
+    private readonly PianistProfileEditorViewModel    _pianistEditorVm;
     private readonly IWorkspaceService                _workspace;
     private readonly ICryptoService                   _crypto;
 
@@ -57,6 +58,7 @@ public partial class MainViewModel : ObservableObject
         WelcomeViewModel                  welcomeVm,
         RegistryCollectionViewModel       registryCollectionVm,
         PrinterDriverDetectorViewModel    printerDriverDetectorVm,
+        PianistProfileEditorViewModel     pianistEditorVm,
         IWorkspaceService                 workspace,
         ICryptoService                    crypto)
     {
@@ -73,6 +75,7 @@ public partial class MainViewModel : ObservableObject
         _welcomeVm               = welcomeVm;
         _registryCollectionVm    = registryCollectionVm;
         _printerDriverDetectorVm = printerDriverDetectorVm;
+        _pianistEditorVm         = pianistEditorVm;
         _workspace               = workspace;
         _crypto                  = crypto;
 
@@ -160,6 +163,7 @@ public partial class MainViewModel : ObservableObject
             "GyotaqEditor"           => _gyotaqEditorVm,
             "RegistryCollection"     => _registryCollectionVm,
             "PrinterDriverDetector"  => _printerDriverDetectorVm,
+            "PianistProfile"         => _pianistEditorVm,
             _                        => CurrentPage
         };
     }

@@ -1,0 +1,164 @@
+<Window x:Class="FabriqStudio.Views.PianistPhaseEditDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:converters="clr-namespace:FabriqStudio.Converters"
+        Title="Phase 編集"
+        Width="500"
+        SizeToContent="Height"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False"
+        Background="#F5F5F5">
+
+    <Window.Resources>
+        <converters:PianistColorToBrushConverter x:Key="PhaseColorToBrush" />
+
+        <Style x:Key="DlgButtonStyle" TargetType="Button">
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor"          Value="Hand" />
+            <Setter Property="FontSize"        Value="13" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bd"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.85" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.70" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Bd" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DlgTextBoxStyle" TargetType="TextBox">
+            <Setter Property="Background"      Value="#FFFFFF" />
+            <Setter Property="Foreground"      Value="#222222" />
+            <Setter Property="CaretBrush"      Value="#222222" />
+            <Setter Property="BorderBrush"     Value="#BBBBBB" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Padding"         Value="8,6" />
+            <Setter Property="FontSize"        Value="13" />
+        </Style>
+
+        <Style x:Key="DlgLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="11" />
+            <Setter Property="Foreground" Value="#555555" />
+            <Setter Property="Margin"     Value="0,0,0,5" />
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="22,18">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14"   />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14"   />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14"   />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="14"   />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- PhaseID -->
+        <StackPanel Grid.Row="0">
+            <TextBlock Text="PhaseID" Style="{StaticResource DlgLabelStyle}" />
+            <TextBox x:Name="PhaseIdBox"
+                     Style="{StaticResource DlgTextBoxStyle}"
+                     TextChanged="PhaseIdBox_TextChanged" />
+        </StackPanel>
+
+        <!-- PhaseLabel -->
+        <StackPanel Grid.Row="2">
+            <TextBlock Text="PhaseLabel（自由記述）" Style="{StaticResource DlgLabelStyle}" />
+            <TextBox x:Name="PhaseLabelBox"
+                     Style="{StaticResource DlgTextBoxStyle}" />
+        </StackPanel>
+
+        <!-- Color -->
+        <StackPanel Grid.Row="4">
+            <TextBlock Text="Color（9 色固定パレット）" Style="{StaticResource DlgLabelStyle}" />
+            <ComboBox x:Name="ColorCombo"
+                      Background="#FFFFFF"
+                      Foreground="#222222"
+                      BorderBrush="#BBBBBB"
+                      BorderThickness="1"
+                      Padding="6,4"
+                      FontSize="13"
+                      Height="32">
+                <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <Border Width="16" Height="16"
+                                    CornerRadius="2"
+                                    Background="{Binding Converter={StaticResource PhaseColorToBrush}}" />
+                            <TextBlock Text="{Binding}"
+                                       Foreground="#222222"
+                                       VerticalAlignment="Center"
+                                       Margin="8,0,0,0" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ComboBox.ItemTemplate>
+            </ComboBox>
+        </StackPanel>
+
+        <TextBlock Grid.Row="5"
+                   x:Name="ErrorText"
+                   FontSize="11" Foreground="#C04040"
+                   TextWrapping="Wrap"
+                   Margin="0,8,0,0"
+                   Visibility="Collapsed" />
+
+        <!-- リネーム時のみ: instructions/.txt 追従チェックボックス -->
+        <CheckBox Grid.Row="7"
+                  x:Name="RenameInstructionsCheck"
+                  IsChecked="True"
+                  Foreground="#444444"
+                  Visibility="Collapsed">
+            <TextBlock>
+                <Run Text="instructions/" />
+                <Run x:Name="OldFileRun" Foreground="#A05B00" FontFamily="Consolas" />
+                <Run Text=".txt を " />
+                <Run x:Name="NewFileRun" Foreground="#1A7A1A" FontFamily="Consolas" />
+                <Run Text=".txt にリネームする" />
+            </TextBlock>
+        </CheckBox>
+
+        <!-- ボタン -->
+        <StackPanel Grid.Row="9"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button x:Name="CancelBtn"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="キャンセル"
+                    Background="#E0E0E0"
+                    Foreground="#333333"
+                    Padding="16,6"
+                    IsCancel="True"
+                    Click="CancelBtn_Click" />
+            <Button x:Name="OkBtn"
+                    Style="{StaticResource DlgButtonStyle}"
+                    Content="OK"
+                    Background="#007ACC"
+                    Foreground="#FFFFFF"
+                    Padding="16,6"
+                    Margin="8,0,0,0"
+                    IsDefault="True"
+                    IsEnabled="False"
+                    Click="OkBtn_Click" />
+        </StackPanel>
+    </Grid>
+</Window>

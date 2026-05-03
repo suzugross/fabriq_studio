@@ -262,6 +262,11 @@
                             Command="{Binding NavigateCommand}"
                             CommandParameter="GyotaqEditor"
                             IsEnabled="{Binding IsWorkspaceOpen}" />
+                    <Button Content="🎹  Pianist Profile"
+                            Style="{StaticResource NavChildButtonStyle}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="PianistProfile"
+                            IsEnabled="{Binding IsWorkspaceOpen}" />
                     <Button Content="📖  レジストリ辞書"
                             Style="{StaticResource NavChildButtonStyle}"
                             Command="{Binding NavigateCommand}"
