@@ -40,7 +40,7 @@
                       StaysOpenOnEdit="True"
                       TextSearch.TextPath="Code"
                       ItemsSource="{x:Static vm:PianistProfileEditorViewModel.KeyPresets}"
-                      ToolTip="特殊キー (SendKeys 形式) — 自由入力可。修飾子: + Shift / ^ Ctrl / % Alt">
+                      ToolTip="特殊キー (SendKeys 形式) — 自由入力可。修飾子: + Shift / ^ Ctrl / % Alt。繰り返しは {KEY N} 形式 (例: {TAB 5} で Tab 5 回)">
                 <ComboBox.ItemTemplate>
                     <DataTemplate>
                         <Grid MinWidth="320">

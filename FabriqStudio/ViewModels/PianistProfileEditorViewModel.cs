@@ -785,6 +785,15 @@ public partial class PianistProfileEditorViewModel : ObservableObject
         new() { Code = "^+{RIGHT}",   Description = "Ctrl + Shift + →（次単語まで選択）" },
         new() { Code = "^+{HOME}",    Description = "Ctrl + Shift + Home（文書先頭まで選択）" },
         new() { Code = "^+{END}",     Description = "Ctrl + Shift + End（文書末尾まで選択）" },
+
+        // ── 繰り返し（{KEY N} 形式: 任意のキーを N 回。N を直接編集すれば回数変更可） ──
+        new() { Code = "{TAB 3}",       Description = "Tab を 3 回（連続したフィールド送り）" },
+        new() { Code = "{TAB 5}",       Description = "Tab を 5 回" },
+        new() { Code = "+{TAB 3}",      Description = "Shift + Tab を 3 回（逆方向にフィールド送り）" },
+        new() { Code = "{DOWN 5}",      Description = "↓ を 5 回（リストスクロール）" },
+        new() { Code = "{DOWN 10}",     Description = "↓ を 10 回（大きくスクロール）" },
+        new() { Code = "{ENTER 2}",     Description = "Enter を 2 回（ダイアログ連続確定）" },
+        new() { Code = "{BACKSPACE 5}", Description = "BackSpace を 5 回" },
     };
 
     /// <summary>Wait Action / Wait 列の数値プリセット（§4.3、ms 単位）。</summary>
