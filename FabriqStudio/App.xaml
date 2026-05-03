@@ -52,14 +52,6 @@
                 <views:ProfileDetailView />
             </DataTemplate>
 
-            <DataTemplate DataType="{x:Type vm:AutokeyRecipeEditorViewModel}">
-                <views:AutokeyRecipeEditorView />
-            </DataTemplate>
-
-            <DataTemplate DataType="{x:Type vm:DigitalGyotaqEditorViewModel}">
-                <views:DigitalGyotaqEditorView />
-            </DataTemplate>
-
             <DataTemplate DataType="{x:Type vm:LooperEditorViewModel}">
                 <views:LooperEditorView />
             </DataTemplate>

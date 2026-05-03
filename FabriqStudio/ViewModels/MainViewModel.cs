@@ -3,6 +3,7 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
+using FabriqStudio.Helpers;
 using FabriqStudio.Messages;
 using FabriqStudio.Services;
 using FabriqStudio.Views;
@@ -22,9 +23,7 @@ public partial class MainViewModel : ObservableObject
     private readonly ModuleDetailViewModel         _moduleDetailVm;
     private readonly AppConfigViewModel            _appConfigVm;
     private readonly ProfileDetailViewModel        _profileDetailVm;
-    private readonly AutokeyRecipeEditorViewModel      _autokeyEditorVm;
     private readonly LooperEditorViewModel            _looperEditorVm;
-    private readonly DigitalGyotaqEditorViewModel     _gyotaqEditorVm;
     private readonly WelcomeViewModel                 _welcomeVm;
     private readonly RegistryCollectionViewModel      _registryCollectionVm;
     private readonly PrinterDriverDetectorViewModel   _printerDriverDetectorVm;
@@ -52,9 +51,7 @@ public partial class MainViewModel : ObservableObject
         ModuleDetailViewModel             moduleDetailVm,
         AppConfigViewModel                appConfigVm,
         ProfileDetailViewModel            profileDetailVm,
-        AutokeyRecipeEditorViewModel      autokeyEditorVm,
         LooperEditorViewModel             looperEditorVm,
-        DigitalGyotaqEditorViewModel      gyotaqEditorVm,
         WelcomeViewModel                  welcomeVm,
         RegistryCollectionViewModel       registryCollectionVm,
         PrinterDriverDetectorViewModel    printerDriverDetectorVm,
@@ -69,9 +66,7 @@ public partial class MainViewModel : ObservableObject
         _moduleDetailVm          = moduleDetailVm;
         _appConfigVm             = appConfigVm;
         _profileDetailVm         = profileDetailVm;
-        _autokeyEditorVm         = autokeyEditorVm;
         _looperEditorVm          = looperEditorVm;
-        _gyotaqEditorVm          = gyotaqEditorVm;
         _welcomeVm               = welcomeVm;
         _registryCollectionVm    = registryCollectionVm;
         _printerDriverDetectorVm = printerDriverDetectorVm;
@@ -143,6 +138,10 @@ public partial class MainViewModel : ObservableObject
         // ── 一覧画面への戻り ─────────────────────────────────────────────
         WeakReferenceMessenger.Default.Register<NavigateBackMessage>(this, (_, msg) =>
         {
+            // モーダルダイアログ表示中（ModuleSettingsDialog 等）は MainWindow のナビゲーションを行わない。
+            // ダイアログ側が同じ NavigateBackMessage を独自にハンドルしてダイアログを閉じる責務を持つ。
+            if (Application.Current.Windows.Count > 1) return;
+
             if (!ConfirmDiscardIfDirty()) return;
             CurrentPage = msg.Value switch
             {
@@ -157,29 +156,11 @@ public partial class MainViewModel : ObservableObject
     /// <summary>
     /// 現在のページに未保存の変更があるか確認し、ある場合はユーザーに破棄確認を求める。
     /// 画面遷移／ワークスペース切替／アプリ終了など、編集が失われ得るすべての操作の前に呼び出す。
-    /// OK が選択された場合は in-memory 状態をロールバック（DiscardChanges）してから true を返す。
+    /// 文言と DiscardChanges 呼び出しの責務は <see cref="DirtyConfirmHelper"/> に集約。
     /// </summary>
     /// <returns>遷移してよい場合 true、ユーザーがキャンセルした場合 false。</returns>
     public bool ConfirmDiscardIfDirty()
-    {
-        if (CurrentPage is not IDirtyAwareViewModel dirty || !dirty.HasUnsavedChanges)
-            return true;
-
-        var result = MessageBox.Show(
-            $"「{dirty.DirtyDescription}」に未保存の変更があります。\n\n" +
-            "このまま操作を続けると、変更内容は失われます。\n" +
-            "破棄して続行しますか？",
-            "未保存の変更",
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Warning);
-
-        if (result != MessageBoxResult.OK) return false;
-
-        // ユーザーが破棄を選択 → in-memory 状態を確実にロールバックしてから遷移を許可
-        // （HostDetail のような親リストと共有しているエンティティが編集値のまま残るのを防ぐ）
-        dirty.DiscardChanges();
-        return true;
-    }
+        => DirtyConfirmHelper.ConfirmDiscard(CurrentPage as IDirtyAwareViewModel);
 
     [RelayCommand]
     private void Navigate(string? page)
@@ -190,9 +171,7 @@ public partial class MainViewModel : ObservableObject
             "BasicParams"            => (object)_basicParamsVm,
             "ModuleEdit"             => _moduleEditVm,
             "HostList"               => _hostListVm,
-            "AutokeyEditor"          => _autokeyEditorVm,
             "LooperEditor"           => _looperEditorVm,
-            "GyotaqEditor"           => _gyotaqEditorVm,
             "RegistryCollection"     => _registryCollectionVm,
             "PrinterDriverDetector"  => _printerDriverDetectorVm,
             "PianistProfile"         => _pianistEditorVm,
