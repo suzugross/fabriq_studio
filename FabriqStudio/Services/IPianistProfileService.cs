@@ -53,6 +53,18 @@ public interface IPianistProfileService
     Task<PianistProfileEntry> CreateNewProfileAsync(string name);
 
     /// <summary>
+    /// 指定 Pianist Profile フォルダを再帰的に物理削除する（profile.json / 全 CSV /
+    /// instructions/*.txt / screenshots/*.png 等を含めてフォルダごと完全削除）。
+    /// 取り消し不可なので呼び出し側で確認ダイアログを出してから呼ぶこと。
+    ///
+    /// pianist_list.csv (catalog) には触らない — catalog の連動削除は呼び出し側の責務
+    /// （Studio は catalog に該当行が残っていれば pianist 実行時 Step 2 Validate で Error
+    /// 終了することをユーザに伝え、別操作で catalog を更新させる）。
+    /// </summary>
+    /// <returns>null = 成功 / 非 null = エラーメッセージ（呼び出し側で表示）</returns>
+    Task<string?> DeleteProfileAsync(PianistProfileEntry entry);
+
+    /// <summary>
     /// modules/extended/pianist/pianist_list.csv を読む。
     /// ファイルが無い場合は空リストを返す（新規作成扱い）。
     /// </summary>

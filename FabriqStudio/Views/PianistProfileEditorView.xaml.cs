@@ -500,6 +500,23 @@ public partial class PianistProfileEditorView : UserControl
     // 含めて一括処理し、Drop 確定時に VM の MoveStepRowCommand へ RowMoveRequest（filter-view
     // index）を渡す。コードビハインド側に手書きハンドラは持たない。
 
+    // ─── 左ペイン Profile ContextMenu ──────────────────────────────
+    /// <summary>
+    /// 左ペインの Profile アイテム右クリック →「🗑 プロファイル削除」。
+    /// ContextMenu の PlacementTarget の DataContext から Entry を取得して VM コマンドへ。
+    /// </summary>
+    private void DeleteProfile_Click(object sender, RoutedEventArgs e)
+    {
+        if (_vm is null) return;
+        if (sender is not MenuItem mi) return;
+        if (mi.Parent is not ContextMenu cm) return;
+        if (cm.PlacementTarget is not FrameworkElement target) return;
+        if (target.DataContext is not Models.PianistProfileEntry entry) return;
+
+        if (_vm.DeleteProfileCommand.CanExecute(entry))
+            _vm.DeleteProfileCommand.Execute(entry);
+    }
+
     // ─── Variables sub-tab ─────────────────────────────────────────
     /// <summary>
     /// orphan 宣言（values.csv に列がない [Variables] エントリ）を削除。

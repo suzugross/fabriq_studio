@@ -437,6 +437,33 @@ public class PianistProfileService : IPianistProfileService
         }
     }
 
+    // ─── プロファイル削除（§7.4 / 物理削除） ─────────────────────
+    public async Task<string?> DeleteProfileAsync(PianistProfileEntry entry)
+    {
+        if (string.IsNullOrEmpty(entry.FolderPath))
+            return "プロファイルフォルダパスが空です。";
+
+        // セーフガード: workspace ルート配下の profiles ディレクトリ配下に居ること
+        // （tampered entry で Studio 外のフォルダを誤削除しないよう絶対パス比較）
+        var profilesRoot = Path.GetFullPath(Path.Combine(GetRoot(), PianistProfilesRel));
+        var target = Path.GetFullPath(entry.FolderPath);
+        if (!target.StartsWith(profilesRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            return $"安全のため削除できません: {target} は profiles/ 配下ではありません。";
+
+        if (!Directory.Exists(target))
+            return $"プロファイルフォルダが既に存在しません: {target}";
+
+        try
+        {
+            await Task.Run(() => Directory.Delete(target, recursive: true));
+            return null;
+        }
+        catch (Exception ex)
+        {
+            return $"削除エラー: {ex.Message}";
+        }
+    }
+
     // ─── pianist_list.csv I/O ─────────────────────────────────────
     /// <summary>workspace ルートからの pianist_list.csv 相対パス。</summary>
     private const string PianistListRel = "modules/extended/pianist/pianist_list.csv";

@@ -269,6 +269,131 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
         }
     }
 
+    /// <summary>
+    /// 指定 Profile を物理削除する（左ペイン ContextMenu「🗑 プロファイル削除」から呼ばれる）。
+    ///
+    /// フロー:
+    /// 1. Dirty 状態の警告（編集中の Profile を消す場合は念押し）
+    /// 2. 削除内容サマリ（フォルダパス + instructions/screenshots ファイル数）を確認ダイアログで表示
+    /// 3. 確定 → pianist_list.csv 内の該当 ProfileName 行があれば「catalog 行も削除？」追加確認
+    /// 4. フォルダ削除実行 → 必要なら catalog 保存 → Profiles 再ロード + SelectedProfile クリア
+    /// </summary>
+    [RelayCommand]
+    private async Task DeleteProfileAsync(PianistProfileEntry? entry)
+    {
+        if (entry is null) return;
+        if (!_workspace.IsOpen) return;
+
+        // ── 1. Dirty 警告（削除対象が現在編集中の Profile の場合）──────
+        var isDeletingCurrent = SelectedProfile is not null
+            && string.Equals(SelectedProfile.Name, entry.Name, StringComparison.Ordinal);
+        if (isDeletingCurrent && IsDirty)
+        {
+            var keep = MessageBox.Show(
+                $"「{entry.Name}」に未保存の編集があります。\n削除すると編集内容も失われます。続行しますか？",
+                "未保存の変更",
+                MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+            if (keep != MessageBoxResult.OK) return;
+        }
+
+        // ── 2. 削除内容サマリ + 確認ダイアログ ──────────────────────────
+        var (instrCount, sampleCount, otherCount) = SummarizeProfileFolder(entry.FolderPath);
+        var summary =
+            $"プロファイル「{entry.Name}」を削除しますか？\n\n" +
+            $"削除対象:\n  {entry.FolderPath}\n\n" +
+            $"内訳:\n" +
+            $"  instructions/ … {instrCount} ファイル\n" +
+            $"  screenshots/  … {sampleCount} ファイル\n" +
+            $"  その他        … {otherCount} ファイル\n\n" +
+            "⚠ この操作は取り消せません。";
+
+        var confirm = MessageBox.Show(summary, "プロファイル削除の確認",
+            MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.OK) return;
+
+        // ── 3. catalog (pianist_list.csv) 連動確認 ─────────────────────
+        bool removeFromCatalog = false;
+        IReadOnlyList<PianistListEntry> catalog = Array.Empty<PianistListEntry>();
+        try
+        {
+            catalog = await _pianistService.LoadPianistListAsync();
+        }
+        catch { /* catalog 読めなくても profile 削除は続行 */ }
+
+        var matchingCatalogRows = catalog
+            .Where(c => string.Equals(c.ProfileName, entry.Name, StringComparison.Ordinal))
+            .ToList();
+        if (matchingCatalogRows.Count > 0)
+        {
+            var ans = MessageBox.Show(
+                $"pianist_list.csv に「{entry.Name}」が {matchingCatalogRows.Count} 行登録されています。\n\n" +
+                "「はい」: catalog からも同時削除（推奨：fabriq 実行時の Validate Error を防ぐ）\n" +
+                "「いいえ」: catalog はそのまま（後で手動更新）\n" +
+                "「キャンセル」: 削除を中止",
+                "pianist_list.csv 連動確認",
+                MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (ans == MessageBoxResult.Cancel) return;
+            removeFromCatalog = ans == MessageBoxResult.Yes;
+        }
+
+        // ── 4. フォルダ削除実行 ────────────────────────────────────────
+        var error = await _pianistService.DeleteProfileAsync(entry);
+        if (error is not null)
+        {
+            MessageBox.Show($"プロファイル削除に失敗しました:\n\n{error}", "プロファイル削除",
+                MessageBoxButton.OK, MessageBoxImage.Error);
+            return;
+        }
+
+        // catalog から該当行を削除して保存
+        if (removeFromCatalog && catalog.Count > 0)
+        {
+            var newCatalog = catalog
+                .Where(c => !string.Equals(c.ProfileName, entry.Name, StringComparison.Ordinal))
+                .ToList();
+            var saveErr = await _pianistService.SavePianistListAsync(newCatalog);
+            if (saveErr is not null)
+            {
+                MessageBox.Show(
+                    $"profile フォルダは削除しましたが pianist_list.csv の更新に失敗:\n\n{saveErr}",
+                    "pianist_list.csv 更新",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // ── 5. リスト再構築 + 選択解除 ─────────────────────────────
+        if (isDeletingCurrent)
+        {
+            _confirmedProfile = null;
+            IsDirty = false;
+            SelectedProfile = null;   // CurrentData クリアは partial で連鎖
+        }
+        await LoadProfilesAsync();
+    }
+
+    /// <summary>
+    /// プロファイルフォルダ内のファイルを 3 区分で集計（削除確認ダイアログ用）。
+    /// 失敗時は (0, 0, 0) を返す（削除自体は阻害しない）。
+    /// </summary>
+    private static (int instructions, int samples, int other) SummarizeProfileFolder(string folder)
+    {
+        try
+        {
+            if (!System.IO.Directory.Exists(folder)) return (0, 0, 0);
+            int instr = 0, sam = 0, other = 0;
+            var instrDir = System.IO.Path.Combine(folder, "instructions");
+            var shotsDir = System.IO.Path.Combine(folder, "screenshots");
+            if (System.IO.Directory.Exists(instrDir))
+                instr = System.IO.Directory.EnumerateFiles(instrDir, "*", System.IO.SearchOption.AllDirectories).Count();
+            if (System.IO.Directory.Exists(shotsDir))
+                sam = System.IO.Directory.EnumerateFiles(shotsDir, "*", System.IO.SearchOption.AllDirectories).Count();
+            // 直下のファイル + サブディレクトリ（instructions/screenshots 除く）
+            other = System.IO.Directory.EnumerateFiles(folder, "*", System.IO.SearchOption.TopDirectoryOnly).Count();
+            return (instr, sam, other);
+        }
+        catch { return (0, 0, 0); }
+    }
+
     /// <summary>profiles/ 配下を再スキャン。SelectedProfile は名前で復元する。</summary>
     private async Task LoadProfilesAsync()
     {
