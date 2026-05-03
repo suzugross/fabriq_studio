@@ -495,4 +495,8 @@ public partial class PianistProfileEditorView : UserControl
         var picked = PianistWindowPickerDialog.Show(step.Value, Window.GetWindow(this));
         if (picked is not null) step.Value = picked;
     }
+
+    // Step 並び替えは Helpers/DataGridRowDragDropBehavior が adorner ライン + 自動スクロールを
+    // 含めて一括処理し、Drop 確定時に VM の MoveStepRowCommand へ RowMoveRequest（filter-view
+    // index）を渡す。コードビハインド側に手書きハンドラは持たない。
 }
