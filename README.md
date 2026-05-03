@@ -1,7 +1,7 @@
 # fabriq studio
 
 Windows PC のデプロイ・構成管理を行うデスクトップアプリケーションです。
-**fabriq** フレームワークの GUI フロントエンドとして、端末設定の一括管理、スクリプトモジュールの編成、Pianist Profile (RPA + 手順書ハイブリッド) の編集とテスト実行などを提供します。
+**fabriq** フレームワークの GUI フロントエンドとして、端末設定の一括管理、スクリプトモジュールの編成、Pianist Profile (簡易 RPA + 手順書ハイブリッド) の編集とテスト実行などを提供します。
 
 ## 主な機能
 
@@ -10,7 +10,7 @@ Windows PC のデプロイ・構成管理を行うデスクトップアプリケ
 | **端末管理** | 対象 PC のネットワーク (IP / サブネット / ゲートウェイ / DNS)、プリンタ (最大10台)、BitLocker 等を CSV ベースで一括管理 |
 | **モジュール編集** | 標準 / 拡張スクリプトモジュールのメタデータ (カテゴリ・実行順序・スクリプトパス) を編集 |
 | **プロファイル管理** | スクリプト実行シーケンスをプロファイルとして定義・割り当て |
-| **Pianist Profile Editor** | RPA + 手順書ハイブリッドな Pianist プロファイル (`modules/extended/pianist/profiles/`) を 5 タブ (メタ / Phase 一覧 / 変数 / ショートカット / プレビュー) で編集。Phase ごとの instruction は section marker DSL (`[RPA]` / `[Manual]` / `[Variables]` / `[Samples]`) を 4 sub-tab エディタで編集。Pianist テスト実行を Studio から子プロセス起動 |
+| **Pianist Profile Editor** | 簡易 RPA (SendKeys / ウィンドウ操作) + 手動手順書のハイブリッドな Pianist プロファイル (`modules/extended/pianist/profiles/`) を 5 タブ (メタ / Phase 一覧 / 変数 / ショートカット / プレビュー) で編集。Phase ごとの instruction は section marker DSL (`[RPA]` / `[Manual]` / `[Variables]` / `[Samples]`) を 4 sub-tab エディタで編集。Pianist テスト実行を Studio から子プロセス起動 |
 | **Script Looper** | リトライ条件 (OnError / Always) 付きタスクの繰り返し実行を構成 |
 | **レジストリ辞書** | 100 件以上のプリセットレジストリテンプレート (RDP / UAC / SMBv1 等) をカタログから選択・エクスポート |
 | **プリンタドライバ検出** | INF ファイルを解析してプリンタドライバ情報を一覧化、hostlist へ転記 |
