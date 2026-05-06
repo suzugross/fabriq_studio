@@ -17,7 +17,7 @@ Windows PC のデプロイ・構成管理を行うデスクトップアプリケ
 | **ホスト一覧エクスポート** | hostlist.csv を Excel 等向けに整形してエクスポート |
 | **fabriq バックアップ** | ワークスペース全体をバックアップフォルダへ複製 (PS1 等は除外、`USER_MEMO.txt` / `BACKUP_INFO.txt` 同梱) |
 | **fabriq オーバーレイ更新** | 同梱テンプレートから本体ファイルを SemVer 比較・preflight・自動バックアップ付きで安全に上書き更新 |
-| **暗号化** | AES-256-CBC (PBKDF2-HMAC-SHA256) による機密値の暗号化。PowerShell 側 (`Unprotect-FabriqValue`) と互換 |
+| **暗号化** | AES-256-CBC + PBKDF2-HMAC-SHA256 による機密値の暗号化。PowerShell 側 (`Unprotect-FabriqValue`) と互換。パスフレーズはワークスペース内の検証トークンで照合 |
 | **ワークスペース切替** | 複数の fabriq 環境を切り替えて管理。テンプレートからの新規作成にも対応 |
 
 ## スクリーンショット
@@ -54,6 +54,16 @@ dotnet run --project FabriqStudio
 ```
 
 ビルド後、`registry_collection/` および `template/` が出力ディレクトリへ自動コピーされます。
+
+### 配布用パブリッシュ
+
+自己完結型の単一実行ファイルとしてパブリッシュする場合は、プロジェクト直下で以下を実行します。
+
+```bash
+dotnet publish FabriqStudio/FabriqStudio.csproj -c Release -o "E:/publish_fabriq_studio" --self-contained true -r win-x64
+```
+
+出力先には `FabriqStudio.exe` 本体に加え、`registry_collection/` と `template/template_fabriq/` が `.csproj` の `AfterTargets="Publish"` ターゲットによって自動的に同梱されます。
 
 ### fabriq 本体の配置
 
@@ -99,7 +109,7 @@ fabriq_studio/
 │   │   ├── PrinterDriverDetectorView.xaml # プリンタドライバ検出
 │   │   ├── RegistryCollectionView.xaml  # レジストリ辞書
 │   │   ├── AppConfigView.xaml           # アプリ設定
-│   │   ├── Pianist*Dialog.xaml          # Pianist 系ダイアログ (新規 / 列名 / Phase 編集 / 削除 / テスト実行 / Window Picker / List 編集) ×8
+│   │   ├── Pianist*Dialog.xaml          # Pianist 系ダイアログ (新規 / 列名 / Phase 編集 / 削除 / テスト実行 / Window Picker / List 編集) ×7
 │   │   └── ...                          # その他ダイアログ (Backup / Update / Export / Passphrase / Report / LogViewer / RegistryPicker 等)
 │   ├── ViewModels/               # ViewModel (15 クラス + IDirtyAwareViewModel インターフェース)
 │   ├── Models/                   # データモデル (37 クラス)
@@ -131,6 +141,7 @@ View (XAML)  ←──バインディング──→  ViewModel  ──→  Serv
 - **ViewModel**: `ObservableProperty` / `RelayCommand` (CommunityToolkit.Mvvm) による状態管理
 - **Service**: インターフェース分離。全サービスを Singleton で DI 登録
 - **非同期 I/O**: CSV・JSON・ファイル操作は全て `async/await` で UI スレッドをブロックしない
+- **未保存変更の保護**: `IDirtyAwareViewModel` を実装する ViewModel に対し、画面遷移 / ワークスペース切替 / ウィンドウクローズ時に共通ガードで破棄確認
 
 ### サービス一覧 (DI 登録分)
 
