@@ -8,6 +8,21 @@
     <UseWPF>true</UseWPF>
     <RootNamespace>FabriqStudio</RootNamespace>
     <AssemblyName>FabriqStudio</AssemblyName>
+
+    <!--
+      パブリッシュ時に単一 exe へバンドルする設定。
+      - PublishSingleFile             : すべての managed DLL を exe に埋め込む
+      - IncludeNativeLibrariesForSelfExtract : WPF のネイティブ DLL も exe に内包
+      - EnableCompressionInSingleFile : 内部圧縮（起動時にキャッシュ展開、2 回目以降は影響軽微）
+      - DebugType=embedded            : PDB を exe に埋め込み、別ファイル化を防ぐ
+      - SatelliteResourceLanguages    : ja のみを残し他言語のリソースフォルダを生成しない
+      これらは publish 時のみ効果（build には影響しない）。
+    -->
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>embedded</DebugType>
+    <SatelliteResourceLanguages>ja</SatelliteResourceLanguages>
   </PropertyGroup>
 
   <ItemGroup>
