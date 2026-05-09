@@ -10,6 +10,13 @@
     <AssemblyName>FabriqStudio</AssemblyName>
 
     <!--
+      アプリケーションアイコン。
+      exe の Win32 アイコンリソースとして埋め込まれ、エクスプローラ表示・タスクバー・
+      WPF Window の左上アイコン（Window.Icon 未指定時のデフォルト）に共通で使用される。
+    -->
+    <ApplicationIcon>fabriq_studio.ico</ApplicationIcon>
+
+    <!--
       パブリッシュ時に単一 exe へバンドルする設定。
       - PublishSingleFile             : すべての managed DLL を exe に埋め込む
       - IncludeNativeLibrariesForSelfExtract : WPF のネイティブ DLL も exe に内包
