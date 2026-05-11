@@ -45,6 +45,14 @@
     </None>
   </ItemGroup>
 
+  <!--
+    XAML から pack URI で参照する画像リソース。
+    Resource ビルドアクションで assembly に埋め込まれる。
+  -->
+  <ItemGroup>
+    <Resource Include="icon_saturn_smooth_blue.png" />
+  </ItemGroup>
+
 
   <!--
     ビルド後に registry_collection/ を出力ディレクトリへコピーする。
