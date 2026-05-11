@@ -74,17 +74,17 @@
                     Width="420">
 
             <!-- アイコン -->
-            <TextBlock Text="⚙"
-                       FontSize="52"
-                       HorizontalAlignment="Center"
-                       Foreground="#007ACC"
-                       Margin="0,0,0,20" />
+            <Image Source="/icon_saturn_smooth_blue.png"
+                   Width="144" Height="144"
+                   Stretch="Uniform"
+                   HorizontalAlignment="Center"
+                   Margin="0,0,0,20"
+                   RenderOptions.BitmapScalingMode="HighQuality" />
 
             <!-- タイトル -->
-            <TextBlock Text="fabriq studio"
-                       FontSize="28" FontWeight="Bold"
+            <TextBlock FontSize="28" FontWeight="Bold"
                        Foreground="#FFFFFF"
-                       HorizontalAlignment="Center" />
+                       HorizontalAlignment="Center">Fa<Run Text="b" Foreground="#E53935"/>ri<Run Text="q" Foreground="#E53935"/>Stu<Run Text="d" Foreground="#E53935"/>io</TextBlock>
 
             <TextBlock Text="管理ツール"
                        FontSize="13"
