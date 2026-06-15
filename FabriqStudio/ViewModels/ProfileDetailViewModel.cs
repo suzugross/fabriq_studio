@@ -108,6 +108,14 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
     /// <summary>ロード中／保存中は true にして Dirty 検知をバイパスする。</summary>
     private bool _isInitializing;
 
+    /// <summary>
+    /// モジュールディレクトリ名 → そのモジュールの設定 CSV に実在する Segment 候補値。
+    /// LoadAsync で <see cref="IModuleService.GetModuleSegmentsAsync"/> から取得し、
+    /// 各行の <see cref="ProfileScriptEntry.SegmentOptions"/> 設定に使う。
+    /// </summary>
+    private IReadOnlyDictionary<string, IReadOnlyList<string>> _moduleSegments =
+        new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
+
     // ─── 対象プロファイル ─────────────────────────────────────────
     [ObservableProperty] private ProfileEntry? _profile;
 
@@ -209,13 +217,19 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
 
         try
         {
-            // 左右ペインのデータを並列ロード
+            // 左右ペインのデータ + モジュール別 Segment 候補を並列ロード
             var allModulesTask  = _moduleService.GetAllModulesAsync();
             var profileModsTask = _profileService.GetProfileModulesAsync(profile);
-            await Task.WhenAll(allModulesTask, profileModsTask);
+            var segmentsTask    = _moduleService.GetModuleSegmentsAsync();
+            await Task.WhenAll(allModulesTask, profileModsTask, segmentsTask);
+
+            // モジュール別 Segment 候補（行の SegmentOptions 設定に使う）
+            _moduleSegments = segmentsTask.Result;
 
             // 右ペイン: プロファイル構成
             var entries = new ObservableCollection<ProfileScriptEntry>(profileModsTask.Result);
+            foreach (var entry in entries)
+                ApplySegmentOptions(entry);
             SubscribeDirty(entries);
             Modules = entries;
 
@@ -265,12 +279,41 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
 
     private void OnModuleItemChanged(object? sender, PropertyChangedEventArgs e)
     {
+        // 候補リスト（SegmentOptions）の差し替えは編集ではないため Dirty 対象外。
+        // ここで早期 return することで ScriptPath 変更に伴う再解決が Dirty を二重発火しない。
+        if (e.PropertyName == nameof(ProfileScriptEntry.SegmentOptions))
+            return;
+
         // 初期化中（ロード・保存の Order 書き換え）は無視する
         if (!_isInitializing) IsDirty = true;
 
         // Group 値が変わったら ComboBox 候補を更新
         if (!_isInitializing && e.PropertyName == nameof(ProfileScriptEntry.Group))
             RebuildAvailableGroups();
+
+        // ScriptPath が変わると参照モジュールが変わるため Segment 候補を再解決する
+        if (e.PropertyName == nameof(ProfileScriptEntry.ScriptPath) && sender is ProfileScriptEntry entry)
+            ApplySegmentOptions(entry);
+    }
+
+    /// <summary>
+    /// 指定行の <see cref="ProfileScriptEntry.SegmentOptions"/> を、その行が参照する
+    /// モジュールの設定 CSV に実在する Segment 候補で更新する。
+    /// 特殊コマンド行・モジュール解決不能な行は空リストにする（自由入力は常に可能）。
+    /// </summary>
+    private void ApplySegmentOptions(ProfileScriptEntry entry)
+    {
+        if (entry.IsSystemCommand)
+        {
+            entry.SegmentOptions = [];
+            return;
+        }
+
+        var moduleDir = ExtractModuleDirectory(entry.ScriptPath);
+        entry.SegmentOptions =
+            moduleDir is not null && _moduleSegments.TryGetValue(moduleDir, out var segs)
+                ? segs
+                : [];
     }
 
     /// <summary>
@@ -358,13 +401,15 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
             return;
         }
 
-        Modules.Add(new ProfileScriptEntry
+        var entry = new ProfileScriptEntry
         {
             Order       = nextOrder,
             ScriptPath  = scriptPath,
             Enabled     = "1",
             Description = description,
-        });
+        };
+        ApplySegmentOptions(entry);   // 追加前に Segment 候補を解決
+        Modules.Add(entry);
     }
 
     // ─── モジュール削除（右から削除）──────────────────────────────
@@ -480,7 +525,7 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
 
             foreach (var src in imported)
             {
-                Modules.Add(new ProfileScriptEntry
+                var entry = new ProfileScriptEntry
                 {
                     Order       = src.Order,
                     ScriptPath  = src.ScriptPath,
@@ -489,7 +534,9 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
                     Segment     = src.Segment,
                     Note        = src.Note,
                     Group       = src.Group,
-                });
+                };
+                ApplySegmentOptions(entry);   // 追加前に Segment 候補を解決
+                Modules.Add(entry);
             }
 
             IsDirty = true;

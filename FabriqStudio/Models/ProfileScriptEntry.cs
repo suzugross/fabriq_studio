@@ -52,4 +52,13 @@ public partial class ProfileScriptEntry : ObservableObject
     public string DisplayName => IsSystemCommand
         ? ScriptPath
         : System.IO.Path.GetFileNameWithoutExtension(ScriptPath);
+
+    /// <summary>
+    /// この行が参照するモジュールの設定 CSV に実在する Segment 値の候補。
+    /// セグメント列の編集 ComboBox の ItemsSource として使う（行ごとに内容が異なる）。
+    /// ViewModel が ScriptPath からモジュールを解決して設定する。CSV には書き出さない。
+    /// </summary>
+    [ObservableProperty]
+    [property: Ignore]
+    private IReadOnlyList<string> _segmentOptions = [];
 }

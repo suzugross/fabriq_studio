@@ -385,9 +385,24 @@
                             <DataGridTextColumn Header="説明"
                                                 Binding="{Binding Description}"
                                                 Width="200" />
-                            <DataGridTextColumn Header="セグメント"
-                                                Binding="{Binding Segment}"
-                                                Width="80" />
+                            <!-- セグメント: 参照モジュールの設定 CSV に実在する Segment 値をプリセット表示。
+                                 自由入力可（IsEditable=True）。候補は行ごとに異なるため ItemsSource は
+                                 行の DataContext の SegmentOptions を参照する。
+                                 DataGridComboBoxColumn では IsEditable が素直に効かないため Template 列で実装。 -->
+                            <DataGridTemplateColumn Header="セグメント" Width="110">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ComboBox IsEditable="True"
+                                                  Text="{Binding Segment, Mode=TwoWay, UpdateSourceTrigger=LostFocus}"
+                                                  ItemsSource="{Binding SegmentOptions}"
+                                                  IsHitTestVisible="{Binding DataContext.IsLocked,
+                                                      RelativeSource={RelativeSource AncestorType=DataGrid},
+                                                      Converter={StaticResource InverseBooleanConverter}}"
+                                                  BorderThickness="0" Background="Transparent"
+                                                  Padding="2,0" FontSize="11" />
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                             <!-- Group: kernel 3.2.0 任意列。プリセット 5 種 + 自由入力可（IsEditable=True）。
                                  DataGridComboBoxColumn では IsEditable が素直に効かないため Template 列で実装。 -->
                             <DataGridTemplateColumn Header="Group" Width="110">
