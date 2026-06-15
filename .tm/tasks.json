@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "fabriq_studio",
-  "updatedAt": "2026-06-15T07:32:49+09:00",
+  "updatedAt": "2026-06-15T13:05:15+09:00",
   "tasks": [
     {
       "id": "t-0001",
@@ -25,10 +25,10 @@
       "id": "t-0003",
       "title": "クラッシュバグ１",
       "content": "Profile編集画面のモジュール一覧セクション（ドラッグアンドドロップ操作ができるところ）ですが、メモ欄の文字入力が可能な状態で、おそらく以下のどちらかの操作をするとクラッシュする。\r\n\r\n１．入力されている文字をドラッグ選択しようとする\r\n２．モジュールエントリをドラッグする。\r\n\r\n正直、どっちの操作でクラッシュしているのかは不明ですが、\r\nクラッシュするときは、マウスカーソルがバツのマークがつくようになる（ドラッグできないときにでてくる警告と同じもの）",
-      "claudeNote": "",
-      "status": "未着手",
+      "claudeNote": "実装完了（ビルド成功・要動作確認）。\r\n\r\n【根本原因】Helpers/DataGridRowDragDropBehavior.cs。セル編集中（メモ欄TextBox内）のテキスト選択ドラッグ等で DragDrop.DoDragDrop が誤起動し、編集中TextBoxがマウスキャプチャした状態でOLEドラッグが走って例外→未捕捉クラッシュ（Xカーソルは『DnDが実際に開始された』証拠）。OnPreviewMouseLeftButtonDownのIsEditingガードは、編集開始クリック時点でIsEditing=falseのため不十分。加えて早期returnでstate.Sourceを未クリア（残留）の二重穴。\r\n\r\n【検証】ステートマシン図（Idle/Armed/Dragging × 編集コンテキスト）を作成し、危険状態C=(DoDragDrop ∧ editor開)の到達可能性を解析。当初4点案では塞げない穴を2件発見: (F)CommitEdit失敗時にeditor開のまま続行、(C)DoDragDropモーダル中のPreviewMouseMove再入による二重起動。\r\n\r\n【修正6点（DataGridRowDragDropBehavior.csのみ）】①Down冒頭でSource/SourceIndex常時リセット ②MoveでOriginalSource∈TextBoxならreturn（テキスト選択を奪わない／編集可能ComboBoxのPART_EditableTextBoxも捕捉） ③DoDragDrop前にCommitEdit(Row,true)、失敗ならreturnで中止 ④DoDragDropをtry/catch ⑤DragState.IsDragging再入ガード ／既存IsEditingチェックは多層防御で残置。到達経路Armed→Dragmingのガードが(¬TextBox ∧ CommitEdit=true)となり、CommitEdit成功直後はeditor閉=危険状態C到達不能を確認。通常の行D&D（非編集セルから掴む）には影響なし。\r\n\r\n【副次】実装前ステートマシン図作成ルールをCLAUDE.md『開発ルール』に追記。\r\n\r\n未実施: 実機での再現操作（メモ編集中のテキスト選択ドラッグ／編集中の行ドラッグ）でクラッシュ解消と通常D&Dの正常動作確認。",
+      "status": "レビュー待ち",
       "createdAt": "2026-06-14T06:04:52.5180539+09:00",
-      "updatedAt": "2026-06-14T06:10:12.1820319+09:00"
+      "updatedAt": "2026-06-15T13:05:15+09:00"
     },
     {
       "id": "t-0004",

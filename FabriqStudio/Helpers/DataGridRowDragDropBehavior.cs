@@ -78,6 +78,13 @@ public static class DataGridRowDragDropBehavior
         // ── Phase 3: 自動スクロール ──
         public DispatcherTimer?        ScrollTimer;
         public Point                   LastDragPosition;
+
+        /// <summary>
+        /// DoDragDrop 実行中フラグ（再入ガード）。DoDragDrop はモーダルでメッセージを
+        /// ポンプするため、ドラッグ中に PreviewMouseMove が再入して DoDragDrop が
+        /// 二重起動するのを防ぐ。
+        /// </summary>
+        public bool                    IsDragging;
     }
 
     // ── Phase 3: 自動スクロールのパラメータ ──
@@ -140,7 +147,15 @@ public static class DataGridRowDragDropBehavior
         if (sender is not DataGrid grid) return;
         if (grid.GetValue(DragStateProperty) is not DragState state) return;
 
-        // セル編集中は D&D を抑止（通常のテキスト編集操作を優先）
+        // ① どのケースでも前回のドラッグ候補をまずリセットする。
+        // 早期 return するパス（編集セル / 行外）で古い Source が残留すると、
+        // その後のテキスト選択ドラッグ等で DoDragDrop が誤起動してクラッシュするため。
+        state.Source      = null;
+        state.SourceIndex = -1;
+
+        // セル編集中は D&D を抑止（通常のテキスト編集操作を優先）。
+        // ※ 編集を開始するクリック時点では IsEditing がまだ false のため、
+        //   これだけでは不十分。OnPreviewMouseMove 側の TextBox ガードと併用する。
         var cell = FindAncestor<DataGridCell>(e.OriginalSource as DependencyObject);
         if (cell?.IsEditing == true) return;
 
@@ -161,6 +176,11 @@ public static class DataGridRowDragDropBehavior
         if (e.LeftButton != MouseButtonState.Pressed) return;
         if (sender is not DataGrid grid) return;
         if (grid.GetValue(DragStateProperty) is not DragState state) return;
+
+        // ⑤ 再入ガード: DoDragDrop はモーダルでメッセージをポンプするため、
+        // ドラッグ中に本ハンドラが再入しても DoDragDrop を二重起動しない。
+        if (state.IsDragging) return;
+
         if (state.Source is null || state.SourceIndex < 0) return;
 
         var delta = e.GetPosition(grid) - state.StartPoint;
@@ -168,11 +188,27 @@ public static class DataGridRowDragDropBehavior
             Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
             return;
 
+        // ② テキスト編集中の TextBox 上でのドラッグ（テキスト選択）では D&D を開始しない。
+        // 編集開始クリックで Source が記録された直後にこのジェスチャが来ると、
+        // 編集中 TextBox がマウスをキャプチャした状態で DoDragDrop が走りクラッシュするため。
+        // ※ 編集可能 ComboBox の編集部（PART_EditableTextBox）も TextBox なので同時に捕捉される。
+        if (FindAncestor<TextBox>(e.OriginalSource as DependencyObject) is not null) return;
+
+        // ③ 開いている編集を確定してから D&D へ移る（他セル編集中の行ドラッグ対策）。
+        // 確定に失敗（検証エラー等で editor が開いたまま）した場合はドラッグを中止する。
+        if (!grid.CommitEdit(DataGridEditingUnit.Row, exitEditingMode: true)) return;
+
         // ドラッグ本番開始
         var data = new DataObject(DragFormat, state.SourceIndex);
+        state.IsDragging = true;   // ⑤ 再入ガードを立てる
         try
         {
+            // ④ 万一の再入・OLE 例外でアプリをクラッシュさせない最後の砦。
             DragDrop.DoDragDrop(state.Source, data, DragDropEffects.Move);
+        }
+        catch (Exception)
+        {
+            // D&D の開始失敗は致命的ではないため握りつぶす（並べ替えが行われないだけ）。
         }
         finally
         {
@@ -181,6 +217,7 @@ public static class DataGridRowDragDropBehavior
             StopScrollTimer(state);
             state.Source      = null;
             state.SourceIndex = -1;
+            state.IsDragging  = false;
         }
     }
 
