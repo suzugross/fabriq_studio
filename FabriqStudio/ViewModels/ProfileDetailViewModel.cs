@@ -146,6 +146,7 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
         new("__ASYNC__",      "Async runspace (since kernel 2.1.0)"),
         new("__RESTART__",    "Restart"),
         new("__REEXPLORER__", "Restart Explorer"),
+        new("__GATE__",       "Forward barrier (since kernel 3.6.0)"),
     ];
 
     [ObservableProperty]
