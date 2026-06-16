@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "project": "fabriq_studio",
-  "updatedAt": "2026-06-16T09:27:22+09:00",
+  "updatedAt": "2026-06-16T11:07:06+09:00",
   "tasks": [
     {
       "id": "t-0001",
@@ -47,6 +47,15 @@
       "status": "レビュー待ち",
       "createdAt": "2026-06-16T09:27:22+09:00",
       "updatedAt": "2026-06-16T09:30:07+09:00"
+    },
+    {
+      "id": "t-0006",
+      "title": "FabriqUpdate: REQUIRES_KERNELブロックがカーネルのチェック解除に追従しない不具合",
+      "content": "FabriqUpdateダイアログのPreview DataGridで、カーネルbundleのチェックを外しても、新カーネルを要求するモジュールのREQUIRES_KERNELブロック判定が再計算されない。結果、新カーネルを要求するモジュールだけを旧カーネル上に適用でき、KERNEL_API.md §9.5/§9.7の整合保証が破れる。\r\n\r\n根本原因: FabriqUpdateService.ComputePlanAsync で effectiveKernelAfterUpdate を plan計算時の既定選択前提で固定し、各モジュールの IsBlocked に確定値を焼き付けている。RunPreflight は静的な IsBlocked を読むだけで、選択変更で再計算されない（FabriqUpdateDialogViewModel.OnSelectionChanged 経由でも同様）。",
+      "claudeNote": "詳細調査済み（前メッセージ参照）。到達可能性確定（kernel行は Action=Update→CanSelect=true でチェック解除可能、Unchecked→ItemSelection_Changed→OnSelectionChanged→RunPreflightだが静的IsBlocked読むだけ）。\r\n\r\nfacetは一方向: 『kernelを外したのにブロックが追加されない(false-negative)』のみ。誤解除(false-positive)は発生しない。\r\n\r\n修正設計: ブロックを動的化。実効カーネル版を kernel行のlive選択から算出する単一ヘルパー RecomputeKernelBlocks(plan) を新設し、ComputePlan初期化と RunPreflight(=選択変更毎/Apply直前)で共用。resultingKernel = (kernel行がIsSelected && 更新系Action) ? TemplateKernel : TargetKernel。各更新系モジュール: IsBlocked = RequiresKernel > resultingKernel。PlanItemsとplan.Bundlesは同一インスタンスなのでサービスからlive選択を読める。\r\n\r\n制約: BundleUpdateItem.WarningMessage が init-only のため動的更新不可→[ObservableProperty]化し、静的な基底警告は BaseWarning(init) に分離。再入防止のため RecomputeKernelBlocks は IsBlocked/WarningMessage のみ変更し IsSelected は触らない(初期既定の blocked→deselect は ComputePlan で1回だけ)。\r\n\r\nCLAUDE.mdルールに従いステートマシン図作成済み(回答内)。危険状態 D1(ブロック対象が適用される)/D2(再入ループ)/D3(再チェックでブロック解除されない) の到達不能を確認。\r\n\r\n変更ファイル: Models/FabriqUpdatePlan.cs(WarningMessage→Observable, BaseWarning追加), Services/FabriqUpdateService.cs(ComputePlan再構成・RecomputeKernelBlocks新設・RunPreflight動的化)。\r\n\r\n実装完了（ビルド成功・警告0/エラー0）。RecomputeKernelBlocks を ComputePlan(初期評価+blocked初期deselect)と RunPreflight(選択変更毎/Apply直前)で共用。RunPreflightのブロック検出を plan.Bundles の live状態(IsSelected&&IsBlocked)からに変更し、呼出側selectedのフィルタ差異に非依存化。WarningMessageをObservable化しkernelトグルでDataGrid警告列が即更新。VM側は変更不要(OnSelectionChangedがRunPreflight→NotifyCanExecuteの順で整合)。\r\n\r\n未実施: 実機での確認(kernel更新可な構成でkernelを外す→新カーネル要求モジュールがブロック表示・Apply不可になること、再チェックで解除されること)。",
+      "status": "レビュー待ち",
+      "createdAt": "2026-06-16T11:07:06+09:00",
+      "updatedAt": "2026-06-16T11:09:22+09:00"
     }
   ]
 }
