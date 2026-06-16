@@ -85,7 +85,8 @@ public class FabriqUpdateService : IFabriqUpdateService
         });
 
         // ── module bundles ──
-        var effectiveKernelAfterUpdate = IsUpdatingAction(kernelAction) ? templateKernel : targetKernel;
+        // REQUIRES_KERNEL ブロック（§ 9.5）は kernel の選択状態に依存するため、ここでは
+        // 焼き付けず RecomputeKernelBlocks に一任する（plan 完成後に初期評価）。
 
         var moduleNames = EnumerateAllModuleNames(templateRoot, targetRoot, rules);
         foreach (var (type, name) in moduleNames.OrderBy(t => t.type).ThenBy(t => t.name))
@@ -109,20 +110,10 @@ public class FabriqUpdateService : IFabriqUpdateService
             else
                 act = ClassifyAction(templateVer, targetVer);
 
-            // REQUIRES_KERNEL 事前チェック（§ 9.5）
-            string? warning = null;
-            var blocked = false;
-            if (IsUpdatingAction(act) && requiresKer.HasValue && effectiveKernelAfterUpdate.HasValue
-                && requiresKer.Value > effectiveKernelAfterUpdate.Value)
-            {
-                blocked = true;
-                warning = $"requires kernel {requiresKer}+, effective kernel would be {effectiveKernelAfterUpdate}. "
-                        + "check the kernel bundle first.";
-            }
-            else if (act == UpdateAction.SkipTargetNewer)
-            {
-                warning = $"target newer ({targetVer} > {templateVer})";
-            }
+            // 選択状態に依存しない静的警告のみここで決める（ブロック警告は動的）
+            string? baseWarning = act == UpdateAction.SkipTargetNewer
+                ? $"target newer ({targetVer} > {templateVer})"
+                : null;
 
             bundles.Add(new BundleUpdateItem
             {
@@ -133,13 +124,60 @@ public class FabriqUpdateService : IFabriqUpdateService
                 TemplateVersion = templateVer,
                 RequiresKernel  = requiresKer,
                 Action          = act,
-                WarningMessage  = warning,
-                IsSelected      = IsUpdatingAction(act) && !blocked,
-                IsBlocked       = blocked,
+                BaseWarning     = baseWarning,
+                WarningMessage  = baseWarning,
+                IsSelected      = IsUpdatingAction(act),   // ブロックは直後に反映
             });
         }
 
-        return new FabriqUpdatePlan(templateRoot, targetRoot, rules, targetKernel, templateKernel, bundles);
+        var plan = new FabriqUpdatePlan(templateRoot, targetRoot, rules, targetKernel, templateKernel, bundles);
+
+        // 既定選択を前提に初期ブロックを評価し、ブロック済みは既定で外す（初回のみ）。
+        RecomputeKernelBlocks(plan);
+        foreach (var b in plan.Bundles)
+            if (b.IsBlocked) b.IsSelected = false;
+
+        return plan;
+    }
+
+    /// <summary>
+    /// REQUIRES_KERNEL ブロック（§ 9.5）を、kernel bundle の <b>現在の選択状態</b>から動的に再評価する。
+    /// <para>
+    /// 実効カーネル版 = kernel が選択され更新系アクションなら template 版、さもなくば target 版。
+    /// 各更新系モジュールについて <c>RequiresKernel &gt; 実効カーネル版</c> なら <see cref="BundleUpdateItem.IsBlocked"/> を立て、
+    /// 非ブロック時は <see cref="BundleUpdateItem.WarningMessage"/> を <see cref="BundleUpdateItem.BaseWarning"/> に戻す。
+    /// </para>
+    /// <para>
+    /// 再入防止のため <see cref="BundleUpdateItem.IsSelected"/> は変更しない（ステートマシン解析 D2 参照）。冪等。
+    /// </para>
+    /// </summary>
+    private static void RecomputeKernelBlocks(FabriqUpdatePlan plan)
+    {
+        var kernel = plan.Bundles.FirstOrDefault(b => b.BundleKey == "kernel");
+        var kernelWillUpdate = kernel is not null && kernel.IsSelected && IsUpdatingAction(kernel.Action);
+        var resultingKernel  = kernelWillUpdate ? plan.TemplateKernel : plan.TargetKernel;
+
+        foreach (var b in plan.Bundles)
+        {
+            if (b.BundleKey == "kernel") continue;
+
+            // 更新しない / REQUIRES_KERNEL 無しのモジュールはブロック対象外
+            if (!IsUpdatingAction(b.Action) || !b.RequiresKernel.HasValue)
+            {
+                b.IsBlocked      = false;
+                b.WarningMessage = b.BaseWarning;
+                continue;
+            }
+
+            var blocked = !resultingKernel.HasValue || b.RequiresKernel.Value > resultingKernel.Value;
+            b.IsBlocked = blocked;
+            b.WarningMessage = blocked
+                ? $"requires kernel {b.RequiresKernel}+, "
+                  + (kernelWillUpdate
+                        ? $"even after update effective kernel would be {resultingKernel?.ToString() ?? "(none)"}; update template kernel first."
+                        : $"current kernel is {resultingKernel?.ToString() ?? "(none)"}; select the kernel bundle too.")
+                : b.BaseWarning;
+        }
     }
 
     /// <summary>template/target のモジュール名 union を列挙する。</summary>
@@ -180,6 +218,10 @@ public class FabriqUpdateService : IFabriqUpdateService
 
     public PreflightResult RunPreflight(FabriqUpdatePlan plan, IReadOnlyList<BundleUpdateItem> selected)
     {
+        // kernel の現在の選択状態で REQUIRES_KERNEL ブロックを再評価してから判定する。
+        // （選択変更毎・Apply 直前に呼ばれるため、ここが整合性の単一ゲートになる）
+        RecomputeKernelBlocks(plan);
+
         var errors = new List<string>();
         var kernelBlocks = new List<string>();
 
@@ -209,10 +251,12 @@ public class FabriqUpdateService : IFabriqUpdateService
             errors.Add($"target フォルダに書き込み権限がありません: {ex.Message}");
         }
 
-        // 4. REQUIRES_KERNEL ブロックチェック（Plan 計算時に既に IsBlocked 付き）
-        foreach (var b in selected)
+        // 4. REQUIRES_KERNEL ブロックチェック（直前の RecomputeKernelBlocks で最新化済み）。
+        //    選択中かつブロックされている bundle を検出する。呼び出し側の selected の
+        //    フィルタ差異に依存しないよう plan.Bundles の live な状態から判定する。
+        foreach (var b in plan.Bundles)
         {
-            if (b.IsBlocked)
+            if (b.IsSelected && b.IsBlocked)
                 kernelBlocks.Add($"{b.DisplayName}: {b.WarningMessage}");
         }
 

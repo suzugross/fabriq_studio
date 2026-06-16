@@ -55,8 +55,17 @@ public partial class BundleUpdateItem : ObservableObject
     public string TargetVersionText   => TargetVersion?.ToString()   ?? "(none)";
     public string TemplateVersionText => TemplateVersion?.ToString() ?? "(none)";
 
-    /// <summary>Preview 時に表示する警告（REQUIRES_KERNEL 不整合など）。</summary>
-    public string? WarningMessage { get; init; }
+    /// <summary>
+    /// 選択状態に依存しない静的な警告（例: SkipTargetNewer の "target newer"）。
+    /// REQUIRES_KERNEL ブロック解除時に <see cref="WarningMessage"/> を復元する基底値。
+    /// </summary>
+    public string? BaseWarning { get; init; }
+
+    /// <summary>
+    /// Preview 時に表示する警告（REQUIRES_KERNEL 不整合など）。
+    /// kernel の選択状態に応じて <c>RecomputeKernelBlocks</c> が動的に更新するため Observable。
+    /// </summary>
+    [ObservableProperty] private string? _warningMessage;
 
     /// <summary>ユーザーが手動でチェックを操作できるか。Preserve / SkipNoTemplate は不可。</summary>
     public bool CanSelect => Action is UpdateAction.Update or UpdateAction.New
