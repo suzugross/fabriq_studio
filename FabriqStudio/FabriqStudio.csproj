@@ -92,6 +92,32 @@
   </Target>
 
   <!--
+    ビルド後に master_template/（マスタ設計テンプレート JSON）を出力ディレクトリへコピーする。
+    registry_collection と同じく exe 同階層から読む（ポータブル運用）。
+  -->
+  <Target Name="CopyMasterTemplateFiles" AfterTargets="Build">
+    <RemoveDir Directories="$(OutDir)master_template" />
+    <ItemGroup>
+      <MasterTemplateFiles
+          Include="$(MSBuildProjectDirectory)\master_template\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(MasterTemplateFiles)"
+          DestinationFiles="@(MasterTemplateFiles->
+            '$(OutDir)master_template\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <Target Name="CopyMasterTemplateFilesOnPublish" AfterTargets="Publish">
+    <RemoveDir Directories="$(PublishDir)master_template" />
+    <ItemGroup>
+      <MasterTemplateFilesPublish
+          Include="$(MSBuildProjectDirectory)\master_template\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(MasterTemplateFilesPublish)"
+          DestinationFiles="@(MasterTemplateFilesPublish->
+            '$(PublishDir)master_template\%(RecursiveDir)%(Filename)%(Extension)')" />
+  </Target>
+
+  <!--
     Publish 時に registry_collection/ と template/ を PublishDir へコピーする。
     dotnet publish -o で指定した出力先は $(PublishDir) で参照される。
   -->

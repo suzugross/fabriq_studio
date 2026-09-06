@@ -1,6 +1,8 @@
 using System.Windows;
 using Microsoft.Extensions.DependencyInjection;
 using FabriqStudio.Services;
+using FabriqStudio.Services.Gpo;
+using FabriqStudio.Services.Master;
 using FabriqStudio.ViewModels;
 using FabriqStudio.Views;
 
@@ -31,6 +33,9 @@ public partial class App : Application
         // ── レジストリ辞書カタログの初期化 ──────────────────────────────
         await _services.GetRequiredService<IRegistryCollectionService>().EnsureInitializedAsync();
 
+        // ── GPO 辞書（ADMX）の読み込みを裏で始める（マスタ設計 / GPO 辞書画面が利用時に待ち合わせる）──
+        _ = _services.GetRequiredService<IGpoCatalogService>().EnsureLoadedAsync();
+
         var mainWindow = _services.GetRequiredService<MainWindow>();
         mainWindow.Show();
     }
@@ -56,6 +61,19 @@ public partial class App : Application
         services.AddSingleton<IPianistProfileService, PianistProfileService>();
         services.AddSingleton<IPianistTestRunService, PianistTestRunService>();
 
+        // マスタ設計（テンプレート / 回答 / 書き込み先解決 / 生成）
+        services.AddSingleton<IMasterTemplateService, MasterTemplateService>();
+        services.AddSingleton<IMasterAnswersService, MasterAnswersService>();
+        services.AddSingleton<IMasterTargetResolver, MasterTargetResolver>();
+        services.AddSingleton<IMasterProfileGeneratorService, MasterProfileGeneratorService>();
+        services.AddSingleton<IInstallerCatalogService, InstallerCatalogService>();
+        services.AddSingleton<IMasterAssetService, MasterAssetService>();
+        services.AddSingleton<IOdtDownloadService, OdtDownloadService>();
+
+        // GPO 辞書（ADMX/ADML から生成。ワークスペース非依存）と gpo_list.csv への書き出し
+        services.AddSingleton<IGpoCatalogService, GpoCatalogService>();
+        services.AddSingleton<IGpoExportService, GpoExportService>();
+
         // --- ViewModels (Singleton: データを一度だけロード) ---
         services.AddSingleton<BasicParamsViewModel>();
         services.AddSingleton<ModuleEditViewModel>();
@@ -69,6 +87,8 @@ public partial class App : Application
         services.AddSingleton<RegistryCollectionViewModel>();
         services.AddSingleton<PrinterDriverDetectorViewModel>();
         services.AddSingleton<PianistProfileEditorViewModel>();
+        services.AddSingleton<MasterParamViewModel>();
+        services.AddSingleton<GpoCollectionViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // --- Views ---

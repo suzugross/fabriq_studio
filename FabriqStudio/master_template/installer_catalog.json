@@ -1,0 +1,31 @@
+{
+  "_comment": "インストーラのサイレント引数辞書。pattern はファイル名への正規表現（大文字小文字無視）。先に一致した行を採用。needsReview=true は引数の確度が低いもの（画面に要確認バッジ）。",
+  "entries": [
+    { "pattern": "^Chrome(Standalone)?Setup.*\\.exe$", "appName": "Google Chrome", "type": "exe", "silentArgs": "/silent /install", "note": "オフラインインストーラ（企業向け）" },
+    { "pattern": "^GoogleChromeStandaloneEnterprise.*\\.msi$", "appName": "Google Chrome (Enterprise MSI)", "type": "msi", "silentArgs": "/qn /norestart" },
+    { "pattern": "^AcroRdr.*\\.exe$", "appName": "Adobe Acrobat Reader", "type": "exe", "silentArgs": "/sAll /rs /msi EULA_ACCEPT=YES", "note": "/sAll=サイレント /rs=再起動抑止 EULA_ACCEPT=YES=使用許諾同意" },
+    { "pattern": "^AcroRdr.*\\.msi$", "appName": "Adobe Acrobat Reader (MSI)", "type": "msi", "silentArgs": "/qn /norestart EULA_ACCEPT=YES" },
+    { "pattern": "^MicrosoftEdgeEnterpriseX(64|86)\\.msi$", "appName": "Microsoft Edge", "type": "msi", "silentArgs": "/qn /norestart" },
+    { "pattern": "^teamsbootstrapper\\.exe$", "appName": "Microsoft Teams (新)", "type": "exe", "silentArgs": "-p", "note": "-p = 全ユーザー向けにプロビジョニング" },
+    { "pattern": "^OneDriveSetup\\.exe$", "appName": "Microsoft OneDrive", "type": "exe", "silentArgs": "/silent" },
+    { "pattern": "^VC_redist\\.(x64|x86|arm64)\\.exe$", "appName": "Visual C++ 再頒布可能パッケージ", "type": "exe", "silentArgs": "/install /quiet /norestart" },
+    { "pattern": "^(windowsdesktop|dotnet|aspnetcore)-runtime-.*\\.exe$", "appName": ".NET ランタイム", "type": "exe", "silentArgs": "/install /quiet /norestart" },
+    { "pattern": "^7z\\d+(-x64|-arm64)?\\.exe$", "appName": "7-Zip", "type": "exe", "silentArgs": "/S" },
+    { "pattern": "^7z\\d+.*\\.msi$", "appName": "7-Zip (MSI)", "type": "msi", "silentArgs": "/quiet /norestart" },
+    { "pattern": "^npp\\..*Installer.*\\.exe$", "appName": "Notepad++", "type": "exe", "silentArgs": "/S" },
+    { "pattern": "^vlc-.*\\.exe$", "appName": "VLC media player", "type": "exe", "silentArgs": "/S" },
+    { "pattern": "^vlc-.*\\.msi$", "appName": "VLC media player (MSI)", "type": "msi", "silentArgs": "/qn /norestart" },
+    { "pattern": "^Firefox Setup.*\\.exe$", "appName": "Mozilla Firefox", "type": "exe", "silentArgs": "/S" },
+    { "pattern": "^Firefox Setup.*\\.msi$", "appName": "Mozilla Firefox (MSI)", "type": "msi", "silentArgs": "/qn /norestart" },
+    { "pattern": "^ZoomInstallerFull\\.exe$", "appName": "Zoom Workplace", "type": "exe", "silentArgs": "/silent", "needsReview": true, "note": "IT 管理者向けインストーラ。MSI 版は /qn /norestart" },
+    { "pattern": "^ZoomInstallerFull\\.msi$", "appName": "Zoom Workplace (MSI)", "type": "msi", "silentArgs": "/quiet /qn /norestart" },
+    { "pattern": "^jre-8u\\d+-windows-(x64|i586)\\.exe$", "appName": "Java 8 Runtime", "type": "exe", "silentArgs": "/s" },
+    { "pattern": "^jdk-.*\\.msi$", "appName": "Java JDK (MSI)", "type": "msi", "silentArgs": "/qn /norestart" },
+    { "pattern": "^PowerToysSetup-.*\\.exe$", "appName": "Microsoft PowerToys", "type": "exe", "silentArgs": "-silent" },
+    { "pattern": "^WinMerge-.*-Setup\\.exe$", "appName": "WinMerge", "type": "exe", "silentArgs": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" },
+    { "pattern": "^TeamViewer(_Host)?_Setup.*\\.exe$", "appName": "TeamViewer", "type": "exe", "silentArgs": "/S" },
+    { "pattern": "^Box-x64\\.msi$", "appName": "Box Drive", "type": "msi", "silentArgs": "/qn /norestart" },
+    { "pattern": "^cisco-secure-client-win-.*\\.msi$", "appName": "Cisco Secure Client", "type": "msi", "silentArgs": "/qn /norestart" },
+    { "pattern": "^ChromeRemoteDesktopHost\\.msi$", "appName": "Chrome リモート デスクトップ", "type": "msi", "silentArgs": "/qn /norestart" }
+  ]
+}

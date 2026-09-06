@@ -1,0 +1,403 @@
+{
+  "version": 2,
+  "sections": [
+    {
+      "id": "run",
+      "title": "A. 実行設定",
+      "group": "",
+      "description": "マスタ作成は組み込み Administrator でサインインして Fabriq を実行する前提です。__RESTART__ の後は同じアカウントでサインインし直すと、Fabriq が RunOnce から自動で再開します。",
+      "items": [
+        { "id": "autopilot_wait", "type": "number", "label": "AutoPilot のモジュール間ウェイト", "default": "3", "unit": "秒", "target": "__AUTOPILOT__ WaitSec", "kind": "module", "subgroup": "AutoPilot" }
+      ]
+    },
+    {
+      "id": "bios",
+      "title": "1. BIOS 設定",
+      "group": "",
+      "items": [
+        { "id": "bios_note", "type": "multiline", "label": "BIOS 設定（記入内容は手動作業リストに出力）", "target": "手動作業", "kind": "manual", "placeholder": "例: セキュアブート有効 / 起動順序 / 仮想化支援 ON", "subgroup": "BIOS" }
+      ]
+    },
+    {
+      "id": "os",
+      "title": "2. OS 情報",
+      "group": "Base",
+      "items": [
+        { "id": "os_info", "type": "text", "label": "OS / エディション / アーキテクチャ / バージョン", "target": "記録のみ（evidence_config が実機値を収集）", "kind": "manual", "placeholder": "例: Windows 11 Pro 64bit 24H2", "subgroup": "OS" },
+        { "id": "os_product_key", "type": "text", "label": "OS ライセンスキー", "secret": true, "target": "windows_license_config", "kind": "module", "placeholder": "XXXXX-XXXXX-XXXXX-XXXXX-XXXXX（空欄=キー投入なし）", "subgroup": "ライセンス" },
+        { "id": "os_activate", "type": "bool", "label": "Windows ライセンス認証を実行する", "default": "1", "target": "windows_license_auth", "kind": "module", "subgroup": "ライセンス" }
+      ]
+    },
+    {
+      "id": "drive",
+      "title": "3. ドライブ構成・パーティション設定",
+      "group": "Base",
+      "items": [
+        { "id": "part_enabled", "type": "bool", "label": "C: を縮小して追加パーティションを作成する", "default": "0", "target": "partition_config", "kind": "module", "subgroup": "パーティション" },
+        { "id": "part_c_size_gb", "type": "number", "label": "プライマリ C: の容量", "unit": "GB（縮小後）", "visibleWhen": { "item": "part_enabled", "values": ["1"] }, "subgroup": "パーティション" },
+        { "id": "part_new_letter", "type": "text", "label": "拡張パーティション ドライブレター", "default": "D", "visibleWhen": { "item": "part_enabled", "values": ["1"] }, "subgroup": "パーティション" },
+        { "id": "part_new_size_gb", "type": "number", "label": "拡張パーティション 容量", "default": "0", "unit": "GB（0 = 残り全部）", "visibleWhen": { "item": "part_enabled", "values": ["1"] }, "subgroup": "パーティション" },
+        { "id": "part_label", "type": "text", "label": "拡張パーティション ボリュームラベル", "default": "Data", "visibleWhen": { "item": "part_enabled", "values": ["1"] }, "subgroup": "パーティション" },
+        { "id": "optical_letter", "type": "text", "label": "光学ドライブ ドライブレター", "target": "手動作業（fabriq 側拡張候補）", "kind": "fabriq", "placeholder": "例: Q:", "subgroup": "光学ドライブ" }
+      ]
+    },
+    {
+      "id": "pcname",
+      "title": "4. コンピューター名設定",
+      "group": "Base",
+      "description": "納品端末のコンピューター名と IP は端末ごとの値のため、端末一覧（kernel/csv/hostlist.csv）で管理し、配備プロファイルで適用します。ここではマスタ作成中に使う仮のコンピューター名を指定します。",
+      "items": [
+        { "id": "master_hostname", "type": "text", "label": "マスタ作成時の仮コンピューター名", "target": "hostlist.csv（管理番号 = マスタ名）+ hostname_config", "kind": "module", "placeholder": "例: MASTER01（半角英数字とハイフン、15 文字以内。空欄 = 変更しない）", "help": "hostlist.csv に管理番号＝マスタ名の行として書き込みます。Fabriq 起動時のホスト選択でその行を選ぶと hostname_config が適用します。", "subgroup": "マスタ作成時の仮ホスト名" }
+      ]
+    },
+    {
+      "id": "network",
+      "title": "5. ネットワーク設定（イーサネット・Wi-Fi）",
+      "group": "Base",
+      "description": "IPv4 アドレス・サブネット・ゲートウェイ・DNS は端末一覧（hostlist.csv）の値が ipaddress_config で適用されます。",
+      "items": [
+        { "id": "ipv6", "type": "choice", "label": "IP アドレス（v6）", "default": "1", "target": "ipv6_config", "kind": "module", "subgroup": "IPv6",
+          "options": [ { "value": "1", "label": "有効（既定）" }, { "value": "0", "label": "無効（有線・無線とも）" } ] },
+        { "id": "ntp_enabled", "type": "bool", "label": "時刻同期（NTP サーバー）を設定する", "default": "0", "target": "time_sync_config", "kind": "module", "subgroup": "時刻同期" },
+        { "id": "ntp_server", "type": "text", "label": "NTP サーバー", "default": "time.windows.com", "visibleWhen": { "item": "ntp_enabled", "values": ["1"] }, "subgroup": "時刻同期" }
+      ]
+    },
+    {
+      "id": "users",
+      "title": "6. ユーザーアカウント設定",
+      "group": "Account",
+      "description": "マスタ作成は組み込み Administrator で行います。ここでは納品時の Administrator の状態と、組み込み Administrator 以外に必要なローカルユーザーを指定します。",
+      "items": [
+        { "id": "admin_enable", "type": "bool", "label": "組み込み Administrator を有効にし、パスワードを設定する", "default": "0", "target": "builtin_admin_config", "kind": "module", "help": "無効（既定）のままにする場合は行を出しません。builtin_admin_config は有効化とパスワード設定のみで、無効化は行いません。", "subgroup": "組み込み Administrator" },
+        { "id": "admin_password", "type": "text", "label": "Administrator パスワード", "secret": true, "visibleWhen": { "item": "admin_enable", "values": ["1"] }, "subgroup": "組み込み Administrator" },
+        { "id": "admin_never_expires", "type": "bool", "label": "Administrator のパスワードを無期限にする", "default": "1", "visibleWhen": { "item": "admin_enable", "values": ["1"] }, "subgroup": "組み込み Administrator" },
+        { "id": "block_msa", "type": "bool", "label": "Microsoft アカウントをブロックする（追加もサインインも不可）", "default": "0", "target": "辞書 NoConnectedUser", "kind": "dict", "subgroup": "Microsoft アカウント",
+          "registryTrue": [ { "id": "000000f4", "value": "3" } ] },
+        { "id": "local_users", "type": "table", "label": "追加するローカルユーザー（組み込み Administrator 以外の管理者など）", "target": "local_user_config", "kind": "module", "subgroup": "追加ユーザー",
+          "columns": [
+            { "name": "UserName", "label": "ユーザー名" },
+            { "name": "Password", "label": "パスワード", "secret": true },
+            { "name": "Group", "label": "所属グループ", "options": ["Administrators", "Users"], "default": "Administrators" },
+            { "name": "PasswordNeverExpires", "label": "パスワード無期限", "options": ["1", "0"], "default": "1" },
+            { "name": "Description", "label": "備考" }
+          ] }
+      ]
+    },
+    {
+      "id": "system",
+      "title": "7. システム関連設定",
+      "group": "System / Registry",
+      "items": [
+        { "id": "remote_assist", "type": "choice", "label": "リモートアシスタンス", "default": "1", "target": "辞書 fAllowToGetHelp", "kind": "dict", "subgroup": "リモート接続",
+          "options": [ { "value": "1", "label": "許可する（既定）" }, { "value": "0", "label": "許可しない", "registry": [ { "id": "000000f3", "value": "0" } ] } ] },
+        { "id": "rdp", "type": "choice", "label": "リモートデスクトップ", "default": "0", "target": "辞書 2 件 + firewall_rule_make_config", "kind": "dict", "subgroup": "リモート接続",
+          "options": [
+            { "value": "0", "label": "このコンピューターへの接続を許可しない（既定）" },
+            { "value": "1", "label": "リモートデスクトップを実行しているコンピューターからの接続を許可", "registry": [ { "id": "00000001", "value": "0" }, { "id": "000000f5", "value": "0" } ] },
+            { "value": "2", "label": "ネットワークレベル認証コンピューターからのみ接続を許可", "registry": [ { "id": "00000001", "value": "0" }, { "id": "000000f5", "value": "1" } ] }
+          ] },
+        { "id": "fw_domain", "type": "choice", "label": "ドメインプロファイル", "default": "on", "target": "firewall_config", "kind": "module", "subgroup": "ファイアウォール",
+          "options": [ { "value": "on", "label": "有効（既定）" }, { "value": "partial", "label": "有効：一部許可設定（規則は手動）" }, { "value": "off", "label": "無効" } ] },
+        { "id": "fw_private", "type": "choice", "label": "プライベートプロファイル", "default": "on", "target": "firewall_config", "kind": "module", "subgroup": "ファイアウォール",
+          "options": [ { "value": "on", "label": "有効（既定）" }, { "value": "partial", "label": "有効：一部許可設定（規則は手動）" }, { "value": "off", "label": "無効" } ] },
+        { "id": "fw_public", "type": "choice", "label": "パブリックプロファイル", "default": "on", "target": "firewall_config", "kind": "module", "subgroup": "ファイアウォール",
+          "options": [ { "value": "on", "label": "有効（既定）" }, { "value": "partial", "label": "有効：一部許可設定（規則は手動）" }, { "value": "off", "label": "無効" } ] },
+        { "id": "defender", "type": "choice", "label": "Windows Defender", "default": "1", "target": "辞書 2 件（改ざん防止に注意）", "kind": "dict", "subgroup": "Windows Defender・UAC",
+          "options": [ { "value": "1", "label": "有効（既定）" }, { "value": "0", "label": "無効：ローカルグループポリシーにて設定", "registry": [ { "id": "00000007" }, { "id": "000000ff" } ] } ] },
+        { "id": "uac", "type": "choice", "label": "ユーザーアカウント制御（UAC）", "default": "5", "target": "辞書 2 件", "kind": "dict", "subgroup": "Windows Defender・UAC",
+          "options": [
+            { "value": "2", "label": "常に通知する", "registry": [ { "id": "00000002", "value": "2" }, { "id": "00000003", "value": "1" } ] },
+            { "value": "5", "label": "プログラム変更時のみ通知する（既定）" },
+            { "value": "5n", "label": "プログラム変更時のみ通知する（デスクトップを暗転しない）", "registry": [ { "id": "00000002", "value": "5" }, { "id": "00000003", "value": "0" } ] },
+            { "value": "0", "label": "通知しない", "registry": [ { "id": "00000002", "value": "0" }, { "id": "00000003", "value": "0" } ] }
+          ] },
+        { "id": "wu_mode", "type": "choice", "label": "適用方法", "default": "1", "target": "辞書 WindowsUpdate\\AU", "kind": "dict", "subgroup": "Windows Update",
+          "options": [
+            { "value": "1", "label": "自動ダウンロード、自動インストール（既定）" },
+            { "value": "2", "label": "ダウンロードとインストールを通知", "registry": [ { "id": "000000f7", "value": "2" } ] },
+            { "value": "3", "label": "自動ダウンロードしインストールを通知", "registry": [ { "id": "000000f7", "value": "3" } ] },
+            { "value": "4", "label": "自動ダウンロードし、インストール日時を指定（毎日）", "registry": [ { "id": "000000f7", "value": "4" }, { "id": "000000f8", "value": "0" } ] },
+            { "value": "5", "label": "Windows Update 無効", "registry": [ { "id": "000000f6", "value": "1" } ] }
+          ] },
+        { "id": "wu_install_time", "type": "number", "label": "インストール時刻", "default": "12", "unit": "時（0〜23）", "visibleWhen": { "item": "wu_mode", "values": ["4"] }, "subgroup": "Windows Update" },
+        { "id": "wu_active_enabled", "type": "bool", "label": "アクティブ時間を固定する", "default": "0", "target": "辞書 SetActiveHours 他", "kind": "dict", "subgroup": "Windows Update" },
+        { "id": "wu_active_start", "type": "number", "label": "アクティブ時間 開始", "default": "8", "unit": "時", "visibleWhen": { "item": "wu_active_enabled", "values": ["1"] }, "subgroup": "Windows Update" },
+        { "id": "wu_active_end", "type": "number", "label": "アクティブ時間 終了", "default": "17", "unit": "時（18 時間以内）", "visibleWhen": { "item": "wu_active_enabled", "values": ["1"] }, "subgroup": "Windows Update" },
+        { "id": "wu_mu", "type": "choice", "label": "その他の Microsoft 製品の更新プログラムを受け取る", "default": "0", "target": "辞書 AllowMUUpdateService", "kind": "dict", "subgroup": "Windows Update",
+          "options": [ { "value": "0", "label": "無効（既定）" }, { "value": "1", "label": "有効", "registry": [ { "id": "000000fa", "value": "1" } ] } ] },
+        { "id": "wu_do", "type": "choice", "label": "配信の最適化 > 他のデバイスからダウンロードを許可する", "default": "1", "target": "辞書 DODownloadMode", "kind": "dict", "subgroup": "Windows Update",
+          "options": [
+            { "value": "1", "label": "有効：ローカルネットワーク上のデバイス（既定）" },
+            { "value": "3", "label": "有効：インターネット上のデバイスとローカルネットワーク", "registry": [ { "id": "000000a3", "value": "3" } ] },
+            { "value": "0", "label": "無効（Microsoft からダウンロード）", "registry": [ { "id": "000000a3", "value": "0" } ] }
+          ] },
+        { "id": "power_apply", "type": "bool", "label": "電源オプションを適用する", "default": "1", "target": "power_config", "kind": "module", "subgroup": "電源オプション" },
+        { "id": "power_plan", "type": "choice", "label": "電源プラン", "default": "BALANCED", "visibleWhen": { "item": "power_apply", "values": ["1"] }, "subgroup": "電源オプション",
+          "options": [ { "value": "BALANCED", "label": "バランス（既定）" }, { "value": "POWER_SAVER", "label": "省電力" }, { "value": "HIGH_PERFORMANCE", "label": "高パフォーマンス" } ] },
+        { "id": "pw_display_ac", "type": "number", "label": "ディスプレイの電源を切る（電源接続時）", "default": "5", "unit": "分（0 = 適用しない、空 = 変更しない）", "visibleWhen": { "item": "power_apply", "values": ["1"] }, "subgroup": "電源オプション" },
+        { "id": "pw_display_dc", "type": "number", "label": "ディスプレイの電源を切る（バッテリ時）", "default": "5", "unit": "分", "visibleWhen": { "item": "power_apply", "values": ["1"] }, "subgroup": "電源オプション" },
+        { "id": "pw_sleep_ac", "type": "number", "label": "コンピューターをスリープ状態にする（電源接続時）", "default": "15", "unit": "分", "visibleWhen": { "item": "power_apply", "values": ["1"] }, "subgroup": "電源オプション" },
+        { "id": "pw_sleep_dc", "type": "number", "label": "コンピューターをスリープ状態にする（バッテリ時）", "default": "15", "unit": "分", "visibleWhen": { "item": "power_apply", "values": ["1"] }, "subgroup": "電源オプション" },
+        { "id": "pw_hdd_ac", "type": "number", "label": "ハードディスクの電源を切る（電源接続時）", "default": "30", "unit": "分", "visibleWhen": { "item": "power_apply", "values": ["1"] }, "subgroup": "電源オプション" },
+        { "id": "pw_hdd_dc", "type": "number", "label": "ハードディスクの電源を切る（バッテリ時）", "default": "15", "unit": "分", "visibleWhen": { "item": "power_apply", "values": ["1"] }, "subgroup": "電源オプション" },
+        { "id": "pw_button", "type": "choice", "label": "電源ボタンを押したときの動作", "default": "SLEEP", "visibleWhen": { "item": "power_apply", "values": ["1"] }, "subgroup": "電源オプション",
+          "options": [ { "value": "NOTHING", "label": "何もしない" }, { "value": "SLEEP", "label": "スリープ状態（既定）" }, { "value": "HIBERNATE", "label": "休止状態" }, { "value": "SHUTDOWN", "label": "シャットダウン" } ] },
+        { "id": "pw_sleep_button", "type": "choice", "label": "スリープボタンを押したときの動作", "default": "SLEEP", "visibleWhen": { "item": "power_apply", "values": ["1"] }, "subgroup": "電源オプション",
+          "options": [ { "value": "NOTHING", "label": "何もしない" }, { "value": "SLEEP", "label": "スリープ状態（既定）" }, { "value": "HIBERNATE", "label": "休止状態" }, { "value": "SHUTDOWN", "label": "シャットダウン" } ] },
+        { "id": "pw_lid", "type": "choice", "label": "カバーを閉じたときの動作（ノート PC）", "default": "SLEEP", "visibleWhen": { "item": "power_apply", "values": ["1"] }, "subgroup": "電源オプション",
+          "options": [ { "value": "NOTHING", "label": "何もしない" }, { "value": "SLEEP", "label": "スリープ状態（既定）" }, { "value": "HIBERNATE", "label": "休止状態" }, { "value": "SHUTDOWN", "label": "シャットダウン" } ] },
+        { "id": "fast_startup", "type": "choice", "label": "高速スタートアップ", "default": "1", "target": "辞書 HiberbootEnabled", "kind": "dict", "subgroup": "電源オプション",
+          "options": [ { "value": "1", "label": "有効（既定）" }, { "value": "0", "label": "無効", "registry": [ { "id": "00000012" } ] } ] },
+        { "id": "ss_enabled", "type": "choice", "label": "スクリーンセーバー", "default": "0", "target": "辞書 3 件（HKCU → Default にも反映）", "kind": "dict", "subgroup": "スクリーンセーバー",
+          "options": [ { "value": "0", "label": "無効（既定）" }, { "value": "1", "label": "有効" } ] },
+        { "id": "ss_wait_min", "type": "number", "label": "待ち時間", "default": "10", "unit": "分", "visibleWhen": { "item": "ss_enabled", "values": ["1"] }, "subgroup": "スクリーンセーバー" },
+        { "id": "ss_secure", "type": "bool", "label": "再開時にログオン画面に戻る", "default": "0", "visibleWhen": { "item": "ss_enabled", "values": ["1"] }, "subgroup": "スクリーンセーバー" },
+        { "id": "volume_apply", "type": "bool", "label": "スピーカー音量（納品時 PC 音量）を設定する", "default": "0", "target": "volume_config", "kind": "module", "subgroup": "画面・音量" },
+        { "id": "volume", "type": "number", "label": "音量", "default": "50", "unit": "%（0 = 無効）", "visibleWhen": { "item": "volume_apply", "values": ["1"] }, "subgroup": "画面・音量" },
+        { "id": "resolution", "type": "text", "label": "画面解像度", "target": "resolution_api_config", "kind": "module", "placeholder": "例: 1920x1080（空欄 = 変更しない）", "subgroup": "画面・音量" },
+        { "id": "dpi", "type": "choice", "label": "画面の拡大と縮小（DPI）", "default": "", "target": "dpi_api_config + dpi_config", "kind": "module", "subgroup": "画面・音量",
+          "options": [ { "value": "", "label": "変更しない" }, { "value": "100", "label": "100%" }, { "value": "125", "label": "125%" }, { "value": "150", "label": "150%" }, { "value": "175", "label": "175%" } ] },
+        { "id": "legacy_printer", "type": "choice", "label": "Windows で通常使うプリンターを管理する", "default": "0", "target": "辞書 LegacyDefaultPrinterMode", "kind": "dict", "subgroup": "プリンター",
+          "options": [ { "value": "0", "label": "有効（既定）" }, { "value": "1", "label": "無効（推奨）", "registry": [ { "id": "000000cf", "value": "1" } ] } ] },
+        { "id": "proxy_pac", "type": "text", "label": "自動構成スクリプト（PAC）の URL", "target": "辞書 AutoConfigURL", "kind": "dict", "placeholder": "例: http://proxy.example.local/proxy.pac（空欄 = 設定しない）", "subgroup": "プロキシサーバー" },
+        { "id": "proxy_enabled", "type": "bool", "label": "LAN にプロキシサーバーを使用する", "default": "0", "target": "辞書 3 件", "kind": "dict", "subgroup": "プロキシサーバー" },
+        { "id": "proxy_server", "type": "text", "label": "アドレス", "visibleWhen": { "item": "proxy_enabled", "values": ["1"] }, "placeholder": "例: proxy.example.local", "subgroup": "プロキシサーバー" },
+        { "id": "proxy_port", "type": "text", "label": "ポート", "visibleWhen": { "item": "proxy_enabled", "values": ["1"] }, "placeholder": "例: 8080", "subgroup": "プロキシサーバー" },
+        { "id": "proxy_bypass_local", "type": "bool", "label": "ローカルアドレスにはプロキシサーバーを使用しない", "default": "1", "visibleWhen": { "item": "proxy_enabled", "values": ["1"] }, "subgroup": "プロキシサーバー" },
+        { "id": "proxy_exceptions", "type": "text", "label": "例外（; 区切り）", "visibleWhen": { "item": "proxy_enabled", "values": ["1"] }, "placeholder": "例: *.example.local;192.168.*", "subgroup": "プロキシサーバー" },
+        { "id": "priv_location", "type": "choice", "label": "位置情報", "default": "1", "target": "辞書 2 件", "kind": "dict", "subgroup": "プライバシー",
+          "options": [ { "value": "1", "label": "有効（既定）" }, { "value": "0", "label": "無効", "registry": [ { "id": "00000069" }, { "id": "0000006a" } ] } ] },
+        { "id": "priv_find_device", "type": "choice", "label": "デバイスの検索", "default": "1", "target": "辞書 AllowFindMyDevice", "kind": "dict", "subgroup": "プライバシー",
+          "options": [ { "value": "1", "label": "有効（既定）" }, { "value": "0", "label": "無効", "registry": [ { "id": "00000032" } ] } ] },
+        { "id": "priv_diag", "type": "choice", "label": "診断データ", "default": "", "target": "辞書 AllowTelemetry", "kind": "dict", "subgroup": "プライバシー",
+          "options": [ { "value": "", "label": "変更しない" }, { "value": "3", "label": "オプションを含む", "registry": [ { "id": "0000007f", "value": "3" } ] }, { "value": "1", "label": "必須のみ", "registry": [ { "id": "0000007f", "value": "1" } ] } ] },
+        { "id": "priv_ink", "type": "choice", "label": "手書き入力とタイプ入力", "default": "1", "target": "辞書 2 件", "kind": "dict", "subgroup": "プライバシー",
+          "options": [ { "value": "1", "label": "有効（既定）" }, { "value": "0", "label": "無効", "registry": [ { "id": "00000086" }, { "id": "00000087" } ] } ] },
+        { "id": "priv_tailored", "type": "choice", "label": "カスタマイズされたエクスペリエンス", "default": "1", "target": "辞書", "kind": "dict", "subgroup": "プライバシー",
+          "options": [ { "value": "1", "label": "有効（既定）" }, { "value": "0", "label": "無効", "registry": [ { "id": "00000081" } ] } ] },
+        { "id": "priv_adid", "type": "choice", "label": "広告識別子", "default": "1", "target": "辞書", "kind": "dict", "subgroup": "プライバシー",
+          "options": [ { "value": "1", "label": "有効（既定）" }, { "value": "0", "label": "無効", "registry": [ { "id": "00000064" } ] } ] },
+        { "id": "smb1", "type": "choice", "label": "SMB1.0 / CIFS クライアント", "default": "0", "target": "windows_feature_config", "kind": "module", "subgroup": "SMB1.0 / CIFS",
+          "options": [ { "value": "0", "label": "利用しない（既定）" }, { "value": "1", "label": "利用する（古い NAS 等）" } ] }
+      ]
+    },
+    {
+      "id": "gpo",
+      "title": "7-2. グループポリシー（ローカル GPO）",
+      "group": "Registry",
+      "description": "gpedit.msc の「管理用テンプレート」に相当する設定です。GPO 辞書（ADMX）から検索して追加すると、gpo_config/gpo_list.csv の行と Registry.pol への書き込み（gpo_config.ps1）が生成されます。Software\\Policies 配下を「7. システム関連設定」のレジストリ辞書項目と二重管理しないでください（衝突はプレビューで警告します）。",
+      "items": [
+        { "id": "gpo_policies", "type": "gpo", "label": "ローカル グループポリシー", "help": "「辞書から追加」で ADMX のポリシーを検索し、有効／無効と要素（サブ項目）を設定します。1 ポリシー = 複数の Registry.pol エントリになります。", "target": "gpo_config / gpo_list.csv", "kind": "module" }
+      ]
+    },
+    {
+      "id": "ui",
+      "title": "8. インターフェース関連設定",
+      "group": "Desktop / Registry",
+      "items": [
+        { "id": "desk_icon_pc", "type": "bool", "label": "デスクトップに PC アイコンを表示する", "default": "0", "target": "辞書", "kind": "dict", "registryTrue": [ { "id": "000000c8", "value": "0" } ], "subgroup": "デスクトップ" },
+        { "id": "desk_icon_recycle", "type": "bool", "label": "デスクトップにごみ箱アイコンを表示する", "default": "1", "target": "辞書", "kind": "dict", "registryFalse": [ { "id": "0000000e", "value": "1" } ], "subgroup": "デスクトップ" },
+        { "id": "desk_shortcuts", "type": "table", "label": "デスクトップに配置するショートカット", "target": "copyfile_config", "kind": "module", "subgroup": "デスクトップ",
+          "drop": { "module": "copyfile_config", "subDir": "source", "extensions": [".lnk", ".url"], "kind": "shortcut", "fileColumn": "FileName", "descriptionColumn": "Description",
+                    "hint": "ショートカット（.lnk / .url）をここへドロップ → copyfile_config/source/ に配置して行を追加" },
+          "columns": [ { "name": "FileName", "label": "ファイル名（source/ 内）" }, { "name": "Description", "label": "説明" } ] },
+        { "id": "wallpaper", "type": "choice", "label": "壁紙", "default": "spotlight", "target": "wallpaper_config", "kind": "module", "subgroup": "壁紙",
+          "options": [ { "value": "spotlight", "label": "Spotlight（既定・変更しない）" }, { "value": "default", "label": "デフォルト（変更しない）" }, { "value": "custom", "label": "その他指定（画像ファイル）" } ] },
+        { "id": "wallpaper_file", "type": "text", "label": "画像ファイル名（wallpaper_config/wallpaper/ 内、または絶対パス）", "visibleWhen": { "item": "wallpaper", "values": ["custom"] }, "placeholder": "例: company.jpg", "subgroup": "壁紙" },
+        { "id": "wallpaper_style", "type": "choice", "label": "表示スタイル", "default": "Fill", "visibleWhen": { "item": "wallpaper", "values": ["custom"] }, "subgroup": "壁紙",
+          "options": [ { "value": "Fill", "label": "Fill（ページ幅に合わせる）" }, { "value": "Fit", "label": "Fit" }, { "value": "Stretch", "label": "Stretch" }, { "value": "Tile", "label": "Tile" }, { "value": "Center", "label": "Center" }, { "value": "Span", "label": "Span" } ] },
+        { "id": "start_pins", "type": "multiline", "label": "スタートメニューのピン留め（アプリ名を列挙。参照 PC で startlayout_config の Backup が必要）", "target": "手動（startlayout_config）", "kind": "fabriq", "placeholder": "例: Word / Excel / Outlook / 社内ポータル", "subgroup": "スタートメニュー" },
+        { "id": "tb_search", "type": "choice", "label": "検索", "default": "", "target": "辞書 SearchboxTaskbarMode", "kind": "dict", "subgroup": "タスクバー",
+          "options": [
+            { "value": "", "label": "変更しない" },
+            { "value": "3", "label": "検索ボックスとラベル", "registry": [ { "id": "0000000c", "value": "3" } ] },
+            { "value": "1", "label": "検索アイコンのみ", "registry": [ { "id": "0000000c", "value": "1" } ] },
+            { "value": "2", "label": "検索ボックス", "registry": [ { "id": "0000000c", "value": "2" } ] },
+            { "value": "0", "label": "非表示", "registry": [ { "id": "0000000c", "value": "0" } ] }
+          ] },
+        { "id": "tb_taskview", "type": "choice", "label": "タスクビュー", "default": "1", "target": "辞書", "kind": "dict", "subgroup": "タスクバー",
+          "options": [ { "value": "1", "label": "表示（既定）" }, { "value": "0", "label": "非表示", "registry": [ { "id": "0000000b", "value": "0" } ] } ] },
+        { "id": "tb_widgets", "type": "choice", "label": "ウィジェット", "default": "1", "target": "辞書 2 件", "kind": "dict", "subgroup": "タスクバー",
+          "options": [ { "value": "1", "label": "表示（既定）" }, { "value": "0", "label": "非表示", "registry": [ { "id": "00000009", "value": "0" }, { "id": "000000bc", "value": "0" } ] } ] },
+        { "id": "taskbar_left", "type": "bool", "label": "タスクバーの配置を左揃えにする", "default": "0", "target": "辞書", "kind": "dict", "registryTrue": [ { "id": "000000dc" } ], "subgroup": "タスクバー" },
+        { "id": "tb_pins_apply", "type": "bool", "label": "タスクバーのピン留めを構成する（新規ユーザーに適用）", "default": "0", "target": "taskbar_config", "kind": "module", "help": "0 件で適用すると既定のピン（Edge 等）も外れます。パッケージアプリ（Teams 等）の AUMID は未対応。", "subgroup": "タスクバーのピン留め" },
+        { "id": "tb_pins", "type": "table", "label": "タスクバーにピン留めするアプリ（上から順）", "visibleWhen": { "item": "tb_pins_apply", "values": ["1"] }, "subgroup": "タスクバーのピン留め",
+          "columns": [
+            { "name": "Kind", "label": "種別", "options": ["AppId", "LinkPath"], "default": "AppId" },
+            { "name": "Value", "label": "AppId または .lnk のパス" },
+            { "name": "Description", "label": "説明" }
+          ],
+          "defaultRows": [
+            { "Kind": "AppId", "Value": "Microsoft.Windows.Explorer", "Description": "エクスプローラー" },
+            { "Kind": "AppId", "Value": "MSEdge", "Description": "Microsoft Edge" }
+          ] },
+        { "id": "explorer_ext", "type": "bool", "label": "ファイル拡張子を表示する", "default": "0", "target": "辞書", "kind": "dict", "registryTrue": [ { "id": "0000001c" } ], "subgroup": "エクスプローラー" },
+        { "id": "explorer_hidden", "type": "bool", "label": "隠しファイルを表示する", "default": "0", "target": "辞書", "kind": "dict", "registryTrue": [ { "id": "00000008" } ], "subgroup": "エクスプローラー" },
+        { "id": "explorer_launchto", "type": "bool", "label": "起動先を PC にする", "default": "0", "target": "辞書", "kind": "dict", "registryTrue": [ { "id": "0000001b" } ], "subgroup": "エクスプローラー" },
+        { "id": "classic_context", "type": "bool", "label": "右クリックメニューを旧仕様（Windows 10 形式）に戻す", "default": "0", "target": "辞書", "kind": "dict", "registryTrue": [ { "id": "00000027" } ], "subgroup": "エクスプローラー" },
+        { "id": "win11_cleanup", "type": "multi", "label": "チェックしたものを無効化", "target": "辞書", "kind": "dict", "subgroup": "Windows 11 の整理",
+          "options": [
+            { "value": "start_recs", "label": "スタートのおすすめ", "registry": [ { "id": "0000001a" } ] },
+            { "value": "copilot", "label": "Copilot", "registry": [ { "id": "00000011" } ] },
+            { "value": "cortana", "label": "Cortana", "registry": [ { "id": "0000000f" } ] },
+            { "value": "teams_chat", "label": "Teams チャット", "registry": [ { "id": "0000000a" } ] },
+            { "value": "bing_search", "label": "スタートの Bing 検索", "registry": [ { "id": "00000022" } ] },
+            { "value": "lock_spotlight", "label": "ロック画面の Spotlight", "registry": [ { "id": "000000ed" }, { "id": "000000ee" } ] },
+            { "value": "edge_firstrun", "label": "Edge の初回画面", "registry": [ { "id": "00000028" }, { "id": "00000050" } ] },
+            { "value": "edge_shortcut", "label": "Edge のデスクトップショートカット自動作成", "registry": [ { "id": "000000cc" }, { "id": "000000cd" } ] }
+          ] },
+        { "id": "numlock_on", "type": "bool", "label": "サインイン後の NumLock を ON にする", "default": "0", "target": "辞書", "kind": "dict", "registryTrue": [ { "id": "000000ec" } ], "subgroup": "キーボード" }
+      ]
+    },
+    {
+      "id": "apps",
+      "title": "9. アプリケーション関連設定",
+      "group": "Apps",
+      "items": [
+        { "id": "onedrive_block", "type": "bool", "label": "OneDrive をファイル記憶域として利用できないようにする", "default": "0", "target": "辞書 DisableFileSyncNGSC", "kind": "dict", "registryTrue": [ { "id": "00000010" } ], "subgroup": "OneDrive" },
+        { "id": "storeapps_remove", "type": "multi", "label": "削除するストアアプリ", "target": "storeapp_config", "kind": "module", "allowFree": true, "help": "リストに無いものはパッケージ名（Get-AppxPackage の Name）を入力して追加。", "subgroup": "ストアアプリの削除",
+          "options": [
+            { "value": "Microsoft.XboxApp", "label": "Xbox" },
+            { "value": "Microsoft.GamingApp", "label": "Xbox（Gaming App）" },
+            { "value": "Microsoft.Xbox.TCUI", "label": "Xbox TCUI" },
+            { "value": "Microsoft.XboxGameOverlay", "label": "Xbox Game Bar オーバーレイ" },
+            { "value": "Microsoft.XboxGamingOverlay", "label": "Xbox Game Bar" },
+            { "value": "Microsoft.XboxIdentityProvider", "label": "Xbox Identity Provider" },
+            { "value": "Microsoft.XboxSpeechToTextOverlay", "label": "Xbox Speech To Text" },
+            { "value": "Microsoft.Getstarted", "label": "ヒント" },
+            { "value": "Microsoft.MicrosoftSolitaireCollection", "label": "Solitaire" },
+            { "value": "Microsoft.549981C3F5F10", "label": "Cortana" },
+            { "value": "Microsoft.BingNews", "label": "ニュース" },
+            { "value": "Microsoft.BingWeather", "label": "天気" },
+            { "value": "Microsoft.BingSearch", "label": "Bing 検索" },
+            { "value": "Microsoft.GetHelp", "label": "問い合わせ" },
+            { "value": "Microsoft.MicrosoftOfficeHub", "label": "Office Hub" },
+            { "value": "Microsoft.People", "label": "People" },
+            { "value": "Microsoft.PowerAutomateDesktop", "label": "Power Automate" },
+            { "value": "Microsoft.StorePurchaseApp", "label": "Store Purchase App" },
+            { "value": "Microsoft.Todos", "label": "To Do" },
+            { "value": "Microsoft.WindowsAlarms", "label": "アラーム＆クロック" },
+            { "value": "microsoft.windowscommunicationsapps", "label": "メール／カレンダー" },
+            { "value": "Microsoft.WindowsFeedbackHub", "label": "フィードバック Hub" },
+            { "value": "Microsoft.WindowsMaps", "label": "マップ" },
+            { "value": "Microsoft.YourPhone", "label": "スマートフォン連携" },
+            { "value": "Microsoft.ZuneMusic", "label": "メディアプレーヤー（Groove）" },
+            { "value": "Microsoft.ZuneVideo", "label": "映画＆テレビ" },
+            { "value": "Microsoft.OutlookForWindows", "label": "Outlook (new)" },
+            { "value": "MSTeams", "label": "Microsoft Teams" },
+            { "value": "MicrosoftCorporationII.QuickAssist", "label": "クイック アシスト" },
+            { "value": "Clipchamp.Clipchamp", "label": "Clipchamp" },
+            { "value": "Microsoft.Windows.DevHome", "label": "Dev Home" },
+            { "value": "Microsoft.MicrosoftStickyNotes", "label": "付箋" }
+          ] },
+        { "id": "win_features", "type": "multi", "label": "Windows の機能の有効化と無効化", "target": "windows_feature_config", "kind": "module", "allowFree": true, "help": "リストに無いものは DISM の機能名（Get-WindowsOptionalFeature -Online の FeatureName）を入力して追加（有効化として扱います）。", "subgroup": "Windows の機能",
+          "options": [
+            { "value": "NetFx3", "label": ".NET Framework 3.5 を有効化", "data": { "Action": "Enable", "IncludeAllSubFeatures": "1", "Source": "/payload/dotnetfx35", "LimitAccess": "1" } },
+            { "value": "Microsoft-Hyper-V-All", "label": "Hyper-V を有効化", "data": { "Action": "Enable", "IncludeAllSubFeatures": "1" } },
+            { "value": "VirtualMachinePlatform", "label": "仮想マシン プラットフォームを有効化", "data": { "Action": "Enable" } },
+            { "value": "Microsoft-Windows-Subsystem-Linux", "label": "Linux 用 Windows サブシステムを有効化", "data": { "Action": "Enable" } },
+            { "value": "Containers-DisposableClientVM", "label": "Windows サンドボックスを有効化", "data": { "Action": "Enable" } },
+            { "value": "TelnetClient", "label": "Telnet クライアントを有効化", "data": { "Action": "Enable" } },
+            { "value": "TFTP", "label": "TFTP クライアントを有効化", "data": { "Action": "Enable" } },
+            { "value": "WindowsMediaPlayer", "label": "Windows Media Player（レガシ）を有効化", "data": { "Action": "Enable" } },
+            { "value": "Printing-XPSServices-Features", "label": "XPS ビューアー／サービスを有効化", "data": { "Action": "Enable" } },
+            { "value": "MicrosoftWindowsPowerShellV2Root", "label": "PowerShell 2.0 を無効化（ハードニング）", "data": { "Action": "Disable" } }
+          ] },
+        { "id": "apps", "type": "table", "label": "インストールするアプリケーション（1 アプリ = プロファイル 1 行）", "target": "app_config", "kind": "module", "help": "Type は exe / msi / bat。SilentArgs は各インストーラのサイレント引数（例: Chrome /silent /install、msi /qn /norestart）。ドロップすると辞書とインストーラ種別から自動補完します。", "subgroup": "アプリケーションソフト",
+          "drop": { "module": "app_config", "subDir": "file", "extensions": [".exe", ".msi", ".bat"], "kind": "installer",
+                    "fileColumn": "FileName", "nameColumn": "AppName", "typeColumn": "Type", "argsColumn": "SilentArgs", "descriptionColumn": "Description",
+                    "hint": "インストーラ（.exe / .msi / .bat）をここへドロップ → app_config/file/ に配置して行を追加（アプリ名・種別・サイレント引数を自動補完）" },
+          "columns": [
+            { "name": "AppName", "label": "アプリ名" },
+            { "name": "FileName", "label": "ファイル名（file/ 内）" },
+            { "name": "Type", "label": "種別", "options": ["exe", "msi", "bat"], "default": "exe" },
+            { "name": "SilentArgs", "label": "サイレント引数" },
+            { "name": "Description", "label": "備考" }
+          ] },
+        { "id": "winget_apps", "type": "table", "label": "winget でインストールするアプリ（オンライン環境向け）", "target": "winget_install", "kind": "module", "subgroup": "アプリケーションソフト",
+          "columns": [
+            { "name": "AppID", "label": "AppID（例: Google.Chrome）" },
+            { "name": "Options", "label": "追加オプション" },
+            { "name": "Description", "label": "備考" }
+          ] },
+        { "id": "office_odt", "type": "bool", "label": "Microsoft 365 Apps / Office を ODT でインストールする", "default": "0", "target": "odt_config", "kind": "module", "subgroup": "Microsoft Office" },
+        { "id": "odt_setup", "type": "file", "label": "Office Deployment Tool の setup.exe", "visibleWhen": { "item": "office_odt", "values": ["1"] }, "subgroup": "Microsoft Office",
+          "drop": { "module": "odt_config", "subDir": "assets", "extensions": [".exe"], "fixedName": "setup.exe", "kind": "file", "hint": "ODT の setup.exe をここへドロップ → odt_config/assets/setup.exe" } },
+        { "id": "odt_product", "type": "choice", "label": "製品（チャネルは自動: M365 = Current、LTSC = PerpetualVL）", "default": "m365e", "visibleWhen": { "item": "office_odt", "values": ["1"] }, "subgroup": "Microsoft Office",
+          "options": [
+            { "value": "m365e",       "label": "Microsoft 365 Apps for enterprise" },
+            { "value": "m365e_nt",    "label": "Microsoft 365 Apps for enterprise（Teams なし）" },
+            { "value": "m365b",       "label": "Microsoft 365 Apps for business" },
+            { "value": "m365b_nt",    "label": "Microsoft 365 Apps for business（Teams なし）" },
+            { "value": "ltsc2024pp",  "label": "Office LTSC Professional Plus 2024（ボリュームライセンス）" },
+            { "value": "ltsc2024std", "label": "Office LTSC Standard 2024（ボリュームライセンス）" },
+            { "value": "ltsc2021pp",  "label": "Office LTSC Professional Plus 2021（ボリュームライセンス）" },
+            { "value": "ltsc2021std", "label": "Office LTSC Standard 2021（ボリュームライセンス）" }
+          ] },
+        { "id": "odt_visio", "type": "bool", "label": "Visio Professional を含める", "default": "0", "visibleWhen": { "item": "office_odt", "values": ["1"] }, "subgroup": "Microsoft Office" },
+        { "id": "odt_project", "type": "bool", "label": "Project Professional を含める", "default": "0", "visibleWhen": { "item": "office_odt", "values": ["1"] }, "subgroup": "Microsoft Office" },
+        { "id": "odt_exclude", "type": "multi", "label": "インストールしないアプリ", "visibleWhen": { "item": "office_odt", "values": ["1"] }, "subgroup": "Microsoft Office",
+          "options": [
+            { "value": "Teams", "label": "Teams" },
+            { "value": "Groove", "label": "OneDrive" },
+            { "value": "Access", "label": "Access" },
+            { "value": "Publisher", "label": "Publisher" },
+            { "value": "OneNote", "label": "OneNote" },
+            { "value": "Outlook", "label": "Outlook（従来）" },
+            { "value": "OutlookForWindows", "label": "新しい Outlook" },
+            { "value": "Lync", "label": "Skype for Business" }
+          ] },
+        { "id": "odt_mode", "type": "choice", "label": "インストール方式", "default": "Offline", "visibleWhen": { "item": "office_odt", "values": ["1"] }, "subgroup": "Microsoft Office", "help": "オフラインは odt_config/assets/<製品>/Office/ に事前ダウンロードした資材が必要（setup.exe /download configuration.xml）。",
+          "options": [ { "value": "Offline", "label": "オフライン（資材フォルダから）" }, { "value": "Online", "label": "オンライン（Microsoft CDN から）" } ] },
+        { "id": "odt_download", "type": "action", "action": "odtDownload", "label": "オフライン資材（Office\\）のダウンロード", "target": "odt_config/assets/<製品>/Office/", "kind": "module", "visibleWhen": { "item": "odt_mode", "values": ["Offline"] }, "subgroup": "Microsoft Office",
+          "help": "現在の製品・除外設定で configuration.xml を組み立て、setup.exe /download を実行して製品フォルダ直下に Office\\ を取得します。数 GB を書き込み、数分〜十数分かかります。Studio を閉じてもダウンロードは続きます。" },
+        { "id": "odt_xml", "type": "file", "label": "既製の configuration.xml を使う場合（任意）", "visibleWhen": { "item": "office_odt", "values": ["1"] }, "subgroup": "Microsoft Office", "help": "ドロップすると生成せず、そのファイルをそのまま使います（odt_config/assets/custom/）。",
+          "drop": { "module": "odt_config", "subDir": "assets\\custom", "extensions": [".xml"], "fixedName": "configuration.xml", "kind": "file", "hint": "既製の configuration.xml をここへドロップ → odt_config/assets/custom/configuration.xml（生成せずにこれを使う）" } },
+        { "id": "office_key", "type": "text", "label": "Office プロダクトキー（空欄 = 投入なし）", "secret": true, "target": "office_license_config", "kind": "module", "subgroup": "Microsoft Office" },
+        { "id": "office_activation", "type": "choice", "label": "Office ライセンス認証方式", "default": "MAK", "subgroup": "Microsoft Office",
+          "options": [ { "value": "MAK", "label": "MAK" }, { "value": "KMS", "label": "KMS" } ] }
+      ]
+    },
+    {
+      "id": "other",
+      "title": "10. その他",
+      "group": "",
+      "items": [
+        { "id": "other_note", "type": "multiline", "label": "その他（記入内容は手動作業リストに出力）", "target": "手動作業", "kind": "manual", "subgroup": "その他" }
+      ]
+    },
+    {
+      "id": "finalize",
+      "title": "B. マスタ仕上げ",
+      "group": "Finalize",
+      "description": "__GATE__（前進バリア）の後ろに配置されます。上流に Error / 検証失敗が残っている間、kernel は仕上げの実行を拒否します。Sysprep は本画面の対象外です（既存の sysprep プロファイルを別途使用）。",
+      "items": [
+        { "id": "bitlocker_disable", "type": "bool", "label": "メーカー既定の BitLocker（デバイス暗号化）を解除する", "default": "1", "target": "bitlocker_config (disable)", "kind": "module", "subgroup": "BitLocker" },
+        { "id": "evidence", "type": "bool", "label": "エビデンスを収集する", "default": "1", "target": "evidence_config", "kind": "module", "subgroup": "エビデンス" },
+        { "id": "cleanup", "type": "bool", "label": "履歴・一時ファイルの削除とシェルの仕上げを行う", "default": "1", "target": "directory_cleaner / history_destroyer / system_finalize", "kind": "module", "subgroup": "仕上げ" }
+      ]
+    },
+    {
+      "id": "deploy",
+      "title": "C. 配備プロファイル",
+      "group": "Deploy",
+      "description": "端末別の項目（PC 名 / IP / プリンター / BitLocker）を profiles/<マスタ名>_deploy.csv として同時に出力します。PC 名と IP は端末一覧（hostlist.csv）の値が使われます。",
+      "items": [
+        { "id": "deploy_profile", "type": "bool", "label": "配備プロファイルを生成する", "default": "1", "target": "profiles/<名>_deploy.csv", "kind": "deploy", "subgroup": "配備プロファイル" },
+        { "id": "deploy_bitlocker", "type": "bool", "label": "配備時に BitLocker を有効化する（PIN は端末一覧の Pin 列）", "default": "0", "target": "bitlocker_config", "kind": "deploy", "visibleWhen": { "item": "deploy_profile", "values": ["1"] }, "subgroup": "配備プロファイル" },
+        { "id": "printers", "type": "table", "label": "プリンター一覧", "target": "printer_driver_config", "kind": "deploy", "subgroup": "プリンター",
+          "drop": { "module": "printer_driver_config", "subDir": "INF", "extensions": [".exe", ".zip", ".inf"], "folders": true, "kind": "printerDriver",
+                    "nameColumn": "PrinterName", "driverColumn": "DriverName", "descriptionColumn": "Description",
+                    "hint": "ドライバのフォルダ（INF 一式）または EXE / ZIP をここへドロップ → printer_driver_config/INF/ に配置（INF からモデル名を検出して行を追加。プリンター名とポート IP は記入）" },
+          "columns": [
+            { "name": "PrinterName", "label": "プリンター名" },
+            { "name": "DriverName", "label": "ドライバ／モデル（INF の DriverName）" },
+            { "name": "PortAddress", "label": "ポート IP アドレス" },
+            { "name": "IsDefault", "label": "既定プリンター（手動）", "options": ["1", "0"], "default": "0" },
+            { "name": "Description", "label": "備考" }
+          ] },
+        { "id": "printers_in_master", "type": "bool", "label": "プリンターをマスタにも含める（配備ではなくマスタで登録）", "default": "0", "target": "printer_driver_config", "kind": "module", "subgroup": "プリンター" }
+      ]
+    }
+  ]
+}
