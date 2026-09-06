@@ -235,6 +235,12 @@
                             Command="{Binding NavigateCommand}"
                             CommandParameter="HostList"
                             IsEnabled="{Binding IsWorkspaceOpen}" />
+
+                    <Button Content="🧭  マスタ設計"
+                            Style="{StaticResource NavButtonStyle}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="MasterParam"
+                            IsEnabled="{Binding IsWorkspaceOpen}" />
                 </StackPanel>
 
                 <!-- セクションラベル: アプリ -->
@@ -250,6 +256,10 @@
                             Style="{StaticResource NavChildButtonStyle}"
                             Command="{Binding NavigateCommand}"
                             CommandParameter="RegistryCollection" />
+                    <Button Content="📜  GPO 辞書"
+                            Style="{StaticResource NavChildButtonStyle}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="GpoCollection" />
                     <Button Content="🎹  Pianist Profile"
                             Style="{StaticResource NavChildButtonStyle}"
                             Command="{Binding NavigateCommand}"

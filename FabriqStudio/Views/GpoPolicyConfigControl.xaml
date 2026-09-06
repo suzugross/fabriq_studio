@@ -1,0 +1,186 @@
+<UserControl x:Class="FabriqStudio.Views.GpoPolicyConfigControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:gvm="clr-namespace:FabriqStudio.ViewModels.Gpo">
+    <!-- ポリシー 1 件の詳細 + 状態 + 要素 + 生成行（DataContext = GpoPolicyConfigViewModel） -->
+    <UserControl.Resources>
+        <Style x:Key="ElemLabel" TargetType="TextBlock">
+            <Setter Property="FontSize"     Value="12" />
+            <Setter Property="Foreground"   Value="#333333" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin"       Value="0,0,0,2" />
+        </Style>
+        <Style x:Key="ElemNote" TargetType="TextBlock">
+            <Setter Property="FontSize"     Value="10.5" />
+            <Setter Property="Foreground"   Value="#666666" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin"       Value="0,4,0,2" />
+        </Style>
+        <Style x:Key="ElemInput" TargetType="TextBox">
+            <Setter Property="FontSize"    Value="12" />
+            <Setter Property="Padding"     Value="4,3" />
+            <Setter Property="BorderBrush" Value="#BBBBBB" />
+            <Setter Property="Background"  Value="White" />
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Background" Value="#F3F3F3" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <DataTemplate DataType="{x:Type gvm:GpoBoolElementViewModel}">
+            <StackPanel Margin="0,3">
+                <TextBlock Text="{Binding Note}" Style="{StaticResource ElemNote}"
+                           Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <CheckBox IsChecked="{Binding IsChecked, Mode=TwoWay}" IsEnabled="{Binding IsEnabled}" FontSize="12" Foreground="#333333">
+                    <TextBlock TextWrapping="Wrap"><Run Text="{Binding Label, Mode=OneWay}" /><Run Text="{Binding RequiredMark, Mode=OneWay}" Foreground="#C04040" /></TextBlock>
+                </CheckBox>
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type gvm:GpoEnumElementViewModel}">
+            <StackPanel Margin="0,3">
+                <TextBlock Text="{Binding Note}" Style="{StaticResource ElemNote}"
+                           Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <TextBlock Style="{StaticResource ElemLabel}"><Run Text="{Binding Label, Mode=OneWay}" /><Run Text="{Binding RequiredMark, Mode=OneWay}" Foreground="#C04040" /></TextBlock>
+                <ComboBox ItemsSource="{Binding Items}" SelectedItem="{Binding Selected, Mode=TwoWay}" DisplayMemberPath="DisplayName"
+                          IsEnabled="{Binding IsEnabled}" FontSize="12" Padding="6,3" MinWidth="240" MaxWidth="520" HorizontalAlignment="Left" />
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type gvm:GpoTextElementViewModel}">
+            <StackPanel Margin="0,3">
+                <TextBlock Text="{Binding Note}" Style="{StaticResource ElemNote}"
+                           Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <TextBlock Style="{StaticResource ElemLabel}"><Run Text="{Binding Label, Mode=OneWay}" /><Run Text="{Binding RequiredMark, Mode=OneWay}" Foreground="#C04040" /></TextBlock>
+                <StackPanel Orientation="Horizontal">
+                    <TextBox Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsEnabled}"
+                             MinWidth="240" MaxWidth="520">
+                        <TextBox.Style>
+                            <Style TargetType="TextBox" BasedOn="{StaticResource ElemInput}">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsValid}" Value="False">
+                                        <Setter Property="BorderBrush" Value="#C04040" />
+                                        <Setter Property="Background"  Value="#FFF3F3" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBox.Style>
+                    </TextBox>
+                    <TextBlock Text="{Binding RangeText}" FontSize="10.5" Foreground="#666666" VerticalAlignment="Center" Margin="8,0,0,0"
+                               Visibility="{Binding HasRange, Converter={StaticResource BoolToVisibilityConverter}}" />
+                </StackPanel>
+                <TextBlock Text="{Binding SuggestionText}" FontSize="10.5" Foreground="#666666" TextWrapping="Wrap" Margin="0,2,0,0"
+                           Visibility="{Binding HasSuggestions, Converter={StaticResource BoolToVisibilityConverter}}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type gvm:GpoLinesElementViewModel}">
+            <StackPanel Margin="0,3">
+                <TextBlock Text="{Binding Note}" Style="{StaticResource ElemNote}"
+                           Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <TextBlock Style="{StaticResource ElemLabel}"><Run Text="{Binding Label, Mode=OneWay}" /><Run Text="{Binding RequiredMark, Mode=OneWay}" Foreground="#C04040" /></TextBlock>
+                <TextBox Text="{Binding Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" IsEnabled="{Binding IsEnabled}"
+                         Style="{StaticResource ElemInput}" AcceptsReturn="True" TextWrapping="NoWrap"
+                         MinHeight="70" MaxHeight="170" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                         FontFamily="Consolas" FontSize="11.5" />
+                <TextBlock Text="{Binding Hint}" FontSize="10.5" Foreground="#666666" TextWrapping="Wrap" Margin="0,2,0,0" />
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <TextBlock Text="左の一覧からポリシーを選んでください。" FontSize="12.5" Foreground="#888888"
+                   HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20"
+                   Visibility="{Binding HasPolicy, Converter={StaticResource BoolToCollapsedConverter}}" />
+
+        <StackPanel Visibility="{Binding HasPolicy, Converter={StaticResource BoolToVisibilityConverter}}">
+            <!-- 見出し -->
+            <TextBlock Text="{Binding DisplayName}" FontSize="14.5" FontWeight="Bold" Foreground="#1E3A66" TextWrapping="Wrap" />
+            <TextBlock Text="{Binding DisplayNameEn}" FontSize="10.5" Foreground="#777777" TextWrapping="Wrap" Margin="0,1,0,0"
+                       Visibility="{Binding HasDisplayNameEn, Converter={StaticResource BoolToVisibilityConverter}}" />
+            <TextBlock Text="{Binding CategoryPath}" FontSize="10.5" Foreground="#777777" TextWrapping="Wrap" Margin="0,3,0,0" />
+            <WrapPanel Margin="0,5,0,0">
+                <Border Background="#EEF3FA" CornerRadius="3" Padding="6,1" Margin="0,0,6,4">
+                    <TextBlock Text="{Binding ScopeLabel}" FontSize="10" Foreground="#2B4C7E" />
+                </Border>
+                <Border Background="#F1F1F1" CornerRadius="3" Padding="6,1" Margin="0,0,6,4"
+                        Visibility="{Binding HasSupportedOn, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="{Binding SupportedOn}" FontSize="10" Foreground="#555555" MaxWidth="360" TextTrimming="CharacterEllipsis" ToolTip="{Binding SupportedOn}" />
+                </Border>
+                <Border Background="#F1F1F1" CornerRadius="3" Padding="6,1" Margin="0,0,6,4">
+                    <TextBlock Text="{Binding IdText}" FontSize="10" Foreground="#555555" FontFamily="Consolas" ToolTip="PolicyRef（ADMX 名:ポリシー名）" />
+                </Border>
+            </WrapPanel>
+            <TextBlock Text="{Binding KeyDisplay}" FontFamily="Consolas" FontSize="10.5" Foreground="#444444" TextWrapping="Wrap" Margin="0,2,0,0"
+                       ToolTip="Registry.pol に書くキー（ハイブ無し）と値名" />
+
+            <Border Background="#FFF8E1" BorderBrush="#F0D48A" BorderThickness="1" CornerRadius="4" Padding="8,5" Margin="0,8,0,0"
+                    Visibility="{Binding HasFavoriteNote, Converter={StaticResource BoolToVisibilityConverter}}">
+                <TextBlock FontSize="11" Foreground="#5A3E00" TextWrapping="Wrap"><Run Text="★ " /><Run Text="{Binding FavoriteNote, Mode=OneWay}" /></TextBlock>
+            </Border>
+
+            <Expander Header="説明（ADML）" FontSize="11.5" Foreground="#444444" Margin="0,8,0,0" IsExpanded="False">
+                <TextBox Text="{Binding ExplainText, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="240"
+                         VerticalScrollBarVisibility="Auto" BorderThickness="0" Background="#FAFAFA" FontSize="11.5" Padding="8" Margin="0,4,0,0" />
+            </Expander>
+
+            <!-- 状態 -->
+            <Border Background="#F4F7FB" BorderBrush="#D9E1EC" BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,10,0,0">
+                <StackPanel>
+                    <TextBlock Text="状態" FontWeight="SemiBold" FontSize="11.5" Foreground="#2B4C7E" />
+                    <WrapPanel Margin="0,5,0,0">
+                        <RadioButton GroupName="gpoState" Content="有効" IsChecked="{Binding IsEnabledState, Mode=TwoWay}" Margin="0,0,18,0" FontSize="12" />
+                        <RadioButton GroupName="gpoState" Content="無効" IsChecked="{Binding IsDisabledState, Mode=TwoWay}" Margin="0,0,18,0" FontSize="12" />
+                        <RadioButton GroupName="gpoState" Content="未構成（Registry.pol から外す）" IsChecked="{Binding IsNotConfiguredState, Mode=TwoWay}" FontSize="12"
+                                     ToolTip="既に適用されているローカル ポリシーを解除したいときに使います（Action=Unmanage）" />
+                    </WrapPanel>
+                    <WrapPanel Margin="0,6,0,0" Visibility="{Binding CanChooseScope, Converter={StaticResource BoolToVisibilityConverter}}">
+                        <TextBlock Text="適用先:" VerticalAlignment="Center" FontSize="11.5" Foreground="#333333" Margin="0,0,8,0" />
+                        <RadioButton GroupName="gpoScope" Content="コンピューターの構成" IsChecked="{Binding IsMachineScope, Mode=TwoWay}" Margin="0,0,14,0" FontSize="11.5" />
+                        <RadioButton GroupName="gpoScope" Content="ユーザーの構成" IsChecked="{Binding IsUserScope, Mode=TwoWay}" FontSize="11.5" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- 要素 -->
+            <Border Background="White" BorderBrush="#D9E1EC" BorderThickness="1" CornerRadius="4" Padding="10,8" Margin="0,8,0,0"
+                    Visibility="{Binding HasElements, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Right" Text="（「有効」のときに書き込まれます）" FontSize="10.5" Foreground="#888888" VerticalAlignment="Center" />
+                        <TextBlock Text="オプション" FontWeight="SemiBold" FontSize="11.5" Foreground="#2B4C7E" />
+                    </DockPanel>
+                    <TextBlock Text="{Binding PresentationNotes}" FontSize="10.5" Foreground="#666666" TextWrapping="Wrap" Margin="0,4,0,0"
+                               Visibility="{Binding HasPresentationNotes, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    <ItemsControl ItemsSource="{Binding Elements}" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- 生成される行 -->
+            <TextBlock Text="{Binding RowSummary}" FontWeight="SemiBold" FontSize="11.5" Foreground="#444444" Margin="0,10,0,3" />
+            <ItemsControl ItemsSource="{Binding Errors}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock FontSize="11" Foreground="#C04040" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,0,0,2"><Run Text="⛔ " /><Run Text="{Binding Mode=OneWay}" /></TextBlock>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl ItemsSource="{Binding Warnings}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock FontSize="11" Foreground="#9A6700" TextWrapping="Wrap" Margin="0,0,0,2"><Run Text="⚠ " /><Run Text="{Binding Mode=OneWay}" /></TextBlock>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <ItemsControl ItemsSource="{Binding PreviewRows}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Display}" FontFamily="Consolas" FontSize="10.5" Foreground="#333333" TextWrapping="Wrap" Margin="0,0,0,1"
+                                   ToolTip="{Binding Title}" />
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </StackPanel>
+    </Grid>
+</UserControl>

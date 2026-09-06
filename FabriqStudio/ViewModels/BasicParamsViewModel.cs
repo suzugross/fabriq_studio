@@ -154,6 +154,7 @@ public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewMod
         switch (source)
         {
             case "ProfileDetail":
+            case "MasterParam":   // マスタ設計の生成でプロファイルが増減する
                 var profileName = SelectedProfile?.Name;
                 await LoadProfilesAsync();
                 if (profileName is not null)

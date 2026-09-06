@@ -73,6 +73,14 @@
                 <views:PianistProfileEditorView />
             </DataTemplate>
 
+            <DataTemplate DataType="{x:Type vm:MasterParamViewModel}">
+                <views:MasterParamView />
+            </DataTemplate>
+
+            <DataTemplate DataType="{x:Type vm:GpoCollectionViewModel}">
+                <views:GpoCollectionView />
+            </DataTemplate>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

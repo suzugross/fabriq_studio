@@ -1,0 +1,90 @@
+<UserControl x:Class="FabriqStudio.Views.GpoBrowserControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- GPO 辞書の検索 + 一覧（DataContext = GpoBrowserViewModel）。ピッカーと辞書画面で共用 -->
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top">
+            <Grid Margin="0,0,0,6">
+                <TextBox x:Name="SearchBox" Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         FontSize="12.5" Padding="6,5" BorderBrush="#BBBBBB" Background="White"
+                         ToolTip="ポリシー名・説明・レジストリ キー・英語名を検索します（スペース区切りで AND）" />
+                <TextBlock Text="🔍 ポリシー名・説明・キー・英語名で検索（スペース区切りで AND）"
+                           Foreground="#9A9A9A" FontSize="11.5" Margin="8,0,0,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                    <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                            <Setter Property="Visibility" Value="Collapsed" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding SearchText}" Value="">
+                                    <Setter Property="Visibility" Value="Visible" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </TextBlock.Style>
+                </TextBlock>
+            </Grid>
+            <WrapPanel Margin="0,0,0,2">
+                <ComboBox ItemsSource="{Binding ScopeOptions}" SelectedItem="{Binding ScopeFilter, Mode=TwoWay}"
+                          Width="150" FontSize="11.5" Padding="6,3" Margin="0,0,6,4" ToolTip="コンピューターの構成 / ユーザーの構成" />
+                <ComboBox ItemsSource="{Binding CategoryOptions}" SelectedItem="{Binding CategoryFilter, Mode=TwoWay}"
+                          Width="196" FontSize="11.5" Padding="6,3" Margin="0,0,6,4" ToolTip="gpedit の最上位カテゴリ" />
+                <CheckBox Content="★ お気に入りのみ" IsChecked="{Binding FavoritesOnly, Mode=TwoWay}"
+                          VerticalAlignment="Center" FontSize="11.5" Margin="0,0,0,4"
+                          ToolTip="master_template/gpo_favorites.json に登録したよく使うポリシー" />
+            </WrapPanel>
+            <DockPanel Margin="0,0,0,4">
+                <TextBlock DockPanel.Dock="Right" Text="{Binding CatalogInfo}" FontSize="10" Foreground="#8A8A8A"
+                           TextTrimming="CharacterEllipsis" MaxWidth="230" ToolTip="{Binding CatalogInfo}" VerticalAlignment="Center" />
+                <TextBlock Text="{Binding ResultSummary}" FontSize="10.5" Foreground="#555555" VerticalAlignment="Center" />
+            </DockPanel>
+        </StackPanel>
+
+        <Grid>
+            <ListBox x:Name="ResultList" ItemsSource="{Binding Results}" SelectedItem="{Binding SelectedPolicy, Mode=TwoWay}"
+                     HorizontalContentAlignment="Stretch" BorderBrush="#DDDDDD" Background="White" FontSize="12"
+                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling"
+                     MouseDoubleClick="OnListDoubleClick">
+                <ListBox.ItemContainerStyle>
+                    <Style TargetType="ListBoxItem">
+                        <Setter Property="Padding" Value="6,3" />
+                        <Setter Property="BorderThickness" Value="0,0,0,1" />
+                        <Setter Property="BorderBrush" Value="#F0F0F0" />
+                    </Style>
+                </ListBox.ItemContainerStyle>
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="★" Foreground="#E0A500" Margin="0,0,5,0" VerticalAlignment="Top"
+                                       ToolTip="{Binding FavoriteNote}"
+                                       Visibility="{Binding IsFavorite, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <StackPanel Grid.Column="1">
+                                <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap" FontWeight="SemiBold" Foreground="#222222" />
+                                <TextBlock Text="{Binding CategoryPath}" FontSize="10" Foreground="#777777" TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding CategoryPath}" />
+                            </StackPanel>
+                            <Border Grid.Column="2" Background="#EEF3FA" CornerRadius="3" Padding="5,1" VerticalAlignment="Top" Margin="6,0,0,0">
+                                <TextBlock Text="{Binding ScopeLabel}" FontSize="9.5" Foreground="#2B4C7E" />
+                            </Border>
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <!-- 未読込 / 読み込み中 / エラー -->
+            <Border Background="#F8F8F8" BorderBrush="#DDDDDD" BorderThickness="1"
+                    Visibility="{Binding IsCatalogReady, Converter={StaticResource BoolToCollapsedConverter}}">
+                <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20">
+                    <TextBlock Text="⏳ GPO 辞書（ADMX）を読み込んでいます..." FontSize="12" Foreground="#555555" TextAlignment="Center"
+                               Visibility="{Binding IsCatalogLoading, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    <TextBlock Text="{Binding CatalogError}" FontSize="11.5" Foreground="#C04040" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360"
+                               Visibility="{Binding CatalogError, Converter={StaticResource NullToCollapsedConverter}}" />
+                </StackPanel>
+            </Border>
+        </Grid>
+    </DockPanel>
+</UserControl>

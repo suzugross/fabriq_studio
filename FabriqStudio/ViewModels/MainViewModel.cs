@@ -28,6 +28,8 @@ public partial class MainViewModel : ObservableObject
     private readonly RegistryCollectionViewModel      _registryCollectionVm;
     private readonly PrinterDriverDetectorViewModel   _printerDriverDetectorVm;
     private readonly PianistProfileEditorViewModel    _pianistEditorVm;
+    private readonly MasterParamViewModel             _masterParamVm;
+    private readonly GpoCollectionViewModel           _gpoCollectionVm;
     private readonly IWorkspaceService                _workspace;
     private readonly ICryptoService                   _crypto;
 
@@ -56,9 +58,13 @@ public partial class MainViewModel : ObservableObject
         RegistryCollectionViewModel       registryCollectionVm,
         PrinterDriverDetectorViewModel    printerDriverDetectorVm,
         PianistProfileEditorViewModel     pianistEditorVm,
+        MasterParamViewModel              masterParamVm,
+        GpoCollectionViewModel            gpoCollectionVm,
         IWorkspaceService                 workspace,
         ICryptoService                    crypto)
     {
+        _masterParamVm           = masterParamVm;
+        _gpoCollectionVm         = gpoCollectionVm;
         _basicParamsVm           = basicParamsVm;
         _moduleEditVm            = moduleEditVm;
         _hostListVm              = hostListVm;
@@ -175,6 +181,8 @@ public partial class MainViewModel : ObservableObject
             "RegistryCollection"     => _registryCollectionVm,
             "PrinterDriverDetector"  => _printerDriverDetectorVm,
             "PianistProfile"         => _pianistEditorVm,
+            "MasterParam"            => _masterParamVm,
+            "GpoCollection"          => _gpoCollectionVm,
             _                        => CurrentPage
         };
     }
