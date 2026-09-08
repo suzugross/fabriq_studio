@@ -184,7 +184,15 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
                 {
                     var id = row["AdminID"]?.ToString()?.Trim() ?? "";
                     if (id.Length > 0)
+                    {
                         info.AdminIdCounts[id] = info.AdminIdCounts.GetValueOrDefault(id) + 1;
+                        if (!info.RowsByAdminId.ContainsKey(id))
+                        {
+                            var cells = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                            foreach (DataColumn c in table.Columns) cells[c.ColumnName] = row[c]?.ToString() ?? "";
+                            info.RowsByAdminId[id] = cells;
+                        }
+                    }
                 }
             }
         }
@@ -305,13 +313,19 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
             }
         }
 
-        // hostlist.csv の仮ホスト名行（AdminID = マスタ名）も、今回出さないなら取り除く
+        // hostlist.csv の仮ホスト名行（管理番号 = 回答の master_admin_id。旧版は AdminID = マスタ名）も、今回出さないなら取り除く
         var host = ctx.Snapshot.Hostlist;
         if (host is not null
-            && host.AdminIdCounts.GetValueOrDefault(ctx.MasterName) > 0
             && !plan.CsvOps.Any(o => o.AbsPath.Equals(host.AbsPath, StringComparison.OrdinalIgnoreCase)))
         {
-            plan.CsvOps.Add(new PlanCsvRows
+            var key   = BaseSettingsEmitter.StoredAdminId(ctx);
+            var owned = host.AdminIdCounts.GetValueOrDefault(ctx.MasterName);
+            if (key is not null && host.RowsByAdminId.TryGetValue(key, out var keyRow) && !BaseSettingsEmitter.LooksLikeDeviceRow(keyRow))
+                owned += host.AdminIdCounts.GetValueOrDefault(key);
+            else
+                key = null;   // 端末の行は触らない
+
+            if (owned > 0) plan.CsvOps.Add(new PlanCsvRows
             {
                 ModuleDir = "kernel/csv",
                 CsvName   = host.Name,
@@ -319,7 +333,8 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
                 RelPath   = _resolver.ToRelative(host.AbsPath),
                 Isolation = PlanIsolation.AdminId,
                 Tag       = ctx.Tag,
-                ExistingIsolatedRows = host.AdminIdCounts[ctx.MasterName],
+                AdminIdKey = key,
+                ExistingIsolatedRows = owned,
             });
         }
     }
@@ -373,6 +388,7 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
                 op.Rows.Add(new PlanRegistryRow
                 {
                     SettingTitle = r.SettingTitle,
+                    ItemId       = r.ItemId ?? "",
                     KeyPath      = r.Entry.KeyPath,
                     KeyName      = r.Entry.KeyName,
                     Type         = r.Entry.Type,
@@ -724,7 +740,9 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
                         toRemove.Add(row);
                     break;
                 case PlanIsolation.AdminId:
-                    if (string.Equals(row["AdminID"]?.ToString()?.Trim(), masterName, StringComparison.Ordinal))
+                    // 旧版の AdminID = マスタ名 の行と、このマスタの管理番号（数字）の行
+                    var adminId = row["AdminID"]?.ToString()?.Trim() ?? "";
+                    if (adminId == masterName || (op.AdminIdKey is not null && adminId == op.AdminIdKey))
                         toRemove.Add(row);
                     break;
             }

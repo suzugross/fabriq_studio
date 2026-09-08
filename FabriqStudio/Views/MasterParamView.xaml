@@ -2,7 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mvm="clr-namespace:FabriqStudio.ViewModels.Master"
-             xmlns:converters="clr-namespace:FabriqStudio.Converters">
+             xmlns:converters="clr-namespace:FabriqStudio.Converters"
+             xmlns:helpers="clr-namespace:FabriqStudio.Helpers">
 
     <UserControl.Resources>
         <converters:MasterKindToBrushConverter x:Key="KindToBrush" />
@@ -55,19 +56,91 @@
             <Border Background="{Binding Kind, Converter={StaticResource KindToBrush}}"
                     CornerRadius="3" Padding="6,2" HorizontalAlignment="Right" VerticalAlignment="Center"
                     ToolTip="{Binding Target}">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="{Binding KindLabel}" FontSize="10" FontWeight="Bold"
-                               Foreground="{Binding Kind, Converter={StaticResource KindToBrush}, ConverterParameter=fg}" />
-                    <TextBlock Text="{Binding Target}" FontSize="10" Margin="6,0,0,0"
-                               Foreground="{Binding Kind, Converter={StaticResource KindToBrush}, ConverterParameter=fg}"
-                               MaxWidth="220" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
+                <TextBlock Text="{Binding KindLabel}" FontSize="10" FontWeight="Bold"
+                           Foreground="{Binding Kind, Converter={StaticResource KindToBrush}, ConverterParameter=fg}" />
             </Border>
         </DataTemplate>
 
         <!-- 行レイアウト: ラベル | 入力 | バッジ（行間は点線で区切る） -->
         <Style x:Key="ItemRowGrid" TargetType="Grid">
             <Setter Property="Margin" Value="0,4" />
+        </Style>
+
+        <!-- 資材のドロップ枠: 大きく目立たせる（破線の Rectangle + 中央寄せの本文）。ドラッグ中は DropZoneVisual.IsDragOver で強調 -->
+        <Style x:Key="DropZone" TargetType="Grid">
+            <Setter Property="MinHeight"  Value="136" />
+            <Setter Property="Margin"     Value="0,0,0,8" />
+            <Setter Property="Background" Value="Transparent" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False">
+                    <Setter Property="Opacity" Value="0.55" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="DropZoneRect" TargetType="Rectangle">
+            <Setter Property="RadiusX"         Value="10" />
+            <Setter Property="RadiusY"         Value="10" />
+            <Setter Property="StrokeThickness" Value="2.5" />
+            <Setter Property="StrokeDashArray" Value="7 4" />
+            <Setter Property="Stroke"          Value="#6E9BE8" />
+            <Setter Property="Fill"            Value="#EEF5FF" />
+        </Style>
+        <Style x:Key="DropZoneRectTable" TargetType="Rectangle" BasedOn="{StaticResource DropZoneRect}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding (helpers:DropZoneVisual.IsDragOver), RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                    <Setter Property="Stroke"          Value="#1E4A99" />
+                    <Setter Property="StrokeThickness" Value="3.5" />
+                    <Setter Property="StrokeDashArray" Value="1 0" />
+                    <Setter Property="Fill"            Value="#DCE9FF" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="DropZoneRectFile" TargetType="Rectangle" BasedOn="{StaticResource DropZoneRect}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding HasFile}" Value="True">
+                    <Setter Property="Stroke" Value="#6FC79A" />
+                    <Setter Property="Fill"   Value="#E6F4EC" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding (helpers:DropZoneVisual.IsDragOver), RelativeSource={RelativeSource AncestorType=Grid}}" Value="True">
+                    <Setter Property="Stroke"          Value="#1E4A99" />
+                    <Setter Property="StrokeThickness" Value="3.5" />
+                    <Setter Property="StrokeDashArray" Value="1 0" />
+                    <Setter Property="Fill"            Value="#DCE9FF" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="DropZoneIcon" TargetType="TextBlock">
+            <Setter Property="Text"       Value="⤓" />
+            <Setter Property="FontSize"   Value="34" />
+            <Setter Property="Foreground" Value="#1E4A99" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="Margin"     Value="0,0,0,2" />
+        </Style>
+        <Style x:Key="DropZoneTitle" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="16" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="#1E4A99" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="TextWrapping"  Value="Wrap" />
+        </Style>
+        <Style x:Key="DropZoneHint" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="11.5" />
+            <Setter Property="Foreground" Value="#3B5C99" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="TextWrapping"  Value="Wrap" />
+            <Setter Property="MaxWidth"   Value="780" />
+            <Setter Property="Margin"     Value="0,5,0,0" />
+        </Style>
+        <Style x:Key="DropZoneNote" TargetType="TextBlock">
+            <Setter Property="FontSize"   Value="11" />
+            <Setter Property="Foreground" Value="#444444" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="TextWrapping"  Value="Wrap" />
+            <Setter Property="MaxWidth"   Value="780" />
+            <Setter Property="Margin"     Value="0,4,0,0" />
         </Style>
 
         <!-- ══ 質問 DataTemplate（VM の型で自動選択） ══ -->
@@ -139,7 +212,7 @@
                                     <DataTrigger Binding="{Binding IsMultiline}" Value="True">
                                         <Setter Property="AcceptsReturn" Value="True" />
                                         <Setter Property="TextWrapping" Value="Wrap" />
-                                        <Setter Property="MinHeight" Value="64" />
+                                        <Setter Property="MinHeight" Value="110" />
                                         <Setter Property="MaxWidth" Value="9999" />
                                         <Setter Property="HorizontalAlignment" Value="Stretch" />
                                         <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
@@ -190,46 +263,55 @@
         <DataTemplate DataType="{x:Type mvm:FileItemViewModel}">
             <Grid Style="{StaticResource ItemRowGrid}"
                   Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="250" />
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="{Binding Label}" Style="{StaticResource ItemLabel}" VerticalAlignment="Top" Margin="0,6,0,0" ToolTip="{Binding Help}" />
-                <Border Grid.Column="1" Padding="10,7" CornerRadius="4" HorizontalAlignment="Stretch"
-                        Background="#EEF5FF" BorderBrush="#8FB4F5" BorderThickness="1.5"
-                        AllowDrop="True" DragEnter="OnAssetDragOver" DragOver="OnAssetDragOver" Drop="OnAssetDrop">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False">
-                                    <Setter Property="Opacity" Value="0.55" />
-                                </DataTrigger>
-                                <DataTrigger Binding="{Binding HasFile}" Value="True">
-                                    <Setter Property="Background" Value="#E6F4EC" />
-                                    <Setter Property="BorderBrush" Value="#6FC79A" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
-                    <DockPanel>
-                        <Button DockPanel.Dock="Right" Content="×" Command="{Binding ClearCommand}" ToolTip="参照を外す（ファイルは残る）"
-                                FontSize="11" Padding="6,0" Margin="8,0,0,0" BorderThickness="0" Background="Transparent" Cursor="Hand"
-                                VerticalAlignment="Center"
-                                IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                Visibility="{Binding HasFile, Converter={StaticResource BoolToVisibilityConverter}}" />
-                        <StackPanel>
-                            <TextBlock FontSize="11.5" Foreground="#1E4A99" FontWeight="SemiBold" TextWrapping="Wrap">
-                                <Run Text="⤓ " /><Run Text="{Binding DropHint, Mode=OneWay}" />
-                            </TextBlock>
-                            <TextBlock Text="{Binding StatusText}" FontSize="10.5" Foreground="#444444" Margin="0,3,0,0" />
-                            <TextBlock Text="{Binding DropMessage}" FontSize="10.5" Foreground="#666666" TextWrapping="Wrap" Margin="0,2,0,0"
-                                       Visibility="{Binding DropMessage, Converter={StaticResource NullToCollapsedConverter}}" />
-                        </StackPanel>
-                    </DockPanel>
-                </Border>
-                <ContentControl Grid.Column="2" Content="{Binding}" ContentTemplate="{StaticResource KindBadge}" VerticalAlignment="Top"
-                                Visibility="{Binding HasTarget, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,4">
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Label}" Style="{StaticResource ItemLabel}" ToolTip="{Binding Help}" />
+                    <ContentControl DockPanel.Dock="Right" Content="{Binding}" ContentTemplate="{StaticResource KindBadge}"
+                                    Visibility="{Binding HasTarget, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    <Button DockPanel.Dock="Right" Content="× 参照を外す" Command="{Binding ClearCommand}" ToolTip="参照を外す（ファイルは残る）"
+                            Padding="8,2" FontSize="11" Margin="0,0,8,0" Cursor="Hand"
+                            IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            Visibility="{Binding HasFile, Converter={StaticResource BoolToVisibilityConverter}}" />
+                </DockPanel>
+                <!-- 1 ファイルのドロップ枠（配置済みは緑） -->
+                <Grid Grid.Row="1" Style="{StaticResource DropZone}"
+                      AllowDrop="True" DragEnter="OnAssetDragOver" DragOver="OnAssetDragOver" DragLeave="OnAssetDragLeave" Drop="OnAssetDrop">
+                    <Rectangle Style="{StaticResource DropZoneRectFile}" />
+                    <StackPanel VerticalAlignment="Center" Margin="20,14">
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource DropZoneIcon}">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasFile}" Value="True">
+                                            <Setter Property="Text"       Value="✓" />
+                                            <Setter Property="Foreground" Value="#1E7F4F" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock>
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource DropZoneTitle}">
+                                    <Setter Property="Text" Value="ここへファイルをドラッグ＆ドロップ" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding HasFile}" Value="True">
+                                            <Setter Property="Text"       Value="配置済み（ドロップで差し替え）" />
+                                            <Setter Property="Foreground" Value="#1E7F4F" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Style="{StaticResource DropZoneHint}" Text="{Binding DropHint, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource DropZoneNote}" Text="{Binding StatusText}" FontWeight="SemiBold" />
+                        <TextBlock Style="{StaticResource DropZoneNote}" Text="{Binding DropMessage}" Foreground="#666666"
+                                   Visibility="{Binding DropMessage, Converter={StaticResource NullToCollapsedConverter}}" />
+                    </StackPanel>
+                </Grid>
             </Grid>
         </DataTemplate>
 
@@ -260,9 +342,6 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <TextBlock Text="{Binding Note}" FontSize="10.5" Foreground="#666666" VerticalAlignment="Center" Margin="10,0,0,0"
-                                   TextWrapping="Wrap" MaxWidth="520"
-                                   Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibilityConverter}}" />
                     </StackPanel>
                     <TextBlock Text="{Binding Status}" FontSize="11" Foreground="#333333" TextWrapping="Wrap" Margin="0,4,0,0"
                                Visibility="{Binding Status, Converter={StaticResource NullToCollapsedConverter}}" />
@@ -345,28 +424,19 @@
                             Padding="8,2" FontSize="11" Margin="0,0,6,0" Cursor="Hand"
                             IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                 </DockPanel>
-                <!-- 資材のドロップ枠（テンプレートに drop 設定がある表だけ） -->
-                <Border Grid.Row="1" Margin="0,0,0,6" Padding="10,7" CornerRadius="4"
-                        Background="#EEF5FF" BorderBrush="#8FB4F5" BorderThickness="1.5"
-                        AllowDrop="True" DragEnter="OnAssetDragOver" DragOver="OnAssetDragOver" Drop="OnAssetDrop"
-                        Visibility="{Binding HasDrop, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" Value="False">
-                                    <Setter Property="Opacity" Value="0.55" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
-                    <StackPanel>
-                        <TextBlock FontSize="11.5" Foreground="#1E4A99" FontWeight="SemiBold" TextWrapping="Wrap">
-                            <Run Text="⤓ " /><Run Text="{Binding DropHint, Mode=OneWay}" />
-                        </TextBlock>
-                        <TextBlock Text="{Binding DropMessage}" FontSize="10.5" Foreground="#444444" TextWrapping="Wrap" Margin="0,3,0,0"
+                <!-- 資材のドロップ枠（テンプレートに drop 設定がある表だけ。表そのものもドロップを受ける） -->
+                <Grid Grid.Row="1" Style="{StaticResource DropZone}"
+                      AllowDrop="True" DragEnter="OnAssetDragOver" DragOver="OnAssetDragOver" DragLeave="OnAssetDragLeave" Drop="OnAssetDrop"
+                      Visibility="{Binding HasDrop, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Rectangle Style="{StaticResource DropZoneRectTable}" />
+                    <StackPanel VerticalAlignment="Center" Margin="20,14">
+                        <TextBlock Style="{StaticResource DropZoneIcon}" />
+                        <TextBlock Style="{StaticResource DropZoneTitle}" Text="ここへドラッグ＆ドロップ" />
+                        <TextBlock Style="{StaticResource DropZoneHint}" Text="{Binding DropHint, Mode=OneWay}" />
+                        <TextBlock Style="{StaticResource DropZoneNote}" Text="{Binding DropMessage}"
                                    Visibility="{Binding DropMessage, Converter={StaticResource NullToCollapsedConverter}}" />
                     </StackPanel>
-                </Border>
+                </Grid>
                 <DataGrid Grid.Row="2"
                           AllowDrop="True" DragEnter="OnAssetDragOver" DragOver="OnAssetDragOver" Drop="OnAssetDrop"
                           ItemsSource="{Binding Table.DefaultView}"
@@ -602,12 +672,6 @@
                     <StackPanel>
                         <DockPanel LastChildFill="False">
                             <TextBlock DockPanel.Dock="Left" Text="{Binding Title}" FontSize="17" FontWeight="Bold" Foreground="White" VerticalAlignment="Center" />
-                            <Border DockPanel.Dock="Right" Background="#FFFFFF" CornerRadius="3" Padding="8,2" VerticalAlignment="Center" Opacity="0.9"
-                                    Visibility="{Binding HasGroup, Converter={StaticResource BoolToVisibilityConverter}}">
-                                <TextBlock FontSize="10.5" Foreground="#2B4C7E">
-                                    <Run Text="Group:" /><Run Text="{Binding Group, Mode=OneWay}" />
-                                </TextBlock>
-                            </Border>
                             <Border DockPanel.Dock="Right" Background="#FFD37A" CornerRadius="9" Padding="8,1" Margin="0,0,8,0" VerticalAlignment="Center"
                                     Visibility="{Binding HasModified, Converter={StaticResource BoolToVisibilityConverter}}">
                                 <TextBlock FontSize="10.5" Foreground="#5A3E00" FontWeight="SemiBold">
@@ -615,8 +679,6 @@
                                 </TextBlock>
                             </Border>
                         </DockPanel>
-                        <TextBlock Text="{Binding Description}" FontSize="11.5" Foreground="#DCE6F5" TextWrapping="Wrap" Margin="0,8,0,0"
-                                   Visibility="{Binding HasDescription, Converter={StaticResource BoolToVisibilityConverter}}" />
                     </StackPanel>
                 </Border>
                 <ItemsControl ItemsSource="{Binding Blocks}" />
@@ -663,8 +725,6 @@
             <StackPanel>
                 <DockPanel LastChildFill="False">
                     <TextBlock DockPanel.Dock="Left" Text="🧭 マスタ設計" FontSize="18" FontWeight="Bold" Foreground="#2D2D30" VerticalAlignment="Center" />
-                    <TextBlock DockPanel.Dock="Left" Text="ヒアリングの回答から、案件用のマスタキッティングプロファイルとモジュール CSV 行を生成します"
-                               FontSize="11" Foreground="#888888" VerticalAlignment="Center" Margin="14,0,0,0" />
 
                     <!-- 右: ロック / 保存 / プレビュー -->
                     <ToggleButton DockPanel.Dock="Right" IsChecked="{Binding IsLocked}" Padding="10,4" FontSize="12" Cursor="Hand">
@@ -679,11 +739,17 @@
                             </Style>
                         </ToggleButton.Style>
                     </ToggleButton>
-                    <Button DockPanel.Dock="Right" Content="🧭 プレビュー／生成" Command="{Binding PreviewCommand}"
+                    <Button DockPanel.Dock="Right" Content="▶ 生成" Command="{Binding PreviewCommand}"
                             Padding="14,5" FontSize="12" Background="#107C10" Foreground="White" BorderThickness="0" Cursor="Hand" Margin="0,0,8,0"
                             ToolTip="計画を確認してから書き込みます（回答は先に保存されます）" />
                     <Button DockPanel.Dock="Right" Content="💾 回答を保存" Command="{Binding SaveCommand}"
                             Padding="14,5" FontSize="12" Background="#007ACC" Foreground="White" BorderThickness="0" Cursor="Hand" Margin="0,0,8,0" />
+                    <Button DockPanel.Dock="Right" Content="📄 パラメータシート" Command="{Binding ExportParameterSheetCommand}"
+                            Padding="12,5" FontSize="12" Cursor="Hand" Margin="0,0,8,0"
+                            ToolTip="お客様提出用の設定パラメータシート（Excel）を保存して開きます" />
+                    <Button DockPanel.Dock="Right" Content="☑ チェックリスト" Command="{Binding ExportChecklistCommand}"
+                            Padding="12,5" FontSize="12" Cursor="Hand" Margin="0,0,8,0"
+                            ToolTip="全項目の確認チェックリスト（HTML。チェック状態はブラウザーに保存）を保存して開きます" />
                     <TextBlock DockPanel.Dock="Right" Text="{Binding StatusMessage}" Foreground="#107C10" FontSize="12" VerticalAlignment="Center" Margin="0,0,12,0"
                                Visibility="{Binding StatusMessage, Converter={StaticResource NullToCollapsedConverter}}" />
                     <TextBlock DockPanel.Dock="Right" Text="{Binding ErrorMessage}" Foreground="Red" FontSize="12" VerticalAlignment="Center" Margin="0,0,12,0"
@@ -707,7 +773,7 @@
                         </StackPanel>
                     </StackPanel>
                     <StackPanel Margin="0,0,14,0">
-                        <TextBlock Text="マスタ名（= Segment / プロファイル名、半角英数字・_・-）" Style="{StaticResource HeaderLabel}" />
+                        <TextBlock Text="マスタ名" Style="{StaticResource HeaderLabel}" ToolTip="半角英数字・_・-。Segment 値とプロファイル名になります" />
                         <TextBox Text="{Binding MasterName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Width="220"
                                  IsEnabled="{Binding IsEditable}" FontFamily="Consolas">
                             <TextBox.Style>
@@ -753,14 +819,14 @@
                 <ColumnDefinition Width="220" />
                 <ColumnDefinition Width="10" />
                 <ColumnDefinition Width="*" MinWidth="480" />
-                <ColumnDefinition Width="10" />
-                <ColumnDefinition Width="320" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <!-- 左: 章レール -->
             <Border Grid.Column="0" Style="{StaticResource SectionBorderStyle}" Margin="0" Padding="6">
                 <DockPanel>
-                    <TextBlock DockPanel.Dock="Top" Text="章（ヒアリングシートの章立て）" Style="{StaticResource SectionHeaderStyle}" FontSize="11.5" Margin="8,4,0,6" />
+                    <TextBlock DockPanel.Dock="Top" Text="章" Style="{StaticResource SectionHeaderStyle}" FontSize="11.5" Margin="8,4,0,6" />
                     <ListBox ItemsSource="{Binding Sections}" SelectedItem="{Binding SelectedSection, Mode=TwoWay}"
                              BorderThickness="0" Background="Transparent" FontSize="12"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
@@ -822,8 +888,45 @@
                 </Border>
             </Grid>
 
+            <!-- 右: プレビューの開閉ハンドル（既定は閉じる。閉じている間はエラー／警告の要点だけ出す） -->
+            <Button Grid.Column="3" Command="{Binding TogglePreviewCommand}" Margin="8,0,0,0" Padding="5,10" Cursor="Hand"
+                    Background="#EEF3FA" BorderBrush="#D9E1EC" BorderThickness="1" VerticalAlignment="Stretch" VerticalContentAlignment="Top"
+                    ToolTip="生成プレビュー（プロファイルの行・書き込み先・警告）を開く／閉じる">
+                <StackPanel>
+                    <TextBlock HorizontalAlignment="Center" FontSize="13" Foreground="#2B4C7E">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="◀" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsPreviewVisible}" Value="True">
+                                        <Setter Property="Text" Value="▶" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="{Binding PreviewBadge}" FontSize="10.5" FontWeight="SemiBold" Foreground="#C04040" HorizontalAlignment="Center" Margin="0,8,0,0">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding PreviewBadge}" Value="">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                    <TextBlock Text="プレビュー" FontSize="11" Foreground="#2B4C7E" HorizontalAlignment="Center" Margin="0,10,0,0">
+                        <TextBlock.LayoutTransform>
+                            <RotateTransform Angle="90" />
+                        </TextBlock.LayoutTransform>
+                    </TextBlock>
+                </StackPanel>
+            </Button>
+
             <!-- 右: 生成プレビュー -->
-            <Border Grid.Column="4" Style="{StaticResource SectionBorderStyle}" Margin="0" Padding="10">
+            <Border Grid.Column="4" Style="{StaticResource SectionBorderStyle}" Width="320" Margin="8,0,0,0" Padding="10"
+                    Visibility="{Binding IsPreviewVisible, Converter={StaticResource BoolToVisibilityConverter}}">
                 <DockPanel>
                     <TextBlock DockPanel.Dock="Top" Text="生成プレビュー" Style="{StaticResource SectionHeaderStyle}" Margin="0,0,0,2" />
                     <TextBlock DockPanel.Dock="Top" Text="{Binding PreviewSummary}" FontSize="10.5" Foreground="#666666" Margin="0,0,0,6" TextWrapping="Wrap" />

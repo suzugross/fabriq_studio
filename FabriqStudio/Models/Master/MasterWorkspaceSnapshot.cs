@@ -64,5 +64,8 @@ public sealed class MasterCsvInfo
     /// <summary>AdminID 列の値 → 行数（hostlist.csv の仮ホスト名行の隔離に使う）。</summary>
     public Dictionary<string, int> AdminIdCounts { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>AdminID 列の値 → その最初の行（列名 → 値）。hostlist.csv で端末の行を上書きしないための判定に使う。</summary>
+    public Dictionary<string, Dictionary<string, string>> RowsByAdminId { get; } = new(StringComparer.Ordinal);
+
     public int RowCount { get; set; }
 }

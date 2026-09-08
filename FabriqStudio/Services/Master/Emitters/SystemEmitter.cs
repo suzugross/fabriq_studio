@@ -97,7 +97,7 @@ public sealed class SystemEmitter : IMasterEmitter
             if (hour is null or < 0 or > 23)
                 ctx.Error("Windows Update のインストール時刻は 0〜23 の整数で指定してください。", "wu_install_time");
             else
-                ctx.AddRegistry(DictWuScheduledTime, hour.Value.ToString(), ctx.Label("wu_mode"));
+                ctx.AddRegistry(DictWuScheduledTime, hour.Value.ToString(), ctx.Label("wu_mode"), itemId: "wu_install_time");
         }
 
         if (ctx.IsTrue("wu_active_enabled"))
@@ -115,9 +115,9 @@ public sealed class SystemEmitter : IMasterEmitter
                 ctx.Error("アクティブ時間は 18 時間以内にしてください（Windows の制限）。", "wu_active_end");
                 return;
             }
-            ctx.AddRegistry(DictWuSetActiveHours,   "1",                    "アクティブ時間");
-            ctx.AddRegistry(DictWuActiveHoursStart, start.Value.ToString(), "アクティブ時間");
-            ctx.AddRegistry(DictWuActiveHoursEnd,   end.Value.ToString(),   "アクティブ時間");
+            ctx.AddRegistry(DictWuSetActiveHours,   "1",                    "アクティブ時間", itemId: "wu_active_enabled");
+            ctx.AddRegistry(DictWuActiveHoursStart, start.Value.ToString(), "アクティブ時間", itemId: "wu_active_start");
+            ctx.AddRegistry(DictWuActiveHoursEnd,   end.Value.ToString(),   "アクティブ時間", itemId: "wu_active_end");
         }
     }
 
@@ -185,9 +185,9 @@ public sealed class SystemEmitter : IMasterEmitter
             return;
         }
 
-        ctx.AddRegistry(DictScreenSaveActive,  "1",                              "スクリーンセーバー");
-        ctx.AddRegistry(DictScreenSaveTimeOut, (minutes.Value * 60).ToString(),  "スクリーンセーバー");
-        ctx.AddRegistry(DictScreenSaverSecure, ctx.IsTrue("ss_secure") ? "1" : "0", "スクリーンセーバー");
+        ctx.AddRegistry(DictScreenSaveActive,  "1",                              "スクリーンセーバー", itemId: "ss_enabled");
+        ctx.AddRegistry(DictScreenSaveTimeOut, (minutes.Value * 60).ToString(),  "スクリーンセーバー", itemId: "ss_wait_min");
+        ctx.AddRegistry(DictScreenSaverSecure, ctx.IsTrue("ss_secure") ? "1" : "0", "スクリーンセーバー", itemId: "ss_secure");
     }
 
     private static void EmitVolume(MasterContext ctx)
@@ -267,7 +267,7 @@ public sealed class SystemEmitter : IMasterEmitter
     {
         var pac = ctx.Get("proxy_pac").Trim();
         if (!string.IsNullOrEmpty(pac))
-            ctx.AddRegistry(DictProxyAutoConfigUrl, pac, "プロキシ");
+            ctx.AddRegistry(DictProxyAutoConfigUrl, pac, "プロキシ", itemId: "proxy_pac");
 
         if (!ctx.IsTrue("proxy_enabled")) return;
 
@@ -285,10 +285,10 @@ public sealed class SystemEmitter : IMasterEmitter
             .ToList();
         if (ctx.IsTrue("proxy_bypass_local") && !exceptions.Contains("<local>")) exceptions.Add("<local>");
 
-        ctx.AddRegistry(DictProxyEnable, "1", "プロキシ");
-        ctx.AddRegistry(DictProxyServer, serverValue, "プロキシ");
+        ctx.AddRegistry(DictProxyEnable, "1", "プロキシ", itemId: "proxy_enabled");
+        ctx.AddRegistry(DictProxyServer, serverValue, "プロキシ", itemId: "proxy_server");
         if (exceptions.Count > 0)
-            ctx.AddRegistry(DictProxyOverride, string.Join(";", exceptions), "プロキシ");
+            ctx.AddRegistry(DictProxyOverride, string.Join(";", exceptions), "プロキシ", itemId: "proxy_exceptions");
     }
 
     private static void EmitSmb1(MasterContext ctx)

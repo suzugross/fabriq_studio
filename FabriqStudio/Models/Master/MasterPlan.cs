@@ -29,6 +29,9 @@ public sealed class MasterPlan
     public List<PlanFileSummary>  FileSummaries { get; } = [];
 
     public bool HasErrors => Messages.Any(m => m.Severity == PlanSeverity.Error);
+
+    /// <summary>仮ホスト名の行に使う hostlist.csv の管理番号（数字）。生成後に回答の master_admin_id へ記録する。</summary>
+    public string? HostAdminId { get; set; }
 }
 
 public enum PlanSeverity { Info, Warning, Error }
@@ -49,7 +52,7 @@ public sealed class PlanMessage
 
 /// <summary>
 /// 隔離方式。Segment 列があれば Segment、無ければ Description のタグ。
-/// hostlist.csv は AdminID（管理番号）= マスタ名 で隔離する。
+/// hostlist.csv は AdminID（管理番号、数字）で隔離する（<see cref="PlanCsvRows.AdminIdKey"/>。旧版が書いた AdminID = マスタ名 の行も取り除く）。
 /// </summary>
 public enum PlanIsolation { Segment, DescriptionTag, AdminId, None }
 
@@ -66,11 +69,16 @@ public sealed class PlanCsvRows
     public List<Dictionary<string, string>> Rows { get; } = [];
     /// <summary>既存ファイル中の、同じマスタが以前に書いた行数（置換される行数）。</summary>
     public int ExistingIsolatedRows { get; set; }
+
+    /// <summary>AdminId 方式で、このマスタが所有する数字の管理番号（hostlist.csv の仮ホスト名行）。null = 旧版の AdminID = マスタ名 の行だけを対象にする。</summary>
+    public string? AdminIdKey { get; init; }
 }
 
 public sealed class PlanRegistryRow
 {
     public string SettingTitle { get; init; } = "";
+    /// <summary>この行を出したテンプレート項目の ID（帳票用。無ければ空）。</summary>
+    public string ItemId       { get; init; } = "";
     public string KeyPath      { get; init; } = "";
     public string KeyName      { get; init; } = "";
     public string Type         { get; init; } = "";

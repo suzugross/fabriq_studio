@@ -45,6 +45,8 @@ public sealed class RegistryRequest
     public string SettingTitle { get; init; } = "";
     /// <summary>副セグメント（null = 通常のマスタ行。"temp" = マスタ作成中だけの一時ポリシー）。</summary>
     public string? SubSegment  { get; init; }
+    /// <summary>この行を出したテンプレート項目の ID（帳票で「実際に書いたレジストリ」を項目に結び付ける）。</summary>
+    public string? ItemId      { get; init; }
 }
 
 /// <summary>
@@ -288,7 +290,7 @@ public sealed class MasterContext
     /// kernel/csv/hostlist.csv に 1 行追加する（AdminID = マスタ名 で隔離。マスタ作成時の仮ホスト名用）。
     /// hostlist が無ければ Error。
     /// </summary>
-    public void AddHostlistRow(Dictionary<string, string> row)
+    public void AddHostlistRow(Dictionary<string, string> row, string adminId)
     {
         var host = Snapshot.Hostlist;
         if (host is null || host.Headers.Count == 0)
@@ -308,14 +310,16 @@ public sealed class MasterContext
                 RelPath   = Resolver.ToRelative(host.AbsPath),
                 Isolation = PlanIsolation.AdminId,
                 Tag       = Tag,
-                ExistingIsolatedRows = host.AdminIdCounts.GetValueOrDefault(MasterName),
+                AdminIdKey = adminId,
+                // 旧版が書いた AdminID = マスタ名 の行と、この管理番号の行を置き換える
+                ExistingIsolatedRows = host.AdminIdCounts.GetValueOrDefault(MasterName) + host.AdminIdCounts.GetValueOrDefault(adminId),
             };
             Plan.CsvOps.Add(op);
         }
 
         var normalized = new Dictionary<string, string>(row, StringComparer.OrdinalIgnoreCase)
         {
-            ["AdminID"] = MasterName,
+            ["AdminID"] = adminId,
         };
         foreach (var key in normalized.Keys.ToList())
         {
@@ -346,7 +350,7 @@ public sealed class MasterContext
     /// レジストリ辞書のエントリを 1 行追加する。<paramref name="valueOverride"/> が非 null ならその値で上書き。
     /// 同じ KeyPath + KeyName は後勝ちで 1 行にまとめる（選択肢の値上書きが確実に効くように）。
     /// </summary>
-    public void AddRegistry(string dictId, string? valueOverride, string? sourceLabel, string? subSegment = null)
+    public void AddRegistry(string dictId, string? valueOverride, string? sourceLabel, string? subSegment = null, string? itemId = null)
     {
         if (!_dictionary.TryGetValue(dictId, out var entry))
         {
@@ -363,7 +367,7 @@ public sealed class MasterContext
             r.Entry.KeyPath.Equals(entry.KeyPath, StringComparison.OrdinalIgnoreCase) &&
             r.Entry.KeyName.Equals(entry.KeyName, StringComparison.OrdinalIgnoreCase));
 
-        RegistryRequests.Add(new RegistryRequest { Entry = entry, Value = value, SettingTitle = title, SubSegment = subSegment });
+        RegistryRequests.Add(new RegistryRequest { Entry = entry, Value = value, SettingTitle = title, SubSegment = subSegment, ItemId = itemId });
     }
 
     /// <summary>

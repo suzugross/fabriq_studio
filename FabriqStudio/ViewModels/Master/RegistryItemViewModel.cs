@@ -107,7 +107,7 @@ public sealed partial class RegistryItemViewModel : MasterItemViewModel
     {
         if (Entries.Count == 0)
         {
-            Summary = "まだ設定がありません。「辞書から追加」で検索して追加してください。";
+            Summary = "0 件";
             return;
         }
         var hklm    = Entries.Count(e => e.Hive.Equals("HKLM", StringComparison.OrdinalIgnoreCase));
@@ -116,7 +116,7 @@ public sealed partial class RegistryItemViewModel : MasterItemViewModel
         var changed = Entries.Count(e => e.IsValueChanged);
         Summary = $"{Entries.Count} 件（HKLM {hklm} / HKCU {hkcu}）"
                   + (changed > 0 ? $" / 辞書と違う値 {changed} 件" : "")
-                  + (missing > 0 ? $" / 辞書に無いもの {missing} 件（削除するか選び直してください）" : "");
+                  + (missing > 0 ? $" / 辞書に無いもの {missing} 件" : "");
     }
 
     // ── MasterItemViewModel ──────────────────────────────────────

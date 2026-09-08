@@ -5,7 +5,7 @@ using static FabriqStudio.Services.Master.Emitters.EmitterHelpers;
 namespace FabriqStudio.Services.Master.Emitters;
 
 /// <summary>
-/// 9. アプリケーション: Windows の機能、インストーラ、winget、Office（ODT / ライセンス）。
+/// 9. アプリケーション: Windows の機能、インストーラ、Office（ODT / ライセンス）。winget は 2026-09-08 に撤去（ユーザー要望）。
 /// ストアアプリ（プリインストール アプリ）の削除は対象外。早い段階で消すと復元が難しいため、
 /// 履歴削除・仕上げや Sysprep と同じく既存の sysprep プロファイルで実施する。
 /// </summary>
@@ -17,7 +17,6 @@ public sealed class AppsEmitter : IMasterEmitter
     {
         EmitWindowsFeatures(ctx);
         EmitInstallers(ctx);
-        EmitWinget(ctx);
         EmitOffice(ctx);
     }
 
@@ -106,35 +105,6 @@ public sealed class AppsEmitter : IMasterEmitter
             ctx.AddProfile("app_config", "app_config.ps1", ProfileSlot.Apps, 30 + n, isolated: true,
                 subSegment: sub, description: $"{menu}: {appName}");
         }
-    }
-
-    /// <summary>winget も 1 アプリ = 1 行（マスタ名:winget01:AppId）。</summary>
-    private static void EmitWinget(MasterContext ctx)
-    {
-        var rows = ctx.Table("winget_apps");
-        var menu = ctx.MenuName("winget_install", "winget_install.ps1");
-        var n = 0;
-        foreach (var r in rows)
-        {
-            var id = r.Cell("AppID").Trim();
-            if (string.IsNullOrEmpty(id)) continue;
-
-            n++;
-            var desc  = string.IsNullOrEmpty(r.Cell("Description")) ? id : r.Cell("Description");
-            var token = ToSegmentToken(id);
-            var sub   = string.IsNullOrEmpty(token) ? $"winget{n:00}" : $"winget{n:00}:{token}";
-
-            ctx.AddCsvRow("winget_install", "app_list.csv", Row(
-                ("Enabled", "1"),
-                ("AppID", id),
-                ("Options", r.Cell("Options")),
-                ("Description", desc)), subSegment: sub);
-
-            ctx.AddProfile("winget_install", "winget_install.ps1", ProfileSlot.Apps, 60 + n, isolated: true,
-                subSegment: sub, description: $"{menu}: {desc}");
-        }
-        if (n > 0)
-            ctx.Info("winget によるインストールにはインターネット接続が必要です。閉域環境ではインストーラ（app_config）を使ってください。");
     }
 
     // ── ODT（Office Deployment Tool）────────────────────────────────────

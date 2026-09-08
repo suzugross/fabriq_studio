@@ -119,13 +119,13 @@ public sealed partial class GpoItemViewModel : MasterItemViewModel
     {
         if (Policies.Count == 0)
         {
-            Summary = "まだポリシーがありません。「辞書から追加」で検索して追加してください。";
+            Summary = "0 件";
             return;
         }
         var rows    = Policies.Sum(p => p.RowCount);
         var missing = Policies.Count(p => p.IsMissing);
-        Summary = $"{Policies.Count} 件のポリシー / gpo_list.csv に {rows} 行"
-                  + (missing > 0 ? $" / 辞書に無いもの {missing} 件（ADMX の版差。編集で選び直してください）" : "");
+        Summary = $"{Policies.Count} 件（{rows} 行）"
+                  + (missing > 0 ? $" / 辞書に無いもの {missing} 件" : "");
     }
 
     // ── MasterItemViewModel ──────────────────────────────────────

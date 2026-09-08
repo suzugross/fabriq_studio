@@ -24,7 +24,7 @@ public sealed class RegistryTemplateEmitter : IMasterEmitter
                     var choice = ctx.SelectedChoice(item.Id);
                     if (choice?.Registry is null) break;
                     foreach (var r in choice.Registry)
-                        ctx.AddRegistry(r.Id, r.Value, item.Label);
+                        ctx.AddRegistry(r.Id, r.Value, item.Label, itemId: item.Id);
                     break;
                 }
                 case MasterItemTypes.Bool:
@@ -32,7 +32,7 @@ public sealed class RegistryTemplateEmitter : IMasterEmitter
                     var list = ctx.IsTrue(item.Id) ? item.RegistryTrue : item.RegistryFalse;
                     if (list is null) break;
                     foreach (var r in list)
-                        ctx.AddRegistry(r.Id, r.Value, item.Label);
+                        ctx.AddRegistry(r.Id, r.Value, item.Label, itemId: item.Id);
                     break;
                 }
                 case MasterItemTypes.Multi:
@@ -43,7 +43,7 @@ public sealed class RegistryTemplateEmitter : IMasterEmitter
                     {
                         if (opt.Registry is null || !selected.Contains(opt.Value)) continue;
                         foreach (var r in opt.Registry)
-                            ctx.AddRegistry(r.Id, r.Value, opt.Label);
+                            ctx.AddRegistry(r.Id, r.Value, opt.Label, itemId: item.Id);
                     }
                     break;
                 }
