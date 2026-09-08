@@ -45,7 +45,7 @@
       "id": "pcname",
       "title": "4. コンピューター名設定",
       "group": "Base",
-      "description": "納品端末のコンピューター名と IP は端末ごとの値のため、端末一覧（kernel/csv/hostlist.csv）で管理し、配備プロファイルで適用します。ここではマスタ作成中に使う仮のコンピューター名を指定します。",
+      "description": "納品端末のコンピューター名と IP は端末ごとの値のため、端末一覧（kernel/csv/hostlist.csv）で管理します（マスタ設計の対象外）。ここではマスタ作成中に使う仮のコンピューター名を指定します。",
       "items": [
         { "id": "master_hostname", "type": "text", "label": "マスタ作成時の仮コンピューター名", "target": "hostlist.csv（管理番号 = マスタ名）+ hostname_config", "kind": "module", "placeholder": "例: MASTER01（半角英数字とハイフン、15 文字以内。空欄 = 変更しない）", "help": "hostlist.csv に管理番号＝マスタ名の行として書き込みます。Fabriq 起動時のホスト選択でその行を選ぶと hostname_config が適用します。", "subgroup": "マスタ作成時の仮ホスト名" }
       ]
@@ -54,7 +54,7 @@
       "id": "network",
       "title": "5. ネットワーク設定（イーサネット・Wi-Fi）",
       "group": "Base",
-      "description": "IPv4 アドレス・サブネット・ゲートウェイ・DNS は端末一覧（hostlist.csv）の値が ipaddress_config で適用されます。",
+      "description": "IPv4 アドレス・サブネット・ゲートウェイ・DNS は端末ごとの値のため端末一覧（hostlist.csv）で管理します（マスタ設計の対象外）。",
       "items": [
         { "id": "ipv6", "type": "choice", "label": "IP アドレス（v6）", "default": "1", "target": "ipv6_config", "kind": "module", "subgroup": "IPv6",
           "options": [ { "value": "1", "label": "有効（既定）" }, { "value": "0", "label": "無効（有線・無線とも）" } ] },
@@ -159,6 +159,18 @@
           "options": [ { "value": "", "label": "変更しない" }, { "value": "100", "label": "100%" }, { "value": "125", "label": "125%" }, { "value": "150", "label": "150%" }, { "value": "175", "label": "175%" } ] },
         { "id": "legacy_printer", "type": "choice", "label": "Windows で通常使うプリンターを管理する", "default": "0", "target": "辞書 LegacyDefaultPrinterMode", "kind": "dict", "subgroup": "プリンター",
           "options": [ { "value": "0", "label": "有効（既定）" }, { "value": "1", "label": "無効（推奨）", "registry": [ { "id": "000000cf", "value": "1" } ] } ] },
+        {"id": "printer_mode", "type": "choice", "label": "プリンターの登録", "default": "driver", "target": "printer_driver_config", "kind": "module", "subgroup": "プリンター", "help": "ドライバーは printer_driver_install（INF を Driver Store へ登録）で入れます。プリンターも作成する場合は printer_config が TCP/IP ポートとプリンターを作ります（一覧のプリンター名とポート IP が必要）。案件で決めます。", "options": [{"value": "driver", "label": "ドライバーのみ登録する（プリンターは作らない）"}, {"value": "printer", "label": "ドライバーを登録し、プリンター（ポート IP 付き）も作成する"}]},
+        { "id": "printers", "type": "table", "label": "プリンター ドライバー／プリンター一覧", "target": "printer_driver_config", "kind": "module", "subgroup": "プリンター",
+          "drop": { "module": "printer_driver_config", "subDir": "INF", "extensions": [".exe", ".zip", ".inf"], "folders": true, "kind": "printerDriver",
+                    "driverColumn": "DriverName", "descriptionColumn": "Description",
+                    "hint": "ドライバーのフォルダー（INF 一式）または EXE / ZIP をここへドロップ → printer_driver_config/INF/ に配置（INF からモデル名を検出して行を追加）。プリンターも作成する場合はプリンター名とポート IP を記入" },
+          "columns": [
+            { "name": "PrinterName", "label": "プリンター名（プリンターも作成する場合）" },
+            { "name": "DriverName", "label": "ドライバ／モデル（INF の DriverName）" },
+            { "name": "PortAddress", "label": "ポート IP（プリンターも作成する場合）" },
+            { "name": "IsDefault", "label": "既定プリンター（手動作業に出す）", "options": ["1", "0"], "default": "0" },
+            { "name": "Description", "label": "備考" }
+          ] },
         { "id": "proxy_pac", "type": "text", "label": "自動構成スクリプト（PAC）の URL", "target": "辞書 AutoConfigURL", "kind": "dict", "placeholder": "例: http://proxy.example.local/proxy.pac（空欄 = 設定しない）", "subgroup": "プロキシサーバー" },
         { "id": "proxy_enabled", "type": "bool", "label": "LAN にプロキシサーバーを使用する", "default": "0", "target": "辞書 3 件", "kind": "dict", "subgroup": "プロキシサーバー" },
         { "id": "proxy_server", "type": "text", "label": "アドレス", "visibleWhen": { "item": "proxy_enabled", "values": ["1"] }, "placeholder": "例: proxy.example.local", "subgroup": "プロキシサーバー" },
@@ -191,8 +203,17 @@
       ]
     },
     {
+      "id": "registry",
+      "title": "7-3. レジストリ追加（辞書から選択）",
+      "group": "Registry",
+      "description": "レジストリ辞書（registry_collection/catalog.json、「レジストリ辞書」画面で管理）から設定を検索して追加します。追加した行は他の章のレジストリ設定と一緒に reg_hklm_list_<マスタ名>.csv / reg_hkcu_list_<マスタ名>.csv に書かれ、reg_hklm_config / reg_hkcu_config で適用されます（HKCU は既定のプロファイルにも書かれ、新規ユーザーにも反映）。他の章と同じ値を別の内容で設定した場合はこちらを優先し、プレビューで警告します。Software\\Policies 配下はグループポリシー章と二重管理しないでください。",
+      "items": [
+        {"id": "registry_entries", "type": "registry", "label": "追加するレジストリ設定", "help": "「辞書から追加」で検索して選びます。値は行ごとに変更でき、↺ で辞書の値に戻せます。辞書に無い設定は「レジストリ辞書」画面で登録してから追加してください。", "target": "reg_hklm_config / reg_hkcu_config", "kind": "dict"}
+      ]
+    },
+    {
       "id": "ui",
-      "title": "8. インターフェース関連設定",
+      "title": "8. レイアウト関連設定",
       "group": "Desktop / Registry",
       "items": [
         { "id": "desk_icon_pc", "type": "bool", "label": "デスクトップに PC アイコンを表示する", "default": "0", "target": "辞書", "kind": "dict", "registryTrue": [ { "id": "000000c8", "value": "0" } ], "subgroup": "デスクトップ" },
@@ -201,10 +222,11 @@
           "drop": { "module": "copyfile_config", "subDir": "source", "extensions": [".lnk", ".url"], "kind": "shortcut", "fileColumn": "FileName", "descriptionColumn": "Description",
                     "hint": "ショートカット（.lnk / .url）をここへドロップ → copyfile_config/source/ に配置して行を追加" },
           "columns": [ { "name": "FileName", "label": "ファイル名（source/ 内）" }, { "name": "Description", "label": "説明" } ] },
-        { "id": "wallpaper", "type": "choice", "label": "壁紙", "default": "spotlight", "target": "wallpaper_config", "kind": "module", "subgroup": "壁紙",
-          "options": [ { "value": "spotlight", "label": "Spotlight（既定・変更しない）" }, { "value": "default", "label": "デフォルト（変更しない）" }, { "value": "custom", "label": "その他指定（画像ファイル）" } ] },
+        { "id": "wallpaper", "type": "choice", "label": "壁紙", "default": "spotlight", "target": "wallpaper_config + 辞書（Spotlight フラグ）", "kind": "module", "subgroup": "壁紙",
+          "help": "「Windows 既定」と「その他指定」では wallpaper_config で壁紙を固定し、あわせてデスクトップ スポットライトの有効フラグ（HKCU DesktopSpotlight\\Settings\\EnabledState = 0、辞書 000000ce）を reg_hkcu_config で外します（壁紙だけ設定するとフラグはスポットライトのままで、何かの拍子に戻ることがあるため。新規ユーザー用の既定のプロファイルにも書きます）。他の章でこのフラグやスポットライト機能のポリシーを触っている場合はプレビューで警告します。",
+          "options": [ { "value": "spotlight", "label": "変更しない（Windows スポットライト／メーカー既定のまま）" }, { "value": "windows", "label": "Windows 既定の壁紙（青帯）に固定する — C:\\Windows\\Web\\4K\\Wallpaper\\Windows\\img0_1920x1200.jpg", "registry": [ { "id": "000000ce" } ] }, { "value": "custom", "label": "その他指定（画像ファイル）", "registry": [ { "id": "000000ce" } ] } ] },
         { "id": "wallpaper_file", "type": "text", "label": "画像ファイル名（wallpaper_config/wallpaper/ 内、または絶対パス）", "visibleWhen": { "item": "wallpaper", "values": ["custom"] }, "placeholder": "例: company.jpg", "subgroup": "壁紙" },
-        { "id": "wallpaper_style", "type": "choice", "label": "表示スタイル", "default": "Fill", "visibleWhen": { "item": "wallpaper", "values": ["custom"] }, "subgroup": "壁紙",
+        { "id": "wallpaper_style", "type": "choice", "label": "表示スタイル", "default": "Fill", "visibleWhen": { "item": "wallpaper", "values": ["custom", "windows"] }, "subgroup": "壁紙",
           "options": [ { "value": "Fill", "label": "Fill（ページ幅に合わせる）" }, { "value": "Fit", "label": "Fit" }, { "value": "Stretch", "label": "Stretch" }, { "value": "Tile", "label": "Tile" }, { "value": "Center", "label": "Center" }, { "value": "Span", "label": "Span" } ] },
         { "id": "start_pins", "type": "multiline", "label": "スタートメニューのピン留め（アプリ名を列挙。参照 PC で startlayout_config の Backup が必要）", "target": "手動（startlayout_config）", "kind": "fabriq", "placeholder": "例: Word / Excel / Outlook / 社内ポータル", "subgroup": "スタートメニュー" },
         { "id": "tb_search", "type": "choice", "label": "検索", "default": "", "target": "辞書 SearchboxTaskbarMode", "kind": "dict", "subgroup": "タスクバー",
@@ -220,7 +242,7 @@
         { "id": "tb_widgets", "type": "choice", "label": "ウィジェット", "default": "1", "target": "辞書 2 件", "kind": "dict", "subgroup": "タスクバー",
           "options": [ { "value": "1", "label": "表示（既定）" }, { "value": "0", "label": "非表示", "registry": [ { "id": "00000009", "value": "0" }, { "id": "000000bc", "value": "0" } ] } ] },
         { "id": "taskbar_left", "type": "bool", "label": "タスクバーの配置を左揃えにする", "default": "0", "target": "辞書", "kind": "dict", "registryTrue": [ { "id": "000000dc" } ], "subgroup": "タスクバー" },
-        { "id": "tb_pins_apply", "type": "bool", "label": "タスクバーのピン留めを構成する（新規ユーザーに適用）", "default": "0", "target": "taskbar_config", "kind": "module", "help": "0 件で適用すると既定のピン（Edge 等）も外れます。パッケージアプリ（Teams 等）の AUMID は未対応。", "subgroup": "タスクバーのピン留め" },
+        { "id": "tb_pins_apply", "type": "bool", "label": "タスクバーのピン留めを構成する（新規ユーザーに適用）", "default": "0", "target": "taskbar_config（Sysprep プロファイル）", "kind": "module", "help": "Sysprep プロファイルで実行し、LayoutModification.xml を既定のプロファイルと sysprep_config/source に配置します（SetupComplete が初回起動時に再配置）。Sysprep プロファイルを作らない場合はマスタ プロファイルで実行します。0 件で適用すると既定のピン（Edge 等）も外れます。パッケージアプリ（Teams 等）の AUMID は未対応。", "subgroup": "タスクバーのピン留め" },
         { "id": "tb_pins", "type": "table", "label": "タスクバーにピン留めするアプリ（上から順）", "visibleWhen": { "item": "tb_pins_apply", "values": ["1"] }, "subgroup": "タスクバーのピン留め",
           "columns": [
             { "name": "Kind", "label": "種別", "options": ["AppId", "LinkPath"], "default": "AppId" },
@@ -253,43 +275,9 @@
       "id": "apps",
       "title": "9. アプリケーション関連設定",
       "group": "Apps",
+      "description": "ストアアプリ（プリインストール アプリ）の削除は本画面の対象外です。早い段階で削除すると後から戻すのが難しいため、履歴削除・仕上げや Sysprep と同じく既存の sysprep プロファイルで実施します。",
       "items": [
         { "id": "onedrive_block", "type": "bool", "label": "OneDrive をファイル記憶域として利用できないようにする", "default": "0", "target": "辞書 DisableFileSyncNGSC", "kind": "dict", "registryTrue": [ { "id": "00000010" } ], "subgroup": "OneDrive" },
-        { "id": "storeapps_remove", "type": "multi", "label": "削除するストアアプリ", "target": "storeapp_config", "kind": "module", "allowFree": true, "help": "リストに無いものはパッケージ名（Get-AppxPackage の Name）を入力して追加。", "subgroup": "ストアアプリの削除",
-          "options": [
-            { "value": "Microsoft.XboxApp", "label": "Xbox" },
-            { "value": "Microsoft.GamingApp", "label": "Xbox（Gaming App）" },
-            { "value": "Microsoft.Xbox.TCUI", "label": "Xbox TCUI" },
-            { "value": "Microsoft.XboxGameOverlay", "label": "Xbox Game Bar オーバーレイ" },
-            { "value": "Microsoft.XboxGamingOverlay", "label": "Xbox Game Bar" },
-            { "value": "Microsoft.XboxIdentityProvider", "label": "Xbox Identity Provider" },
-            { "value": "Microsoft.XboxSpeechToTextOverlay", "label": "Xbox Speech To Text" },
-            { "value": "Microsoft.Getstarted", "label": "ヒント" },
-            { "value": "Microsoft.MicrosoftSolitaireCollection", "label": "Solitaire" },
-            { "value": "Microsoft.549981C3F5F10", "label": "Cortana" },
-            { "value": "Microsoft.BingNews", "label": "ニュース" },
-            { "value": "Microsoft.BingWeather", "label": "天気" },
-            { "value": "Microsoft.BingSearch", "label": "Bing 検索" },
-            { "value": "Microsoft.GetHelp", "label": "問い合わせ" },
-            { "value": "Microsoft.MicrosoftOfficeHub", "label": "Office Hub" },
-            { "value": "Microsoft.People", "label": "People" },
-            { "value": "Microsoft.PowerAutomateDesktop", "label": "Power Automate" },
-            { "value": "Microsoft.StorePurchaseApp", "label": "Store Purchase App" },
-            { "value": "Microsoft.Todos", "label": "To Do" },
-            { "value": "Microsoft.WindowsAlarms", "label": "アラーム＆クロック" },
-            { "value": "microsoft.windowscommunicationsapps", "label": "メール／カレンダー" },
-            { "value": "Microsoft.WindowsFeedbackHub", "label": "フィードバック Hub" },
-            { "value": "Microsoft.WindowsMaps", "label": "マップ" },
-            { "value": "Microsoft.YourPhone", "label": "スマートフォン連携" },
-            { "value": "Microsoft.ZuneMusic", "label": "メディアプレーヤー（Groove）" },
-            { "value": "Microsoft.ZuneVideo", "label": "映画＆テレビ" },
-            { "value": "Microsoft.OutlookForWindows", "label": "Outlook (new)" },
-            { "value": "MSTeams", "label": "Microsoft Teams" },
-            { "value": "MicrosoftCorporationII.QuickAssist", "label": "クイック アシスト" },
-            { "value": "Clipchamp.Clipchamp", "label": "Clipchamp" },
-            { "value": "Microsoft.Windows.DevHome", "label": "Dev Home" },
-            { "value": "Microsoft.MicrosoftStickyNotes", "label": "付箋" }
-          ] },
         { "id": "win_features", "type": "multi", "label": "Windows の機能の有効化と無効化", "target": "windows_feature_config", "kind": "module", "allowFree": true, "help": "リストに無いものは DISM の機能名（Get-WindowsOptionalFeature -Online の FeatureName）を入力して追加（有効化として扱います）。", "subgroup": "Windows の機能",
           "options": [
             { "value": "NetFx3", "label": ".NET Framework 3.5 を有効化", "data": { "Action": "Enable", "IncludeAllSubFeatures": "1", "Source": "/payload/dotnetfx35", "LimitAccess": "1" } },
@@ -349,7 +337,7 @@
           ] },
         { "id": "odt_mode", "type": "choice", "label": "インストール方式", "default": "Offline", "visibleWhen": { "item": "office_odt", "values": ["1"] }, "subgroup": "Microsoft Office", "help": "オフラインは odt_config/assets/<製品>/Office/ に事前ダウンロードした資材が必要（setup.exe /download configuration.xml）。",
           "options": [ { "value": "Offline", "label": "オフライン（資材フォルダから）" }, { "value": "Online", "label": "オンライン（Microsoft CDN から）" } ] },
-        { "id": "odt_download", "type": "action", "action": "odtDownload", "label": "オフライン資材（Office\\）のダウンロード", "target": "odt_config/assets/<製品>/Office/", "kind": "module", "visibleWhen": { "item": "odt_mode", "values": ["Offline"] }, "subgroup": "Microsoft Office",
+        { "id": "odt_download", "type": "action", "action": "odtDownload", "buttonLabel": "▶ setup.exe /download を実行", "runningLabel": "⏳ ダウンロード中...", "placeholder": "（setup.exe を配置し、この PC がインターネットに接続している必要があります）", "label": "オフライン資材（Office\\）のダウンロード", "target": "odt_config/assets/<製品>/Office/", "kind": "module", "visibleWhen": { "item": "odt_mode", "values": ["Offline"] }, "subgroup": "Microsoft Office",
           "help": "現在の製品・除外設定で configuration.xml を組み立て、setup.exe /download を実行して製品フォルダ直下に Office\\ を取得します。数 GB を書き込み、数分〜十数分かかります。Studio を閉じてもダウンロードは続きます。" },
         { "id": "odt_xml", "type": "file", "label": "既製の configuration.xml を使う場合（任意）", "visibleWhen": { "item": "office_odt", "values": ["1"] }, "subgroup": "Microsoft Office", "help": "ドロップすると生成せず、そのファイルをそのまま使います（odt_config/assets/custom/）。",
           "drop": { "module": "odt_config", "subDir": "assets\\custom", "extensions": [".xml"], "fixedName": "configuration.xml", "kind": "file", "hint": "既製の configuration.xml をここへドロップ → odt_config/assets/custom/configuration.xml（生成せずにこれを使う）" } },
@@ -370,33 +358,44 @@
       "id": "finalize",
       "title": "B. マスタ仕上げ",
       "group": "Finalize",
-      "description": "__GATE__（前進バリア）の後ろに配置されます。上流に Error / 検証失敗が残っている間、kernel は仕上げの実行を拒否します。Sysprep は本画面の対象外です（既存の sysprep プロファイルを別途使用）。",
+      "description": "__GATE__（前進バリア）の後ろに配置されます。上流に Error / 検証失敗が残っている間、kernel は仕上げの実行を拒否します。履歴・一時ファイルの削除とシェルの仕上げ（directory_cleaner / history_destroyer / system_finalize）、および Sysprep は本画面の対象外です（既存の sysprep プロファイルで実施）。",
       "items": [
         { "id": "bitlocker_disable", "type": "bool", "label": "メーカー既定の BitLocker（デバイス暗号化）を解除する", "default": "1", "target": "bitlocker_config (disable)", "kind": "module", "subgroup": "BitLocker" },
-        { "id": "evidence", "type": "bool", "label": "エビデンスを収集する", "default": "1", "target": "evidence_config", "kind": "module", "subgroup": "エビデンス" },
-        { "id": "cleanup", "type": "bool", "label": "履歴・一時ファイルの削除とシェルの仕上げを行う", "default": "1", "target": "directory_cleaner / history_destroyer / system_finalize", "kind": "module", "subgroup": "仕上げ" }
+        { "id": "evidence", "type": "bool", "label": "エビデンスを収集する", "default": "1", "target": "evidence_config", "kind": "module", "subgroup": "エビデンス" }
       ]
     },
     {
-      "id": "deploy",
-      "title": "C. 配備プロファイル",
-      "group": "Deploy",
-      "description": "端末別の項目（PC 名 / IP / プリンター / BitLocker）を profiles/<マスタ名>_deploy.csv として同時に出力します。PC 名と IP は端末一覧（hostlist.csv）の値が使われます。",
+      "id": "sysprep",
+      "title": "C. Sysprep プロファイル（マスタ仕上げ）",
+      "group": "Sysprep",
+      "description": "マスタ作成が終わった後に Administrator で実行する 2 本目のプロファイル profiles/<マスタ名>_sysprep.csv を生成します。順序は 一時ポリシー削除 → ストアアプリ削除 → タスクバー配置 → 既定のアプリ → 直前のプログラム → 履歴削除 → Sysprep（応答ファイル + SetupComplete）で、Sysprep 実行後に PC はシャットダウンします。__GATE__ は置きません。",
       "items": [
-        { "id": "deploy_profile", "type": "bool", "label": "配備プロファイルを生成する", "default": "1", "target": "profiles/<名>_deploy.csv", "kind": "deploy", "subgroup": "配備プロファイル" },
-        { "id": "deploy_bitlocker", "type": "bool", "label": "配備時に BitLocker を有効化する（PIN は端末一覧の Pin 列）", "default": "0", "target": "bitlocker_config", "kind": "deploy", "visibleWhen": { "item": "deploy_profile", "values": ["1"] }, "subgroup": "配備プロファイル" },
-        { "id": "printers", "type": "table", "label": "プリンター一覧", "target": "printer_driver_config", "kind": "deploy", "subgroup": "プリンター",
-          "drop": { "module": "printer_driver_config", "subDir": "INF", "extensions": [".exe", ".zip", ".inf"], "folders": true, "kind": "printerDriver",
-                    "nameColumn": "PrinterName", "driverColumn": "DriverName", "descriptionColumn": "Description",
-                    "hint": "ドライバのフォルダ（INF 一式）または EXE / ZIP をここへドロップ → printer_driver_config/INF/ に配置（INF からモデル名を検出して行を追加。プリンター名とポート IP は記入）" },
-          "columns": [
-            { "name": "PrinterName", "label": "プリンター名" },
-            { "name": "DriverName", "label": "ドライバ／モデル（INF の DriverName）" },
-            { "name": "PortAddress", "label": "ポート IP アドレス" },
-            { "name": "IsDefault", "label": "既定プリンター（手動）", "options": ["1", "0"], "default": "0" },
-            { "name": "Description", "label": "備考" }
-          ] },
-        { "id": "printers_in_master", "type": "bool", "label": "プリンターをマスタにも含める（配備ではなくマスタで登録）", "default": "0", "target": "printer_driver_config", "kind": "module", "subgroup": "プリンター" }
+        {"id": "sysprep_profile", "type": "bool", "label": "Sysprep プロファイルを生成する（profiles/<マスタ名>_sysprep.csv）", "default": "1", "target": "profiles/<マスタ名>_sysprep.csv", "kind": "module", "help": "マスタ作成が終わった後に Administrator でサインインして実行します。実行後は Sysprep が走り PC はシャットダウンします（不可逆）。", "subgroup": "生成"},
+        {"id": "sp_temp_policies", "type": "bool", "label": "マスタ作成中は Store の自動更新・コンシューマー機能・Store 経由の OS 更新を止め、Sysprep 前に解除する", "default": "1", "target": "reg_hklm_config（開始時）/ reg_hklm_delete（Sysprep 前）", "kind": "module", "help": "マスタ プロファイルの先頭で 4 件のレジストリ（DisableWindowsConsumerFeatures / WindowsStore AutoDownload ×2 / DisableOSUpgrade）を設定し、Sysprep プロファイルの先頭で削除します。Segment <マスタ名>:temp で通常のレジストリ設定と分けます。", "subgroup": "一時ポリシー", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_storeapps", "type": "multi", "label": "削除するストアアプリ", "target": "storeapp_config", "kind": "module", "allowFree": true, "help": "現在のユーザーからの削除とプロビジョニング済みパッケージの削除の両方を行います。入っていないアプリはスキップされます。Microsoft.Ink.Handwriting.ja-JP.1.0 は削除に失敗（0x80073CFA）するため載せていません。リストに無いものはパッケージ名（Get-AppxPackage の Name）を入力して追加。", "subgroup": "ストアアプリの削除", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}, "default": "Microsoft.GamingApp;Microsoft.MicrosoftSolitaireCollection;Microsoft.Xbox.TCUI;Microsoft.XboxIdentityProvider;Microsoft.XboxSpeechToTextOverlay;Microsoft.LanguageExperiencePackja-JP;Microsoft.Ink.Handwriting.Main.ja-JP.1.0;MicrosoftCorporationII.QuickAssist;Microsoft.YourPhone;Microsoft.ZuneMusic;Microsoft.WindowsStore;Microsoft.WindowsFeedbackHub;Microsoft.XboxGamingOverlay;Microsoft.Windows.DevHome;Microsoft.OutlookForWindows;Microsoft.BingNews;Microsoft.BingWeather;Microsoft.BingSearch;Microsoft.GetHelp;Microsoft.Todos;MSTeams;Clipchamp.Clipchamp;Microsoft.MicrosoftOfficeHub", "options": [{"value": "Microsoft.GamingApp", "label": "Xbox（Gaming App）"}, {"value": "Microsoft.XboxGamingOverlay", "label": "Xbox Game Bar"}, {"value": "Microsoft.XboxGameOverlay", "label": "Xbox Game Bar オーバーレイ"}, {"value": "Microsoft.Xbox.TCUI", "label": "Xbox TCUI"}, {"value": "Microsoft.XboxIdentityProvider", "label": "Xbox Identity Provider"}, {"value": "Microsoft.XboxSpeechToTextOverlay", "label": "Xbox Speech To Text"}, {"value": "Microsoft.MicrosoftSolitaireCollection", "label": "Solitaire Collection"}, {"value": "Microsoft.LanguageExperiencePackja-JP", "label": "日本語 言語エクスペリエンス パック（無ければスキップ）"}, {"value": "Microsoft.Ink.Handwriting.Main.ja-JP.1.0", "label": "日本語 手書き認識 Main（無ければスキップ）"}, {"value": "MicrosoftCorporationII.QuickAssist", "label": "クイック アシスト"}, {"value": "Microsoft.YourPhone", "label": "スマートフォン連携"}, {"value": "Microsoft.ZuneMusic", "label": "メディア プレーヤー（Groove）"}, {"value": "Microsoft.ZuneVideo", "label": "映画 & テレビ"}, {"value": "Microsoft.WindowsStore", "label": "Microsoft Store 本体"}, {"value": "Microsoft.StorePurchaseApp", "label": "Store Purchase App"}, {"value": "Microsoft.WindowsFeedbackHub", "label": "フィードバック Hub"}, {"value": "Microsoft.Windows.DevHome", "label": "Dev Home"}, {"value": "Microsoft.OutlookForWindows", "label": "新しい Outlook"}, {"value": "microsoft.windowscommunicationsapps", "label": "メール / カレンダー"}, {"value": "Microsoft.BingNews", "label": "ニュース"}, {"value": "Microsoft.BingWeather", "label": "天気"}, {"value": "Microsoft.BingSearch", "label": "Bing 検索"}, {"value": "Microsoft.549981C3F5F10", "label": "Cortana"}, {"value": "Microsoft.GetHelp", "label": "問い合わせ"}, {"value": "Microsoft.Getstarted", "label": "ヒント"}, {"value": "Microsoft.Todos", "label": "To Do"}, {"value": "MSTeams", "label": "Microsoft Teams"}, {"value": "Clipchamp.Clipchamp", "label": "Clipchamp"}, {"value": "Microsoft.MicrosoftOfficeHub", "label": "Office Hub（Microsoft 365 アプリ）"}, {"value": "Microsoft.People", "label": "People"}, {"value": "Microsoft.PowerAutomateDesktop", "label": "Power Automate"}, {"value": "Microsoft.WindowsAlarms", "label": "アラーム & クロック"}, {"value": "Microsoft.WindowsMaps", "label": "マップ"}]},
+        {"id": "sp_default_apps", "type": "bool", "label": "既定のアプリの関連付けを適用する（AppAssoc.xml）", "default": "1", "target": "default_app_config + SetupComplete", "kind": "module", "help": "Sysprep プロファイルで Dism /Import-DefaultAppAssociations を実行し（イメージの既定として残ります）、SetupComplete でも再適用します。", "subgroup": "既定のアプリ", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_appassoc", "type": "file", "label": "関連付け XML（default_app_config/xml/AppAssoc.xml）", "target": "default_app_config/xml", "kind": "module", "subgroup": "既定のアプリ", "visibleWhen": {"item": "sp_default_apps", "values": ["1"]}, "drop": {"module": "default_app_config", "subDir": "xml", "extensions": [".xml"], "fixedName": "AppAssoc.xml", "kind": "file", "hint": "マスタ PC で「Export App Associations」を実行して出来た XML をここへドロップ（AppAssoc.xml として配置）"}},
+        {"id": "sp_appassoc_edit", "type": "action", "action": "appassocEdit", "label": "関連付けの編集", "buttonLabel": "✏ 既定のアプリを編集...", "runningLabel": "編集中...", "placeholder": "ブラウザー / PDF / メールなどの担当アプリをまとめて差し替えられます。XML が無ければ同梱のひな形（Windows 11 24H2）から作成します。", "target": "default_app_config/xml/AppAssoc.xml", "kind": "module", "subgroup": "既定のアプリ", "visibleWhen": {"item": "sp_default_apps", "values": ["1"]}},
+        {"id": "sp_commands", "type": "table", "label": "Sysprep 直前に実行するプログラム（無ければスキップ）", "target": "generic_process_runner", "kind": "module", "help": "EXE が無い行は実行前に [NOT FOUND] としてスキップされます。終了コードが 0 以外でも AutoPilot は止まりません（ErrorMode=skip）。", "subgroup": "直前に実行するプログラム", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}, "columns": [{"name": "Description", "label": "説明"}, {"name": "ExecutablePath", "label": "EXE のパス"}, {"name": "Arguments", "label": "引数"}, {"name": "WorkingDirectory", "label": "作業フォルダー"}, {"name": "TimeoutSec", "label": "タイムアウト秒（0 = 無制限）", "default": "0"}, {"name": "SuccessCodes", "label": "正常終了コード", "default": "0"}], "defaultRows": [{"Description": "ImgSetup（ウイルスバスターの SID 初期化）", "ExecutablePath": "C:\\ImgSetup\\ImgSetup.exe", "Arguments": "", "WorkingDirectory": "C:\\ImgSetup", "TimeoutSec": "0", "SuccessCodes": "0"}]},
+        {"id": "sp_history", "type": "bool", "label": "履歴・キャッシュ・一時ファイルを削除する（history_destroyer）", "default": "1", "target": "history_destroyer", "kind": "module", "help": "モジュール同梱の一覧（最近使ったファイル、イベントログ、Temp、ごみ箱、Edge / Chrome データ、サムネイル、Prefetch、WSUS ID、Office ユーザー情報、タスクバーのピン留めなど）をそのまま使います。", "subgroup": "履歴削除", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_computer_name", "type": "text", "label": "コンピューター名（* = 自動生成）", "default": "*", "target": "unattend ComputerName", "kind": "module", "subgroup": "応答ファイル（unattend.xml）", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_copyprofile", "type": "bool", "label": "Administrator のプロファイルを既定のプロファイルにコピーする（CopyProfile）", "default": "1", "target": "unattend CopyProfile", "kind": "module", "subgroup": "応答ファイル（unattend.xml）", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_enable_admin", "type": "bool", "label": "Administrator にパスワードを設定する（有効化は SetupComplete で行う）", "default": "1", "target": "unattend AdministratorPassword", "kind": "module", "subgroup": "応答ファイル（unattend.xml）", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_admin_password", "type": "text", "label": "Administrator パスワード（空 = 6 章の Administrator パスワードを使う）", "secret": true, "target": "unattend AdministratorPassword", "kind": "module", "subgroup": "応答ファイル（unattend.xml）", "visibleWhen": {"item": "sp_enable_admin", "values": ["1"]}},
+        {"id": "sp_persist_drivers", "type": "bool", "label": "generalize でデバイス ドライバーを保持する（PersistAllDeviceInstalls / DoNotCleanUpNonPresentDevices）", "default": "1", "target": "unattend generalize", "kind": "module", "subgroup": "応答ファイル（unattend.xml）", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_hide_eula", "type": "bool", "label": "EULA 画面をスキップ", "default": "1", "target": "unattend HideEULAPage", "kind": "module", "subgroup": "OOBE のスキップ", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_protect_pc", "type": "choice", "label": "プライバシー設定（ProtectYourPC）", "default": "3", "target": "unattend ProtectYourPC", "kind": "module", "subgroup": "OOBE のスキップ", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}, "options": [{"value": "3", "label": "3 = 送信しない（既定）"}, {"value": "1", "label": "1 = 推奨設定"}]},
+        {"id": "sp_hide_wireless", "type": "bool", "label": "Wi-Fi 設定画面をスキップ", "default": "1", "target": "unattend HideWirelessSetupInOOBE", "kind": "module", "subgroup": "OOBE のスキップ", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_hide_online", "type": "bool", "label": "オンライン アカウント画面をスキップ", "default": "1", "help": "ローカル アカウント作成の画面は、unattend で自動作成するテストユーザー Test-User（SetupComplete で削除）によって飛ばされます。", "target": "unattend HideOnlineAccountScreens", "kind": "module", "subgroup": "OOBE のスキップ", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_hide_oem", "type": "bool", "label": "OEM 登録画面をスキップ", "default": "1", "target": "unattend HideOEMRegistrationScreen", "kind": "module", "subgroup": "OOBE のスキップ", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_setupcomplete", "type": "bool", "label": "初回起動スクリプト（SetupComplete.cmd）を配置する", "default": "1", "help": "OOBE のアカウント画面を飛ばすために unattend で自動作成するテストユーザー Test-User は、ここで必ず削除します（配置しないと納品端末に残ります）。", "target": "sysprep_config setupcomplete_list", "kind": "module", "subgroup": "初回起動スクリプト（SetupComplete.cmd）", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}},
+        {"id": "sp_sc_activate_admin", "type": "bool", "label": "Administrator アカウントを有効化する", "default": "1", "target": "net user Administrator /active:yes", "kind": "module", "subgroup": "初回起動スクリプト（SetupComplete.cmd）", "visibleWhen": {"item": "sp_setupcomplete", "values": ["1"]}},
+        {"id": "sp_sc_clean_default", "type": "bool", "label": "既定のプロファイルのキャッシュ（INetCache / WebCache / LocalLow）を削除する", "default": "1", "target": "rd /Q /S C:\\Users\\Default\\...", "kind": "module", "subgroup": "初回起動スクリプト（SetupComplete.cmd）", "visibleWhen": {"item": "sp_setupcomplete", "values": ["1"]}},
+        {"id": "sp_sc_reset_stopper", "type": "bool", "label": "既定のアプリのリセットを防ぐ（既定のプロファイルの関連付けキーを削除）", "default": "1", "target": "reg load HKU\\DefTmp → reg delete", "kind": "module", "help": "C:\\Users\\Default\\NTUSER.DAT を読み込み、FileAssociationsUpdateVersion / UrlAssociations / FileExts を削除します。CopyProfile で持ち込まれた関連付けを消し、Dism で入れた既定を新規ユーザーに効かせます。", "subgroup": "初回起動スクリプト（SetupComplete.cmd）", "visibleWhen": {"item": "sp_setupcomplete", "values": ["1"]}},
+        {"id": "sp_sc_packages", "type": "table", "label": "既定のプロファイルへコピーするアプリ設定フォルダー（メモ帳・Terminal など）", "target": "sysprep_config/source → SetupComplete CopyFile", "kind": "module", "subgroup": "初回起動スクリプト（SetupComplete.cmd）", "visibleWhen": {"item": "sp_setupcomplete", "values": ["1"]}, "columns": [{"name": "FolderName", "label": "フォルダー名（source 内）"}, {"name": "Destination", "label": "コピー先（空 = Default\\AppData\\Local\\Packages\\<フォルダー名>）"}, {"name": "Description", "label": "説明"}], "drop": {"module": "sysprep_config", "subDir": "source", "folders": true, "kind": "folder", "fileColumn": "FolderName", "descriptionColumn": "Description", "hint": "%LOCALAPPDATA%\\Packages\\Microsoft.WindowsNotepad_8wekyb3d8bbwe のような設定フォルダーをここへドロップ（source/ にコピーして行を追加）"}},
+        {"id": "sp_sc_commands", "type": "table", "label": "追加で実行するコマンド（初回起動時、上記の後）", "target": "SetupComplete Command", "kind": "module", "subgroup": "初回起動スクリプト（SetupComplete.cmd）", "visibleWhen": {"item": "sp_setupcomplete", "values": ["1"]}, "columns": [{"name": "Command", "label": "コマンド"}, {"name": "Description", "label": "説明"}]},
+        {"id": "sp_mode", "type": "choice", "label": "Sysprep モード", "default": "oobe", "target": "sysprep_list Mode", "kind": "module", "subgroup": "Sysprep 実行", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}, "options": [{"value": "oobe", "label": "OOBE（配布用）"}, {"value": "audit", "label": "監査モード"}]},
+        {"id": "sp_shutdown", "type": "choice", "label": "完了後の動作", "default": "shutdown", "target": "sysprep_list Shutdown", "kind": "module", "subgroup": "Sysprep 実行", "visibleWhen": {"item": "sysprep_profile", "values": ["1"]}, "options": [{"value": "shutdown", "label": "シャットダウン（既定）"}, {"value": "reboot", "label": "再起動"}, {"value": "quit", "label": "終了（シャットダウンしない。テスト用）"}]}
       ]
     }
   ]

@@ -69,6 +69,7 @@ public partial class App : Application
         services.AddSingleton<IInstallerCatalogService, InstallerCatalogService>();
         services.AddSingleton<IMasterAssetService, MasterAssetService>();
         services.AddSingleton<IOdtDownloadService, OdtDownloadService>();
+        services.AddSingleton<IAppAssocService, AppAssocService>();
 
         // GPO 辞書（ADMX/ADML から生成。ワークスペース非依存）と gpo_list.csv への書き出し
         services.AddSingleton<IGpoCatalogService, GpoCatalogService>();

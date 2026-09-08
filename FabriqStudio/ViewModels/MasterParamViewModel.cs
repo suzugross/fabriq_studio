@@ -52,6 +52,8 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     private readonly IOdtDownloadService            _odtDownload;
     private readonly IWorkspaceService              _workspace;
     private readonly IGpoCatalogService             _gpoCatalog;
+    private readonly IAppAssocService               _appAssoc;
+    private readonly IRegistryCollectionService     _registry;
 
     /// <summary>ODT のダウンロード実行中（同時に 1 つだけ）。</summary>
     [ObservableProperty] private bool _isOdtDownloading;
@@ -142,14 +144,14 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     public bool IsMasterNameValid => MasterAnswers.IsValidMasterName(MasterName);
 
     // ─── プレビュー ───────────────────────────────────────────────
-    public ObservableCollection<ProfileScriptEntry> PreviewRows     { get; } = [];
-    public ObservableCollection<ProfileScriptEntry> PreviewDeployRows { get; } = [];
+    public ObservableCollection<ProfileScriptEntry> PreviewRows        { get; } = [];
+    public ObservableCollection<ProfileScriptEntry> PreviewSysprepRows { get; } = [];
     public ObservableCollection<PlanFileSummary>    PreviewFiles    { get; } = [];
     public ObservableCollection<PlanMessage>        PreviewMessages { get; } = [];
     public ObservableCollection<string>             ManualTasks     { get; } = [];
 
     [ObservableProperty] private string  _previewSummary = "";
-    [ObservableProperty] private bool    _hasDeployPreview;
+    [ObservableProperty] private bool    _hasSysprepPreview;
     [ObservableProperty] private bool    _hasPlanErrors;
     [ObservableProperty] private int     _warningCount;
     [ObservableProperty] private string? _lastGeneratedText;
@@ -161,7 +163,9 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
         IMasterAssetService            assetService,
         IOdtDownloadService            odtDownload,
         IWorkspaceService              workspace,
-        IGpoCatalogService             gpoCatalog)
+        IGpoCatalogService             gpoCatalog,
+        IAppAssocService               appAssoc,
+        IRegistryCollectionService     registry)
     {
         _templateService = templateService;
         _answersService  = answersService;
@@ -170,6 +174,8 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
         _odtDownload     = odtDownload;
         _workspace       = workspace;
         _gpoCatalog      = gpoCatalog;
+        _appAssoc        = appAssoc;
+        _registry        = registry;
         _itemContext     = new MasterItemContext
         {
             OnChanged    = OnItemChanged,
@@ -179,6 +185,8 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
             RunAction    = RunActionAsync,
             PickGpo      = PickGpoAsync,
             GpoCatalog   = gpoCatalog,
+            PickRegistry       = PickRegistryAsync,
+            RegistryDictionary = registry,
         };
         gpoCatalog.CatalogChanged += (_, _) => RunOnUi(OnGpoCatalogChanged);
 
@@ -302,6 +310,7 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
         MasterItemTypes.File      => new FileItemViewModel(item, _itemContext),
         MasterItemTypes.Action    => new ActionItemViewModel(item, _itemContext),
         MasterItemTypes.Gpo       => new GpoItemViewModel(item, _itemContext),
+        MasterItemTypes.Registry  => new RegistryItemViewModel(item, _itemContext),
         MasterItemTypes.Multiline => new TextItemViewModel(item, _itemContext),
         _                         => new TextItemViewModel(item, _itemContext),
     };
@@ -310,7 +319,8 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     //  action 項目（ODT のオフライン資材ダウンロード）
     // ═══════════════════════════════════════════════════════════════
 
-    private const string OdtDownloadAction = "odtDownload";
+    private const string OdtDownloadAction   = "odtDownload";
+    private const string AppAssocEditAction  = "appassocEdit";
 
     private void RefreshActionStates()
     {
@@ -319,17 +329,63 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     }
 
     partial void OnIsOdtDownloadingChanged(bool value) => RefreshActionStates();
+    partial void OnIsLockedChanged(bool value)         => RefreshActionStates();
 
     private bool CanRunAction(string actionId)
     {
-        if (actionId != OdtDownloadAction) return false;
-        if (IsOdtDownloading || _snapshot is null) return false;
-        // setup.exe が配置済みのときだけ実行できる
-        return _snapshot.GetModule("odt_config")?.HasFile("assets", "setup.exe") == true;
+        if (_snapshot is null) return false;
+        switch (actionId)
+        {
+            case OdtDownloadAction:
+                // setup.exe が配置済みのときだけ実行できる
+                return !IsOdtDownloading && _snapshot.GetModule("odt_config")?.HasFile("assets", "setup.exe") == true;
+            case AppAssocEditAction:
+                // ワークスペースの XML を書き換えるので編集モードのときだけ
+                return IsEditable && _snapshot.HasModule("default_app_config");
+            default:
+                return false;
+        }
     }
 
-    private Task RunActionAsync(ActionItemViewModel item)
-        => item.ActionId == OdtDownloadAction ? RunOdtDownloadAsync(item) : Task.CompletedTask;
+    private Task RunActionAsync(ActionItemViewModel item) => item.ActionId switch
+    {
+        OdtDownloadAction  => RunOdtDownloadAsync(item),
+        AppAssocEditAction => RunAppAssocEditAsync(item),
+        _                  => Task.CompletedTask,
+    };
+
+    /// <summary>
+    /// 既定のアプリの関連付け XML（default_app_config/xml/AppAssoc.xml）を編集ダイアログで作成・編集する。
+    /// 保存されたら file 項目（sp_appassoc）にファイル名を入れ、スナップショットを取り直してプレビューに反映する。
+    /// </summary>
+    private async Task RunAppAssocEditAsync(ActionItemViewModel item)
+    {
+        if (_snapshot is null || _workspace.RootPath is null) return;
+        var module = _snapshot.GetModule("default_app_config");
+        if (module is null) { item.Status = "モジュール default_app_config がワークスペースにありません。"; return; }
+
+        await _appAssoc.EnsureLoadedAsync();
+        var path  = Path.Combine(module.AbsPath, "xml", "AppAssoc.xml");
+        var rel   = Path.GetRelativePath(_workspace.RootPath, path).Replace('/', '\\');
+        var saved = AppAssocEditorDialog.Show(Application.Current?.MainWindow, _appAssoc, path, rel);
+        if (!saved) return;
+
+        if (_itemsById.TryGetValue("sp_appassoc", out var fileItem) && fileItem is FileItemViewModel f && string.IsNullOrWhiteSpace(f.Text))
+            f.Text = "AppAssoc.xml";
+        item.Status   = $"✓ {rel} に保存しました";
+        StatusMessage = item.Status;
+
+        try
+        {
+            _snapshot = await _generator.LoadSnapshotAsync();
+            SchedulePreview();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"再読込エラー: {ex.Message}";
+        }
+        RefreshActionStates();
+    }
 
     /// <summary>
     /// 現在の回答から ODT の configuration.xml を組み立て（既製 XML なら assets/custom のものを使い）、
@@ -434,6 +490,23 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
         }
         var result = GpoPickerDialog.Show(Application.Current?.MainWindow, _gpoCatalog, existing);
         return Task.FromResult(result);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  registry 項目（レジストリ辞書からの選択）
+    // ═══════════════════════════════════════════════════════════════
+
+    private Task<RegistryTemplateEntry?> PickRegistryAsync()
+    {
+        if (_registry.Entries.Count == 0)
+        {
+            MessageBox.Show(
+                "レジストリ辞書が空です。「レジストリ辞書」画面でエントリを登録してから追加してください。",
+                "レジストリ辞書", MessageBoxButton.OK, MessageBoxImage.Information);
+            return Task.FromResult<RegistryTemplateEntry?>(null);
+        }
+        var entry = RegistryPickerWindow.Show(_registry.Entries, Application.Current?.MainWindow);
+        return Task.FromResult(entry);
     }
 
     /// <summary>辞書の読み込み完了／再読込で、GPO 項目の表示（表示名・行数）とプレビューを更新する。</summary>
@@ -555,14 +628,14 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     private void ClearPreview()
     {
         PreviewRows.Clear();
-        PreviewDeployRows.Clear();
+        PreviewSysprepRows.Clear();
         PreviewFiles.Clear();
         PreviewMessages.Clear();
         ManualTasks.Clear();
-        PreviewSummary   = "";
-        HasDeployPreview = false;
-        HasPlanErrors    = false;
-        WarningCount     = 0;
+        PreviewSummary    = "";
+        HasSysprepPreview = false;
+        HasPlanErrors     = false;
+        WarningCount      = 0;
     }
 
     /// <summary>現在の回答から計画を計算して右ペインへ反映する（ディスクは触らない）。</summary>
@@ -583,15 +656,15 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
 
         ClearPreview();
 
-        var master = plan.Profiles.FirstOrDefault(p => !p.IsDeploy);
+        var master = plan.Profiles.FirstOrDefault(p => p.Kind == ProfileKind.Master);
         if (master is not null)
             foreach (var r in master.Rows) PreviewRows.Add(r);
 
-        var deploy = plan.Profiles.FirstOrDefault(p => p.IsDeploy);
-        if (deploy is not null)
+        var sysprep = plan.Profiles.FirstOrDefault(p => p.IsSysprep);
+        if (sysprep is not null)
         {
-            foreach (var r in deploy.Rows) PreviewDeployRows.Add(r);
-            HasDeployPreview = true;
+            foreach (var r in sysprep.Rows) PreviewSysprepRows.Add(r);
+            HasSysprepPreview = true;
         }
 
         foreach (var f in plan.FileSummaries) PreviewFiles.Add(f);

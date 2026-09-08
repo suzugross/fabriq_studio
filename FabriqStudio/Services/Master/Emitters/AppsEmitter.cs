@@ -4,41 +4,21 @@ using static FabriqStudio.Services.Master.Emitters.EmitterHelpers;
 
 namespace FabriqStudio.Services.Master.Emitters;
 
-/// <summary>9. アプリケーション: ストアアプリ削除、Windows の機能、インストーラ、winget、Office（ODT / ライセンス）。</summary>
+/// <summary>
+/// 9. アプリケーション: Windows の機能、インストーラ、winget、Office（ODT / ライセンス）。
+/// ストアアプリ（プリインストール アプリ）の削除は対象外。早い段階で消すと復元が難しいため、
+/// 履歴削除・仕上げや Sysprep と同じく既存の sysprep プロファイルで実施する。
+/// </summary>
 public sealed class AppsEmitter : IMasterEmitter
 {
     public string Name => "アプリケーション";
 
     public void Emit(MasterContext ctx)
     {
-        EmitStoreApps(ctx);
         EmitWindowsFeatures(ctx);
         EmitInstallers(ctx);
         EmitWinget(ctx);
         EmitOffice(ctx);
-    }
-
-    private static void EmitStoreApps(MasterContext ctx)
-    {
-        var selected = ctx.Multi("storeapps_remove");
-        if (selected.Count == 0) return;
-
-        var item = ctx.Item("storeapps_remove");
-        var no = 10;
-        foreach (var pkg in selected)
-        {
-            var name = pkg.Trim();
-            if (string.IsNullOrEmpty(name)) continue;
-            var label = item?.Options?.FirstOrDefault(o => o.Value == name)?.Label ?? name;
-
-            ctx.AddCsvRow("storeapp_config", "storeapp_list.csv", Row(
-                ("No", no.ToString()),
-                ("AppName", name),
-                ("Enabled", "1"),
-                ("Description", label)));
-            no += 10;
-        }
-        ctx.AddProfile("storeapp_config", "storeapp_config.ps1", ProfileSlot.Apps, 10, isolated: true);
     }
 
     private static void EmitWindowsFeatures(MasterContext ctx)

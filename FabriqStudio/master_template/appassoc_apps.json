@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "_comment": "既定のアプリ編集で使う既知の ProgId 辞書。デスクトップ アプリの ProgId はインストーラーが登録する固定文字列で PC を跨いで同じ。ストア アプリ（フォト / メディア プレーヤー / メモ帳など）の ProgId はアプリ版で変わるため辞書には載せず、読み込んだ XML とこの PC の登録情報から候補を出す。",
+  "apps": [
+    { "name": "Google Chrome", "progIds": { "http": "ChromeHTML", "https": "ChromeHTML", "ftp": "ChromeHTML", ".htm": "ChromeHTML", ".html": "ChromeHTML", ".xht": "ChromeHTML", ".xhtml": "ChromeHTML", ".shtml": "ChromeHTML", ".svg": "ChromeHTML", ".webp": "ChromeHTML", ".mht": "ChromeHTML", ".mhtml": "ChromeHTML", ".pdf": "ChromePDF" } },
+    { "name": "Microsoft Edge", "progIds": { "http": "MSEdgeHTM", "https": "MSEdgeHTM", "ftp": "MSEdgeHTM", "microsoft-edge": "MSEdgeHTM", ".htm": "MSEdgeHTM", ".html": "MSEdgeHTM", ".xht": "MSEdgeHTM", ".xhtml": "MSEdgeHTM", ".shtml": "MSEdgeHTM", ".svg": "MSEdgeHTM", ".webp": "MSEdgeHTM", ".pdf": "MSEdgePDF", ".mht": "MSEdgeMHT", ".mhtml": "MSEdgeMHT" } },
+    { "name": "Adobe Acrobat", "progIds": { ".pdf": "AcroExch.Document.DC", ".fdf": "AcroExch.FDFDoc", ".xfdf": "AcroExch.XFDFDoc", ".pdx": "AcroExch.pdx" } },
+    { "name": "Outlook (classic)", "progIds": { "mailto": "Outlook.URL.mailto.15", "webcal": "Outlook.URL.webcal.15", ".ics": "Outlook.File.ics.15", ".vcf": "Outlook.File.vcf.15", ".eml": "Outlook.File.eml.15", ".msg": "Outlook.File.msg.15", ".oft": "Outlook.File.oft.15" } },
+    { "name": "Word", "progIds": { ".doc": "Word.Document.8", ".docx": "Word.Document.12", ".docm": "Word.DocumentMacroEnabled.12", ".dot": "Word.Template.8", ".dotx": "Word.Template.12", ".rtf": "Word.RTF.8", ".odt": "Word.OpenDocumentText.12" } },
+    { "name": "Excel", "progIds": { ".xls": "Excel.Sheet.8", ".xlsx": "Excel.Sheet.12", ".xlsm": "Excel.SheetMacroEnabled.12", ".xlsb": "Excel.SheetBinaryMacroEnabled.12", ".xlt": "Excel.Template.8", ".xltx": "Excel.Template", ".csv": "Excel.CSV", ".ods": "Excel.OpenDocumentSpreadsheet.12" } },
+    { "name": "PowerPoint", "progIds": { ".ppt": "PowerPoint.Show.8", ".pptx": "PowerPoint.Show.12", ".pptm": "PowerPoint.ShowMacroEnabled.12", ".pps": "PowerPoint.SlideShow.8", ".ppsx": "PowerPoint.SlideShow.12", ".pot": "PowerPoint.Template.8", ".potx": "PowerPoint.Template.12", ".odp": "PowerPoint.OpenDocumentPresentation.12" } },
+    { "name": "Windows Media Player 従来版", "progIds": { ".mp3": "WMP11.AssocFile.MP3", ".wav": "WMP11.AssocFile.WAV", ".wma": "WMP11.AssocFile.WMA", ".m4a": "WMP11.AssocFile.M4A", ".flac": "WMP11.AssocFile.FLAC", ".aac": "WMP11.AssocFile.ADTS", ".mp4": "WMP11.AssocFile.MP4", ".m4v": "WMP11.AssocFile.M4V", ".mov": "WMP11.AssocFile.MOV", ".wmv": "WMP11.AssocFile.WMV", ".avi": "WMP11.AssocFile.AVI", ".mkv": "WMP11.AssocFile.MKV", ".mpg": "WMP11.AssocFile.MPEG", ".mpeg": "WMP11.AssocFile.MPEG", ".3gp": "WMP11.AssocFile.3GP", ".3g2": "WMP11.AssocFile.3G2", ".asf": "WMP11.AssocFile.ASF", ".m3u": "WMP11.AssocFile.M3U", ".wpl": "WMP11.AssocFile.WPL" } },
+    { "name": "メモ帳（従来版）", "progIds": { ".txt": "txtfilelegacy", ".log": "txtfilelegacy", ".ini": "inifile", ".inf": "inffile" } }
+  ],
+  "categories": [
+    { "id": "browser", "label": "ブラウザー", "identifiers": ["http", "https", "ftp", ".htm", ".html", ".xht", ".xhtml", ".shtml", ".svg", ".webp"] },
+    { "id": "pdf", "label": "PDF", "identifiers": [".pdf"] },
+    { "id": "mail", "label": "メール", "identifiers": ["mailto", ".eml", ".msg"] },
+    { "id": "calendar", "label": "予定・連絡先", "identifiers": [".ics", ".vcf", "webcal"] },
+    { "id": "image", "label": "画像", "identifiers": [".jpg", ".jpeg", ".jpe", ".jfif", ".png", ".gif", ".bmp", ".dib", ".tif", ".tiff", ".ico", ".heic", ".heif", ".hif", ".avif", ".jxr", ".wdp"] },
+    { "id": "video", "label": "動画", "identifiers": [".mp4", ".m4v", ".mov", ".wmv", ".avi", ".mkv", ".mpg", ".mpeg", ".mpe", ".m2ts", ".mts", ".ts", ".3gp", ".3g2", ".asf", ".webm", ".divx"] },
+    { "id": "audio", "label": "音楽", "identifiers": [".mp3", ".wav", ".wma", ".m4a", ".flac", ".aac", ".adts", ".ac3", ".amr", ".mka", ".m3u", ".wpl"] },
+    { "id": "text", "label": "テキスト", "identifiers": [".txt", ".log", ".ini", ".inf"] }
+  ]
+}
