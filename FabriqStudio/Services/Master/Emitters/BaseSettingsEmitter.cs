@@ -11,6 +11,25 @@ public sealed class BaseSettingsEmitter : IMasterEmitter
     /// <summary>NetBIOS 名として妥当なコンピューター名（1〜15 文字、英数字とハイフン、先頭末尾はハイフン不可）。</summary>
     private static readonly Regex HostnameRegex = new("^(?!-)[A-Za-z0-9-]{1,15}(?<!-)$", RegexOptions.Compiled);
 
+    /// <summary>hostlist.csv の仮ホスト名行に使う管理番号（AdminID、数字のみ）の項目 ID。空 = 自動採番。</summary>
+    public const string AdminIdItemId = "master_admin_id";
+
+    /// <summary>回答に記録されている管理番号（数字のみ）。無効・未設定なら null。</summary>
+    public static string? StoredAdminId(MasterContext ctx)
+    {
+        var text = ctx.Get(AdminIdItemId).Trim();
+        return text.Length > 0 && text.All(char.IsDigit) ? text : null;
+    }
+
+    /// <summary>
+    /// hostlist.csv の行が端末の行に見えるか（AdminID と NewPCName 以外に値がある）。
+    /// マスタ設計が書く仮ホスト名行は AdminID + NewPCName だけなので、それ以外が埋まっていれば端末の行として扱い上書きしない。
+    /// </summary>
+    public static bool LooksLikeDeviceRow(IReadOnlyDictionary<string, string> row)
+        => row.Any(kv => !kv.Key.Equals("AdminID", StringComparison.OrdinalIgnoreCase)
+                         && !kv.Key.Equals("NewPCName", StringComparison.OrdinalIgnoreCase)
+                         && !string.IsNullOrWhiteSpace(kv.Value));
+
     public void Emit(MasterContext ctx)
     {
         EmitLicense(ctx);
@@ -73,7 +92,9 @@ public sealed class BaseSettingsEmitter : IMasterEmitter
 
     /// <summary>
     /// マスタ作成時の仮ホスト名。hostname_config は設定 CSV を持たず hostlist.csv の選択ホスト（SELECTED_NEW_PCNAME）を
-    /// 適用するため、hostlist.csv に AdminID=マスタ名 の行を書き、起動時にその行を選んでもらう。
+    /// 適用するため、hostlist.csv に仮の行（AdminID + NewPCName だけ）を書き、起動時にその行を選んでもらう。
+    /// AdminID（管理番号）は数字でなければならない: 回答の master_admin_id を使い、空なら既存の最大値 + 1 を採番する
+    /// （生成後に VM が回答へ記録し、以後は同じ行を置き換える）。端末の行と同じ番号なら上書きせず Error。
     /// </summary>
     private static void EmitMasterHostname(MasterContext ctx)
     {
@@ -86,12 +107,49 @@ public sealed class BaseSettingsEmitter : IMasterEmitter
             return;
         }
 
+        var adminId = ResolveAdminId(ctx, out var allocated);
+        if (adminId is null) return;
+
+        var host = ctx.Snapshot.Hostlist;
+        if (host is not null && host.RowsByAdminId.TryGetValue(adminId, out var existing) && LooksLikeDeviceRow(existing))
+        {
+            ctx.Error($"hostlist.csv の管理番号 {adminId} は端末の行（{existing.GetValueOrDefault("NewPCName", "")}）として使われています。4 章で別の管理番号を指定してください。", AdminIdItemId);
+            return;
+        }
+
         ctx.AddHostlistRow(Row(
             ("OldPCName", ""),
-            ("NewPCName", name.ToUpperInvariant())));
+            ("NewPCName", name.ToUpperInvariant())), adminId);
+        ctx.Plan.HostAdminId = adminId;
 
         ctx.AddProfile("hostname_config", "hostname_config.ps1", ProfileSlot.Base, 5, isolated: false);
-        ctx.Info($"仮コンピューター名 {name.ToUpperInvariant()} は hostlist.csv の管理番号「{ctx.MasterName}」の行に書きます。Fabriq 起動時のホスト選択でこの行を選んでください（IP 列は空のため ipaddress_config は対象外）。");
+        ctx.Info($"仮コンピューター名 {name.ToUpperInvariant()} は hostlist.csv の管理番号 {adminId} の行に書きます"
+                 + (allocated ? "（自動採番。生成後に 4 章の管理番号へ記録します）" : "")
+                 + $"。Fabriq 起動時のホスト選択で {adminId} を選んでください（IP 列は空のため ipaddress_config は対象外）。");
+    }
+
+    /// <summary>管理番号を決める。回答が数字ならそれ、空なら既存の数字の最大値 + 1（採番）。数字以外は Error で null。</summary>
+    private static string? ResolveAdminId(MasterContext ctx, out bool allocated)
+    {
+        allocated = false;
+        var text = ctx.Get(AdminIdItemId).Trim();
+        if (text.Length > 0)
+        {
+            if (!text.All(char.IsDigit))
+            {
+                ctx.Error("管理番号（hostlist.csv の AdminID）は数字のみです。", AdminIdItemId);
+                return null;
+            }
+            return text;
+        }
+
+        long max = 0;
+        if (ctx.Snapshot.Hostlist is { } host)
+            foreach (var id in host.AdminIdCounts.Keys)
+                if (long.TryParse(id, out var n) && n > max) max = n;
+
+        allocated = true;
+        return (max + 1).ToString();
     }
 
     private static void EmitNetwork(MasterContext ctx)

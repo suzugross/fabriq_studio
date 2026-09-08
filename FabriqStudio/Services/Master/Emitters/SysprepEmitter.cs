@@ -50,7 +50,7 @@ public sealed class SysprepEmitter : IMasterEmitter
         if (!ctx.IsTrue("sp_temp_policies")) return;
 
         foreach (var id in TempPolicyIds)
-            ctx.AddRegistry(id, null, "一時ポリシー", TempSubSegment);
+            ctx.AddRegistry(id, null, "一時ポリシー", TempSubSegment, itemId: "sp_temp_policies");
 
         ctx.AddProfile("reg_hklm_config", "reg_hklm_delete.ps1", ProfileSlot.Sysprep, 10, isolated: true,
             subSegment: TempSubSegment, description: "Registry Delete (HKLM) - 一時ポリシーの解除",

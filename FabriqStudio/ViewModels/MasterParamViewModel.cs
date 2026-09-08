@@ -1,6 +1,8 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Threading;
@@ -15,6 +17,7 @@ using FabriqStudio.Models.Master;
 using FabriqStudio.Services;
 using FabriqStudio.Services.Gpo;
 using FabriqStudio.Services.Master;
+using FabriqStudio.Services.Master.Emitters;
 using FabriqStudio.ViewModels.Master;
 using FabriqStudio.Views;
 
@@ -54,6 +57,7 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     private readonly IGpoCatalogService             _gpoCatalog;
     private readonly IAppAssocService               _appAssoc;
     private readonly IRegistryCollectionService     _registry;
+    private readonly IMasterSheetService            _sheets;
 
     /// <summary>ODT のダウンロード実行中（同時に 1 つだけ）。</summary>
     [ObservableProperty] private bool _isOdtDownloading;
@@ -76,7 +80,11 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     private readonly DispatcherTimer _previewTimer;
 
     // ─── 状態 ────────────────────────────────────────────────────
-    [ObservableProperty] private bool    _isLoading;
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(PreviewCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExportParameterSheetCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExportChecklistCommand))]
+    private bool    _isLoading;
     [ObservableProperty] private string? _errorMessage;
     [ObservableProperty] private string? _statusMessage;
 
@@ -134,6 +142,8 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     [NotifyPropertyChangedFor(nameof(IsMasterNameValid))]
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     [NotifyCanExecuteChangedFor(nameof(PreviewCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExportParameterSheetCommand))]
+    [NotifyCanExecuteChangedFor(nameof(ExportChecklistCommand))]
     private string _masterName = "";
 
     [ObservableProperty] private string _projectName = "";
@@ -152,9 +162,24 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
 
     [ObservableProperty] private string  _previewSummary = "";
     [ObservableProperty] private bool    _hasSysprepPreview;
-    [ObservableProperty] private bool    _hasPlanErrors;
-    [ObservableProperty] private int     _warningCount;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PreviewBadge))]
+    private bool    _hasPlanErrors;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(PreviewBadge))]
+    private int     _warningCount;
+
     [ObservableProperty] private string? _lastGeneratedText;
+
+    /// <summary>右ペイン（生成プレビュー）を開いているか。既定は閉じる（画面の状態で、回答には含めない）。</summary>
+    [ObservableProperty] private bool _isPreviewVisible;
+
+    /// <summary>プレビューを閉じているときにハンドルへ出す要点（エラー / 警告の件数。無ければ空）。</summary>
+    public string PreviewBadge => HasPlanErrors ? "⛔ エラー" : WarningCount > 0 ? $"⚠ {WarningCount}" : "";
+
+    [RelayCommand]
+    private void TogglePreview() => IsPreviewVisible = !IsPreviewVisible;
 
     public MasterParamViewModel(
         IMasterTemplateService         templateService,
@@ -165,7 +190,8 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
         IWorkspaceService              workspace,
         IGpoCatalogService             gpoCatalog,
         IAppAssocService               appAssoc,
-        IRegistryCollectionService     registry)
+        IRegistryCollectionService     registry,
+        IMasterSheetService            sheets)
     {
         _templateService = templateService;
         _answersService  = answersService;
@@ -176,6 +202,7 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
         _gpoCatalog      = gpoCatalog;
         _appAssoc        = appAssoc;
         _registry        = registry;
+        _sheets          = sheets;
         _itemContext     = new MasterItemContext
         {
             OnChanged    = OnItemChanged,
@@ -822,6 +849,70 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
 
     private bool CanPreview() => IsMasterNameValid && !IsLoading;
 
+    // ═══════════════════════════════════════════════════════════════
+    //  帳票の出力（パラメータシート = Excel、チェックリスト = HTML）
+    // ═══════════════════════════════════════════════════════════════
+
+    private bool CanExportSheet() => IsMasterNameValid && !IsLoading && _template is not null && _snapshot is not null;
+
+    [RelayCommand(CanExecute = nameof(CanExportSheet))]
+    private Task ExportParameterSheetAsync()
+        => ExportSheetAsync("パラメータシート", "Excel ブック (*.xlsx)|*.xlsx", ".xlsx", (doc, path) =>
+        {
+            _sheets.SaveParameterSheetXlsx(doc, path);
+            return Task.CompletedTask;
+        });
+
+    [RelayCommand(CanExecute = nameof(CanExportSheet))]
+    private Task ExportChecklistAsync()
+        => ExportSheetAsync("チェックリスト", "HTML ファイル (*.html)|*.html", ".html",
+            (doc, path) => File.WriteAllTextAsync(path, _sheets.ToChecklistHtml(doc), new UTF8Encoding(false)));
+
+    /// <summary>現在の回答（未保存の編集を含む）から帳票を組み立て、保存先を訊いて書き、関連付けで開く。</summary>
+    private async Task ExportSheetAsync(string kind, string filter, string ext, Func<SheetDocument, string, Task> write)
+    {
+        if (_template is null || _snapshot is null) return;
+        ErrorMessage = null;
+        try
+        {
+            var answers = BuildAnswers();
+            var plan    = _generator.BuildPlan(_template, answers, _snapshot);
+            await _appAssoc.EnsureLoadedAsync();   // 既定のアプリの分類辞書（帳票の関連付け表で使う）
+            var doc     = _sheets.Build(_template, answers, plan);
+
+            var dialog = new Microsoft.Win32.SaveFileDialog
+            {
+                Title            = $"{kind}の保存",
+                Filter           = filter,
+                DefaultExt       = ext,
+                FileName         = $"{answers.MasterName}_{kind}_{DateTime.Now:yyyyMMdd}{ext}",
+                InitialDirectory = _workspace.RootPath ?? "",
+            };
+            var owner = Application.Current?.MainWindow;
+            var ok = owner is null ? dialog.ShowDialog() : dialog.ShowDialog(owner);
+            if (ok != true) return;
+
+            await write(doc, dialog.FileName);
+            StatusMessage = $"✓ {kind}を保存しました（{Path.GetFileName(dialog.FileName)}）";
+            Process.Start(new ProcessStartInfo(dialog.FileName) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"{kind}の出力に失敗: {ex.Message}";
+        }
+    }
+
+    /// <summary>自動採番した hostlist.csv の管理番号を 4 章の項目へ記録する（次回から同じ行を置き換えるため）。</summary>
+    private void RecordHostAdminId(MasterPlan plan)
+    {
+        if (string.IsNullOrEmpty(plan.HostAdminId)) return;
+        if (!_itemsById.TryGetValue(BaseSettingsEmitter.AdminIdItemId, out var item) || item is not NumberItemViewModel number) return;
+        if (!string.IsNullOrWhiteSpace(number.Text)) return;
+        _suppressChanges = true;
+        number.Text = plan.HostAdminId;
+        _suppressChanges = false;
+    }
+
     /// <summary>計画ダイアログを開く。生成が実行されたら回答に記録し、スナップショットを再読込する。</summary>
     [RelayCommand(CanExecute = nameof(CanPreview))]
     private async Task PreviewAsync()
@@ -842,6 +933,7 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
         {
             _current.LastGenerated = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
             _current.LastFiles     = result.Written.ToList();
+            RecordHostAdminId(plan);
             try
             {
                 await _answersService.SaveAsync(BuildAnswers());

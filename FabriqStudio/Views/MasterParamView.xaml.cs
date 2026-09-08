@@ -54,10 +54,20 @@ public partial class MasterParamView : UserControl
         var ok = target is { CanDrop: true } && e.Data.GetDataPresent(DataFormats.FileDrop);
         e.Effects = ok ? DragDropEffects.Copy : DragDropEffects.None;
         e.Handled = true;
+        SetDragOver(sender, ok);
+    }
+
+    private void OnAssetDragLeave(object sender, DragEventArgs e) => SetDragOver(sender, false);
+
+    /// <summary>ドロップ枠の強調表示（見た目だけの状態。受け付ける判断は VM）。</summary>
+    private static void SetDragOver(object sender, bool value)
+    {
+        if (sender is DependencyObject d) DropZoneVisual.SetIsDragOver(d, value);
     }
 
     private async void OnAssetDrop(object sender, DragEventArgs e)
     {
+        SetDragOver(sender, false);
         var target = DropTargetOf(sender);
         if (target is not { CanDrop: true } || !e.Data.GetDataPresent(DataFormats.FileDrop)) return;
         e.Handled = true;

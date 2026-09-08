@@ -3,12 +3,14 @@ using static FabriqStudio.Services.Master.Emitters.EmitterHelpers;
 
 namespace FabriqStudio.Services.Master.Emitters;
 
-/// <summary>8. レイアウト: デスクトップショートカット、壁紙、タスクバーのピン留め、スタートメニュー（手動）。</summary>
+/// <summary>8. レイアウト: デスクトップに置くファイル（ショートカット・exe など）、壁紙、タスクバーのピン留め、スタートメニュー（手動）。</summary>
 public sealed class DesktopEmitter : IMasterEmitter
 {
     public string Name => "デスクトップ";
 
-    public const string PublicDesktop = @"C:\Users\Public\Desktop";
+    /// <summary>配置先。%USERPROFILE% は kernel の Expand-UserEnvironmentVariables がサインイン中のユーザー（マスタ作成時は Administrator）に展開する。
+    /// CopyProfile で新規ユーザーの既定のデスクトップにも反映される。パブリック デスクトップには置かない（ユーザー指示 2026-09-08）。</summary>
+    public const string UserDesktop = @"%USERPROFILE%\Desktop";
 
     /// <summary>Windows 既定の壁紙（青帯）。Windows 10 / 11 の標準イメージに含まれる。</summary>
     public const string WindowsDefaultWallpaper = @"C:\Windows\Web\4K\Wallpaper\Windows\img0_1920x1200.jpg";
@@ -45,9 +47,9 @@ public sealed class DesktopEmitter : IMasterEmitter
             ctx.AddCsvRow("copyfile_config", "copy_list.csv", Row(
                 ("Enabled", "1"),
                 ("FileName", file),
-                ("DestPath", PublicDesktop),
+                ("DestPath", UserDesktop),
                 ("Overwrite", "1"),
-                ("Description", string.IsNullOrEmpty(r.Cell("Description")) ? "Desktop shortcut (master)" : r.Cell("Description"))));
+                ("Description", string.IsNullOrEmpty(r.Cell("Description")) ? "Desktop file (master)" : r.Cell("Description"))));
             any = true;
         }
         if (any)

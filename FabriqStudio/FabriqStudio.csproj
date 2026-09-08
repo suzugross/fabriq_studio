@@ -33,6 +33,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClosedXML" Version="0.105.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
     <PackageReference Include="CsvHelper" Version="33.0.1" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
@@ -63,11 +64,9 @@
   <Target Name="CopyRegistryCollectionFiles" AfterTargets="Build">
     <RemoveDir Directories="$(OutDir)registry_collection" />
     <ItemGroup>
-      <RegistryCollectionFiles
-          Include="$(MSBuildProjectDirectory)\registry_collection\**\*" />
+      <RegistryCollectionFiles Include="$(MSBuildProjectDirectory)\registry_collection\**\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(RegistryCollectionFiles)"
-          DestinationFiles="@(RegistryCollectionFiles->
+    <Copy SourceFiles="@(RegistryCollectionFiles)" DestinationFiles="@(RegistryCollectionFiles->
             '$(OutDir)registry_collection\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
@@ -80,14 +79,9 @@
   <Target Name="CopyTemplateFiles" AfterTargets="Build">
     <RemoveDir Directories="$(OutDir)template" />
     <ItemGroup>
-      <TemplateFiles
-          Include="$(MSBuildProjectDirectory)\template\**\*"
-          Exclude="$(MSBuildProjectDirectory)\template\**\.git\**;
-                   $(MSBuildProjectDirectory)\template\**\.claude\**;
-                   $(MSBuildProjectDirectory)\template\**\dev\**" />
+      <TemplateFiles Include="$(MSBuildProjectDirectory)\template\**\*" Exclude="$(MSBuildProjectDirectory)\template\**\.git\**;&#xD;&#xA;                   $(MSBuildProjectDirectory)\template\**\.claude\**;&#xD;&#xA;                   $(MSBuildProjectDirectory)\template\**\dev\**" />
     </ItemGroup>
-    <Copy SourceFiles="@(TemplateFiles)"
-          DestinationFiles="@(TemplateFiles->
+    <Copy SourceFiles="@(TemplateFiles)" DestinationFiles="@(TemplateFiles->
             '$(OutDir)template\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
@@ -98,22 +92,18 @@
   <Target Name="CopyMasterTemplateFiles" AfterTargets="Build">
     <RemoveDir Directories="$(OutDir)master_template" />
     <ItemGroup>
-      <MasterTemplateFiles
-          Include="$(MSBuildProjectDirectory)\master_template\**\*" />
+      <MasterTemplateFiles Include="$(MSBuildProjectDirectory)\master_template\**\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(MasterTemplateFiles)"
-          DestinationFiles="@(MasterTemplateFiles->
+    <Copy SourceFiles="@(MasterTemplateFiles)" DestinationFiles="@(MasterTemplateFiles->
             '$(OutDir)master_template\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
   <Target Name="CopyMasterTemplateFilesOnPublish" AfterTargets="Publish">
     <RemoveDir Directories="$(PublishDir)master_template" />
     <ItemGroup>
-      <MasterTemplateFilesPublish
-          Include="$(MSBuildProjectDirectory)\master_template\**\*" />
+      <MasterTemplateFilesPublish Include="$(MSBuildProjectDirectory)\master_template\**\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(MasterTemplateFilesPublish)"
-          DestinationFiles="@(MasterTemplateFilesPublish->
+    <Copy SourceFiles="@(MasterTemplateFilesPublish)" DestinationFiles="@(MasterTemplateFilesPublish->
             '$(PublishDir)master_template\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
@@ -124,25 +114,18 @@
   <Target Name="CopyRegistryCollectionFilesOnPublish" AfterTargets="Publish">
     <RemoveDir Directories="$(PublishDir)registry_collection" />
     <ItemGroup>
-      <RegistryCollectionFilesPublish
-          Include="$(MSBuildProjectDirectory)\registry_collection\**\*" />
+      <RegistryCollectionFilesPublish Include="$(MSBuildProjectDirectory)\registry_collection\**\*" />
     </ItemGroup>
-    <Copy SourceFiles="@(RegistryCollectionFilesPublish)"
-          DestinationFiles="@(RegistryCollectionFilesPublish->
+    <Copy SourceFiles="@(RegistryCollectionFilesPublish)" DestinationFiles="@(RegistryCollectionFilesPublish->
             '$(PublishDir)registry_collection\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 
   <Target Name="CopyTemplateFilesOnPublish" AfterTargets="Publish">
     <RemoveDir Directories="$(PublishDir)template" />
     <ItemGroup>
-      <TemplateFilesPublish
-          Include="$(MSBuildProjectDirectory)\template\**\*"
-          Exclude="$(MSBuildProjectDirectory)\template\**\.git\**;
-                   $(MSBuildProjectDirectory)\template\**\.claude\**;
-                   $(MSBuildProjectDirectory)\template\**\dev\**" />
+      <TemplateFilesPublish Include="$(MSBuildProjectDirectory)\template\**\*" Exclude="$(MSBuildProjectDirectory)\template\**\.git\**;&#xD;&#xA;                   $(MSBuildProjectDirectory)\template\**\.claude\**;&#xD;&#xA;                   $(MSBuildProjectDirectory)\template\**\dev\**" />
     </ItemGroup>
-    <Copy SourceFiles="@(TemplateFilesPublish)"
-          DestinationFiles="@(TemplateFilesPublish->
+    <Copy SourceFiles="@(TemplateFilesPublish)" DestinationFiles="@(TemplateFilesPublish->
             '$(PublishDir)template\%(RecursiveDir)%(Filename)%(Extension)')" />
   </Target>
 

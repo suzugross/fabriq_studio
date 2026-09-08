@@ -70,6 +70,7 @@ public partial class App : Application
         services.AddSingleton<IMasterAssetService, MasterAssetService>();
         services.AddSingleton<IOdtDownloadService, OdtDownloadService>();
         services.AddSingleton<IAppAssocService, AppAssocService>();
+        services.AddSingleton<IMasterSheetService, MasterSheetService>();
 
         // GPO 辞書（ADMX/ADML から生成。ワークスペース非依存）と gpo_list.csv への書き出し
         services.AddSingleton<IGpoCatalogService, GpoCatalogService>();

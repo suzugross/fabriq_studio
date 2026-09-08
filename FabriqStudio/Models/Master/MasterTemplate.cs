@@ -23,6 +23,8 @@ public sealed class MasterSection
     /// <summary>生成プロファイルの Group 列に使う名前（表示用。実際の割当は Emitter が決める）。</summary>
     [JsonPropertyName("group")]       public string  Group       { get; set; } = "";
     [JsonPropertyName("description")] public string? Description { get; set; }
+    /// <summary>パラメータシート（お客様向け）での章名。省略時は <see cref="Title"/>。</summary>
+    [JsonPropertyName("sheetTitle")]  public string? SheetTitle  { get; set; }
     [JsonPropertyName("items")]       public List<MasterItem> Items { get; set; } = [];
 }
 
@@ -85,6 +87,29 @@ public sealed class MasterItem
     /// <summary>action 項目のボタン文言（省略時「▶ 実行」）。実行中の文言は runningLabel、横の注記は placeholder。</summary>
     [JsonPropertyName("buttonLabel")]  public string? ButtonLabel  { get; set; }
     [JsonPropertyName("runningLabel")] public string? RunningLabel { get; set; }
+
+    /// <summary>パラメータシート／チェックリストでの見せ方（お客様向けの文言）。省略時は画面の文言をそのまま使う。</summary>
+    [JsonPropertyName("sheet")] public SheetSpec? Sheet { get; set; }
+}
+
+/// <summary>
+/// 帳票（パラメータシート / チェックリスト）での項目の見せ方。fabriq の仕組みではなく
+/// 「Windows にどう設定したか」をお客様に伝える文言をここに置く。
+/// </summary>
+public sealed class SheetSpec
+{
+    /// <summary>帳票に出さない（fabriq 内部の項目）。</summary>
+    [JsonPropertyName("hide")]    public bool    Hide    { get; set; }
+    /// <summary>帳票での項目名（省略時は画面のラベル）。</summary>
+    [JsonPropertyName("label")]   public string? Label   { get; set; }
+    /// <summary>値ごとの表現（choice の値 / bool の "1"・"0" / multi の値 → お客様向けの文）。</summary>
+    [JsonPropertyName("values")]  public Dictionary<string, string>? Values { get; set; }
+    /// <summary>table で出す列（この順。"A|B" は A が空なら B を出す）。省略時は全列。</summary>
+    [JsonPropertyName("columns")] public List<string>? Columns { get; set; }
+    /// <summary>設定方法（Windows 側の言い方。例: レジストリで無効化、グループポリシー）。</summary>
+    [JsonPropertyName("method")]  public string? Method  { get; set; }
+    /// <summary>table のセル値の表現（列名 → 値 → お客様向けの文。例: IsDefault の 1 → 既定）。</summary>
+    [JsonPropertyName("cellValues")] public Dictionary<string, Dictionary<string, string>>? CellValues { get; set; }
 }
 
 /// <summary>

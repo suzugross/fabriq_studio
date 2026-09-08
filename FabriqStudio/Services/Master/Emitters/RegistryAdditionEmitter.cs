@@ -46,7 +46,7 @@ public sealed class RegistryAdditionEmitter : IMasterEmitter
                     ctx.Warn($"レジストリ追加「{entry.Title}」= {value} は「{existing.SettingTitle}」= {existing.Value} と同じ値（{entry.Hive} {entry.KeyPath}\\{entry.KeyName}）を書きます。追加分の値を優先します。意図した値か確認してください。", ItemId);
             }
 
-            ctx.AddRegistry(entry.Id, value, "レジストリ追加");
+            ctx.AddRegistry(entry.Id, value, "レジストリ追加", itemId: ItemId);
         }
     }
 }
