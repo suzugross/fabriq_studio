@@ -248,10 +248,10 @@
                                 Background="#107C10" Foreground="White" BorderThickness="0" ToolTip="{Binding Help}">
                             <Button.Style>
                                 <Style TargetType="Button">
-                                    <Setter Property="Content" Value="▶ setup.exe /download を実行" />
+                                    <Setter Property="Content" Value="{Binding ButtonLabel}" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding IsRunning}" Value="True">
-                                            <Setter Property="Content" Value="⏳ ダウンロード中..." />
+                                            <Setter Property="Content" Value="{Binding RunningLabel}" />
                                         </DataTrigger>
                                         <Trigger Property="IsEnabled" Value="False">
                                             <Setter Property="Opacity" Value="0.45" />
@@ -260,8 +260,9 @@
                                 </Style>
                             </Button.Style>
                         </Button>
-                        <TextBlock Text="（setup.exe を配置し、この PC がインターネットに接続している必要があります）"
-                                   FontSize="10.5" Foreground="#666666" VerticalAlignment="Center" Margin="10,0,0,0" />
+                        <TextBlock Text="{Binding Note}" FontSize="10.5" Foreground="#666666" VerticalAlignment="Center" Margin="10,0,0,0"
+                                   TextWrapping="Wrap" MaxWidth="520"
+                                   Visibility="{Binding HasNote, Converter={StaticResource BoolToVisibilityConverter}}" />
                     </StackPanel>
                     <TextBlock Text="{Binding Status}" FontSize="11" Foreground="#333333" TextWrapping="Wrap" Margin="0,4,0,0"
                                Visibility="{Binding Status, Converter={StaticResource NullToCollapsedConverter}}" />
@@ -466,6 +467,104 @@
                                         <TextBlock Text="{Binding ScopeLabel}" FontSize="9.5" Foreground="#2B4C7E" />
                                     </Border>
                                     <TextBlock Text="{Binding RowCountText}" FontSize="10" Foreground="#666666" HorizontalAlignment="Right" Margin="0,3,0,0" />
+                                </StackPanel>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </DataTemplate>
+
+        <!-- レジストリ辞書から選んだ設定の一覧（追加はダイアログ、値は行ごとに編集） -->
+        <DataTemplate DataType="{x:Type mvm:RegistryItemViewModel}">
+            <Grid Style="{StaticResource ItemRowGrid}"
+                  Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <DockPanel Grid.Row="0" LastChildFill="False" Margin="0,0,0,4">
+                    <TextBlock DockPanel.Dock="Left" Text="{Binding Label}" Style="{StaticResource ItemLabel}" ToolTip="{Binding Help}" />
+                    <ContentControl DockPanel.Dock="Right" Content="{Binding}" ContentTemplate="{StaticResource KindBadge}"
+                                    Visibility="{Binding HasTarget, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    <Button DockPanel.Dock="Right" Content="🗑 削除" Command="{Binding RemoveCommand}"
+                            Padding="8,2" FontSize="11" Margin="0,0,8,0" Cursor="Hand"
+                            IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    <Button DockPanel.Dock="Right" Content="🔍 辞書から追加" Command="{Binding AddCommand}"
+                            Padding="10,2" FontSize="11" Margin="0,0,6,0" Cursor="Hand"
+                            Background="#007ACC" Foreground="White" BorderThickness="0"
+                            IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                </DockPanel>
+                <TextBlock Grid.Row="1" Text="{Binding Summary}" FontSize="10.5" Foreground="#666666" TextWrapping="Wrap" Margin="0,0,0,4" />
+                <ListBox Grid.Row="2" ItemsSource="{Binding Entries}" SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                         MaxHeight="340" BorderBrush="#DDDDDD" BorderThickness="1" Background="White"
+                         HorizontalContentAlignment="Stretch" FontSize="11.5"
+                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                         Visibility="{Binding HasEntries, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ListBox.ItemContainerStyle>
+                        <Style TargetType="ListBoxItem">
+                            <Setter Property="Padding" Value="8,4" />
+                            <Setter Property="BorderThickness" Value="0,0,0,1" />
+                            <Setter Property="BorderBrush" Value="#F0F0F0" />
+                        </Style>
+                    </ListBox.ItemContainerStyle>
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Grid.Column="0" CornerRadius="3" Padding="6,1" Margin="0,1,8,0" VerticalAlignment="Top" MinWidth="44">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#EEF3FA" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                                                    <Setter Property="Background" Value="#FBE3E3" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <TextBlock FontSize="10.5" FontWeight="SemiBold" Foreground="#2B4C7E" HorizontalAlignment="Center">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="{Binding Hive}" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                                                        <Setter Property="Text" Value="無し" />
+                                                        <Setter Property="Foreground" Value="#C04040" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#222222" TextWrapping="Wrap">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsMissing}" Value="True">
+                                                        <Setter Property="Foreground" Value="#C04040" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Text="{Binding KeyText}" FontSize="10" Foreground="#777777" TextWrapping="Wrap" ToolTip="{Binding KeyPath}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="8,0,0,0" VerticalAlignment="Top">
+                                    <TextBlock Text="{Binding Type}" FontSize="10" Foreground="#666666" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBox Text="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Style="{StaticResource EditableTextBox}" Width="150"
+                                             ToolTip="{Binding ValueHint}"
+                                             IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                                    <Button Content="↺" Command="{Binding ResetValueCommand}" ToolTip="辞書の値に戻す"
+                                            FontSize="11" Padding="6,0" Margin="4,0,0,0" BorderThickness="0" Background="Transparent" Cursor="Hand"
+                                            Visibility="{Binding IsValueChanged, Converter={StaticResource BoolToVisibilityConverter}}"
+                                            IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>
@@ -737,11 +836,11 @@
                             </TextBlock>
                             <ItemsControl ItemsSource="{Binding PreviewRows}" ItemTemplate="{StaticResource PreviewRowTemplate}" />
 
-                            <StackPanel Visibility="{Binding HasDeployPreview, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,10,0,0">
+                            <StackPanel Visibility="{Binding HasSysprepPreview, Converter={StaticResource BoolToVisibilityConverter}}" Margin="0,10,0,0">
                                 <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="#444444" Margin="0,0,0,3">
-                                    <Run Text="profiles/" /><Run Text="{Binding MasterName, Mode=OneWay}" /><Run Text="_deploy.csv" />
+                                    <Run Text="profiles/" /><Run Text="{Binding MasterName, Mode=OneWay}" /><Run Text="_sysprep.csv" />
                                 </TextBlock>
-                                <ItemsControl ItemsSource="{Binding PreviewDeployRows}" ItemTemplate="{StaticResource PreviewRowTemplate}" />
+                                <ItemsControl ItemsSource="{Binding PreviewSysprepRows}" ItemTemplate="{StaticResource PreviewRowTemplate}" />
                             </StackPanel>
 
                             <TextBlock Text="書き込み先" FontSize="11" FontWeight="SemiBold" Foreground="#444444" Margin="0,12,0,3" />

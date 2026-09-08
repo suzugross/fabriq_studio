@@ -16,7 +16,6 @@ public class MasterKindToBrushConverter : IValueConverter
     {
         [MasterItemKinds.Module] = ("#E6F4EC", "#1E7F4F"),
         [MasterItemKinds.Dict]   = ("#E4EDFA", "#2B63C6"),
-        [MasterItemKinds.Deploy] = ("#E0F3F5", "#0E7C86"),
         [MasterItemKinds.Manual] = ("#ECEEF2", "#6B7280"),
         [MasterItemKinds.Fabriq] = ("#FBE9E1", "#B5451B"),
     };

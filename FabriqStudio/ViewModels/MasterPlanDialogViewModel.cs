@@ -44,13 +44,13 @@ public partial class MasterPlanDialogViewModel : ObservableObject
     {
         get
         {
-            var master = Plan.Profiles.FirstOrDefault(p => !p.IsDeploy);
-            var deploy = Plan.Profiles.FirstOrDefault(p => p.IsDeploy);
+            var master  = Plan.Profiles.FirstOrDefault(p => p.Kind == ProfileKind.Master);
+            var sysprep = Plan.Profiles.FirstOrDefault(p => p.IsSysprep);
             var parts = new List<string>
             {
                 $"マスタ {master?.Rows.Count ?? 0} 行",
             };
-            if (deploy is not null) parts.Add($"配備 {deploy.Rows.Count} 行");
+            if (sysprep is not null) parts.Add($"Sysprep {sysprep.Rows.Count} 行");
             parts.Add($"レジストリ {Plan.RegistryOps.Sum(r => r.Rows.Count)} 件");
             parts.Add($"モジュール CSV {Plan.CsvOps.Count} ファイル / {Plan.CsvOps.Sum(c => c.Rows.Count)} 行");
             if (Plan.Deletes.Count > 0) parts.Add($"削除 {Plan.Deletes.Count}");

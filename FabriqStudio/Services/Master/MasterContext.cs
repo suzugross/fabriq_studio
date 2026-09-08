@@ -14,8 +14,8 @@ public enum ProfileSlot
     Desktop  = 600,
     Printer  = 700,
     Finalize = 800,
-    /// <summary>配備プロファイル側。Order &lt; 100 の行の後に __RESTART__ が入る。</summary>
-    Deploy   = 1000,
+    /// <summary>Sysprep プロファイル側（Order 順に並べるだけ）。</summary>
+    Sysprep  = 900,
 }
 
 /// <summary>Emitter がプロファイルへ要求する 1 行。最終的な Order・マーカーは Assembler が決める。</summary>
@@ -28,7 +28,8 @@ public sealed class ProfileRequest
     /// <summary>true = Segment=マスタ名 を付ける（このモジュールの CSV に生成行を書いた）。</summary>
     public bool        Isolated  { get; init; }
     public string      ErrorMode { get; init; } = "";
-    public bool        IsDeploy  { get; init; }
+    /// <summary>どのプロファイルに載せるか。</summary>
+    public ProfileKind Kind      { get; init; } = ProfileKind.Master;
     /// <summary>副セグメント（例: app01:GoogleChrome）。指定時は Segment=マスタ名:副セグメント になる。</summary>
     public string?     SubSegment  { get; init; }
     /// <summary>Description の上書き（省略時は module.csv の MenuName）。</summary>
@@ -42,6 +43,8 @@ public sealed class RegistryRequest
     public RegistryTemplateEntry Entry { get; init; } = new();
     public string Value        { get; init; } = "";
     public string SettingTitle { get; init; } = "";
+    /// <summary>副セグメント（null = 通常のマスタ行。"temp" = マスタ作成中だけの一時ポリシー）。</summary>
+    public string? SubSegment  { get; init; }
 }
 
 /// <summary>
@@ -121,6 +124,10 @@ public sealed class MasterContext
     // ── 回答の参照 ────────────────────────────────────────────────
 
     public MasterItem? Item(string id) => _items.TryGetValue(id, out var i) ? i : null;
+
+    /// <summary>レジストリ辞書のエントリ（無ければ null）。Emitter が衝突確認や表示名の解決に使う。</summary>
+    public RegistryTemplateEntry? DictionaryEntry(string id)
+        => _dictionary.TryGetValue(id, out var e) ? e : null;
 
     public string Label(string id) => Item(id)?.Label ?? id;
 
@@ -339,7 +346,7 @@ public sealed class MasterContext
     /// レジストリ辞書のエントリを 1 行追加する。<paramref name="valueOverride"/> が非 null ならその値で上書き。
     /// 同じ KeyPath + KeyName は後勝ちで 1 行にまとめる（選択肢の値上書きが確実に効くように）。
     /// </summary>
-    public void AddRegistry(string dictId, string? valueOverride, string? sourceLabel)
+    public void AddRegistry(string dictId, string? valueOverride, string? sourceLabel, string? subSegment = null)
     {
         if (!_dictionary.TryGetValue(dictId, out var entry))
         {
@@ -351,11 +358,12 @@ public sealed class MasterContext
         var title = string.IsNullOrEmpty(sourceLabel) ? entry.Title : $"{sourceLabel}: {entry.Title}";
 
         RegistryRequests.RemoveAll(r =>
+            string.Equals(r.SubSegment, subSegment, StringComparison.Ordinal) &&
             r.Entry.Hive.Equals(entry.Hive, StringComparison.OrdinalIgnoreCase) &&
             r.Entry.KeyPath.Equals(entry.KeyPath, StringComparison.OrdinalIgnoreCase) &&
             r.Entry.KeyName.Equals(entry.KeyName, StringComparison.OrdinalIgnoreCase));
 
-        RegistryRequests.Add(new RegistryRequest { Entry = entry, Value = value, SettingTitle = title });
+        RegistryRequests.Add(new RegistryRequest { Entry = entry, Value = value, SettingTitle = title, SubSegment = subSegment });
     }
 
     /// <summary>
@@ -365,16 +373,18 @@ public sealed class MasterContext
     /// </summary>
     public void AddProfile(
         string moduleDir, string script, ProfileSlot slot, int order,
-        bool isolated, string errorMode = "", bool deploy = false,
-        string? subSegment = null, string? description = null)
+        bool isolated, string errorMode = "",
+        string? subSegment = null, string? description = null, ProfileKind? kind = null)
     {
         if (!ModuleAvailable(moduleDir)) return;
+
+        var profileKind = kind ?? ProfileKind.Master;
 
         if (ProfileRequests.Any(p =>
                 p.Module.Equals(moduleDir, StringComparison.OrdinalIgnoreCase) &&
                 p.Script.Equals(script, StringComparison.OrdinalIgnoreCase) &&
                 string.Equals(p.SubSegment, subSegment, StringComparison.Ordinal) &&
-                p.IsDeploy == deploy))
+                p.Kind == profileKind))
             return;
 
         ProfileRequests.Add(new ProfileRequest
@@ -385,11 +395,18 @@ public sealed class MasterContext
             Order       = order,
             Isolated    = isolated || subSegment is not null,
             ErrorMode   = errorMode,
-            IsDeploy    = deploy,
+            Kind        = profileKind,
             SubSegment  = subSegment,
             Description = description,
             Sequence    = _sequence++,
         });
+    }
+
+    /// <summary>モジュール配下のファイルの絶対パス（モジュールが無ければ null）。資材の存在確認・読み込みに使う。</summary>
+    public string? ModuleFile(string moduleDir, string relativePath)
+    {
+        var module = Snapshot.GetModule(moduleDir);
+        return module is null ? null : System.IO.Path.Combine(module.AbsPath, relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
     }
 
     /// <summary>秘密情報を ENC: 化する。パスフレーズ未設定なら平文のまま（1 回だけ警告）。既に ENC: なら変えない。</summary>

@@ -46,14 +46,16 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
         _emitters =
         [
             new RegistryTemplateEmitter(),
+            new RegistryAdditionEmitter(),
             new GpoEmitter(gpoCatalog),
             new AccountEmitter(),
             new BaseSettingsEmitter(),
             new SystemEmitter(),
             new DesktopEmitter(),
+            new PrinterEmitter(),
             new AppsEmitter(),
             new FinalizeEmitter(),
-            new DeployEmitter(),
+            new SysprepEmitter(),
             new ManualEmitter(),
         ];
     }
@@ -333,6 +335,7 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
         {
             var rows = ctx.RegistryRequests
                 .Where(r => r.Entry.Hive.Equals(hive, StringComparison.OrdinalIgnoreCase))
+                .OrderBy(r => r.SubSegment is null ? 0 : 1)   // 通常行 → 副セグメント（一時ポリシー）行
                 .ToList();
 
             var fileName = $"reg_{hive.ToLowerInvariant()}_list_{ctx.MasterName}.csv";
@@ -374,10 +377,18 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
                     KeyName      = r.Entry.KeyName,
                     Type         = r.Entry.Type,
                     Value        = r.Value,
+                    Segment      = ctx.SegmentFor(r.SubSegment),
                 });
             plan.RegistryOps.Add(op);
 
-            ctx.AddProfile(moduleDir, script, ProfileSlot.Registry, order, isolated: true);
+            if (rows.Any(r => r.SubSegment is null))
+                ctx.AddProfile(moduleDir, script, ProfileSlot.Registry, order, isolated: true);
+
+            // 副セグメント（マスタ作成中だけの一時ポリシー）はマスタ プロファイルの先頭で設定する。
+            // 解除は Sysprep プロファイル側の reg_*_delete 行（SysprepEmitter）が同じ Segment で行う。
+            foreach (var sub in rows.Where(r => r.SubSegment is not null).Select(r => r.SubSegment!).Distinct())
+                ctx.AddProfile(moduleDir, script, ProfileSlot.Base, 1, isolated: true,
+                    subSegment: sub, description: $"{ctx.MenuName(moduleDir, script)} - 一時ポリシー");
         }
     }
 
@@ -386,16 +397,17 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
         var plan = ctx.Plan;
 
         // ── マスタ本体 ──────────────────────────────────────────────
-        var master = ctx.ProfileRequests.Where(p => !p.IsDeploy)
+        var master = ctx.ProfileRequests.Where(p => p.Kind == ProfileKind.Master)
             .OrderBy(p => p.Slot).ThenBy(p => p.Order).ThenBy(p => p.Sequence).ToList();
 
-        var masterProfile = NewProfile(ctx, ctx.MasterName, isDeploy: false);
+        var masterProfile = NewProfile(ctx, ctx.MasterName, ProfileKind.Master);
         var rows = masterProfile.Rows;
 
         var wait = ctx.GetInt("autopilot_wait") ?? 3;
         rows.Add(Marker("__AUTOPILOT__", $"WaitSec={Math.Max(0, wait)}"));
 
-        var hasEarlyRows   = master.Any(p => p.Slot <= ProfileSlot.Account);
+        // 一時ポリシー（副セグメント temp）だけでは再起動しない
+        var hasEarlyRows   = master.Any(p => p.Slot <= ProfileSlot.Account && p.SubSegment != SysprepEmitter.TempSubSegment);
         var hkcuRows       = ctx.RegistryRequests.Any(r => r.Entry.Hive.Equals("HKCU", StringComparison.OrdinalIgnoreCase));
         var restartDone    = false;
         var gateDone       = false;
@@ -440,52 +452,54 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
         if (master.Count == 0)
             ctx.Warn("生成されるモジュール行がありません。各章の設定を入力してください。");
 
-        // ── 配備プロファイル ────────────────────────────────────────
-        var deployName = ctx.MasterName + "_deploy";
-        var deploy = ctx.ProfileRequests.Where(p => p.IsDeploy)
+        // ── Sysprep プロファイル（マスタ作成後に Administrator で実行。順序は Order のみ、ゲート無し）──
+        var sysprepName = ctx.MasterName + "_sysprep";
+        var sysprep = ctx.ProfileRequests.Where(p => p.Kind == ProfileKind.Sysprep)
             .OrderBy(p => p.Order).ThenBy(p => p.Sequence).ToList();
 
-        if (ctx.IsTrue("deploy_profile") && deploy.Count > 0)
+        if (SysprepEmitter.Enabled(ctx) && sysprep.Count > 0)
         {
-            var dp = NewProfile(ctx, deployName, isDeploy: true);
-            dp.Rows.Add(Marker("__AUTOPILOT__", $"WaitSec={Math.Max(0, wait)}"));
-            var restarted = false;
-            foreach (var req in deploy)
-            {
-                if (!restarted && req.Order >= 100 && deploy.Any(p => p.Order < 100))
-                {
-                    dp.Rows.Add(Marker("__RESTART__", "Restart"));
-                    restarted = true;
-                }
-                dp.Rows.Add(ToEntry(ctx, req));
-            }
-            if (!restarted && deploy.Any(p => p.Order < 100))
-                dp.Rows.Add(Marker("__RESTART__", "Restart"));
-            Renumber(dp.Rows);
-            plan.Profiles.Add(dp);
+            var sp = NewProfile(ctx, sysprepName, ProfileKind.Sysprep);
+            sp.Rows.Add(Marker("__AUTOPILOT__", $"WaitSec={Math.Max(0, wait)}"));
+            foreach (var req in sysprep) sp.Rows.Add(ToEntry(ctx, req));
+            Renumber(sp.Rows);
+            plan.Profiles.Add(sp);
         }
-        else if (ctx.Snapshot.ProfileNames.Contains(deployName))
+        else if (ctx.Snapshot.ProfileNames.Contains(sysprepName))
+        {
+            var abs = _resolver.GetProfilePath(sysprepName);
+            plan.Deletes.Add(new PlanDelete
+            {
+                AbsPath = abs,
+                RelPath = _resolver.ToRelative(abs),
+                Reason  = "Sysprep プロファイルを生成しない設定のため",
+            });
+        }
+
+        // ── 配備プロファイル（廃止）: 以前の生成で作った <名>_deploy.csv が残っていれば取り除く ──
+        var deployName = ctx.MasterName + "_deploy";
+        if (ctx.Snapshot.ProfileNames.Contains(deployName))
         {
             var abs = _resolver.GetProfilePath(deployName);
             plan.Deletes.Add(new PlanDelete
             {
                 AbsPath = abs,
                 RelPath = _resolver.ToRelative(abs),
-                Reason  = "配備プロファイルを生成しない設定のため",
+                Reason  = "配備プロファイルは廃止されたため（マスタ設計では生成しません）",
             });
         }
     }
 
-    private PlanProfile NewProfile(MasterContext ctx, string name, bool isDeploy)
+    private PlanProfile NewProfile(MasterContext ctx, string name, ProfileKind kind)
     {
         var abs = _resolver.GetProfilePath(name);
         return new PlanProfile
         {
-            Name     = name,
-            AbsPath  = abs,
-            RelPath  = _resolver.ToRelative(abs),
-            Exists   = ctx.Snapshot.ProfileNames.Contains(name),
-            IsDeploy = isDeploy,
+            Name    = name,
+            AbsPath = abs,
+            RelPath = _resolver.ToRelative(abs),
+            Exists  = ctx.Snapshot.ProfileNames.Contains(name),
+            Kind    = kind,
         };
     }
 
@@ -510,7 +524,11 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
                         : req.Isolated             ? ctx.MasterName
                         : "",
             ErrorMode   = req.ErrorMode,
-            Group       = req.IsDeploy ? "Deploy" : req.Slot.ToString(),
+            Group       = req.Kind switch
+            {
+                ProfileKind.Sysprep => "Sysprep",
+                _                   => req.Slot.ToString(),
+            },
         };
     }
 
@@ -756,7 +774,7 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
             Set(row, "KeyName", r.KeyName);
             Set(row, "Type", r.Type);
             Set(row, "Value", r.Value);
-            Set(row, "Segment", masterName);
+            Set(row, "Segment", string.IsNullOrEmpty(r.Segment) ? masterName : r.Segment);
             table.Rows.Add(row);
         }
 

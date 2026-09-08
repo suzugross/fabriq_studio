@@ -46,7 +46,7 @@ public sealed class MasterItem
     /// <summary>行右端に出す「落ち先」ラベル（例: power_config / 辞書 2 件 / 手動）。</summary>
     [JsonPropertyName("target")] public string? Target { get; set; }
 
-    /// <summary>落ち先の種別（module / dict / deploy / manual / fabriq）。バッジ色に使う。</summary>
+    /// <summary>落ち先の種別（module / dict / manual / fabriq）。バッジ色に使う。</summary>
     [JsonPropertyName("kind")]   public string? Kind { get; set; }
 
     /// <summary>秘密情報（生成時に ENC: 暗号化する）。</summary>
@@ -81,6 +81,10 @@ public sealed class MasterItem
 
     /// <summary>action 項目が実行する処理の識別子（例: odtDownload）。ViewModel 側で解釈する。</summary>
     [JsonPropertyName("action")] public string? Action { get; set; }
+
+    /// <summary>action 項目のボタン文言（省略時「▶ 実行」）。実行中の文言は runningLabel、横の注記は placeholder。</summary>
+    [JsonPropertyName("buttonLabel")]  public string? ButtonLabel  { get; set; }
+    [JsonPropertyName("runningLabel")] public string? RunningLabel { get; set; }
 }
 
 /// <summary>
@@ -132,6 +136,8 @@ public static class MasterDropKinds
     public const string Shortcut      = "shortcut";
     public const string PrinterDriver = "printerDriver";
     public const string File          = "file";
+    /// <summary>フォルダーをそのままコピーする（例: アプリ設定フォルダーを sysprep_config/source へ）。</summary>
+    public const string Folder        = "folder";
 }
 
 /// <summary>choice / multi の選択肢 1 件。</summary>
@@ -193,6 +199,8 @@ public static class MasterItemTypes
     public const string Action    = "action";
     /// <summary>GPO 辞書から選んだポリシーの一覧（値は tables[id] に GpoSelection の行として保存）。</summary>
     public const string Gpo       = "gpo";
+    /// <summary>レジストリ辞書から選んだ設定の一覧（値は tables[id] に RegistrySelection の行として保存）。</summary>
+    public const string Registry  = "registry";
 }
 
 /// <summary><see cref="MasterItem.Kind"/> の定数（バッジ種別）。</summary>
@@ -200,7 +208,6 @@ public static class MasterItemKinds
 {
     public const string Module = "module";
     public const string Dict   = "dict";
-    public const string Deploy = "deploy";
     public const string Manual = "manual";
     public const string Fabriq = "fabriq";
 }

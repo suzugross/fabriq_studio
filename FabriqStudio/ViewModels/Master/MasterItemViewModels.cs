@@ -2,8 +2,10 @@ using System.Collections.ObjectModel;
 using System.Data;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using FabriqStudio.Models;
 using FabriqStudio.Models.Gpo;
 using FabriqStudio.Models.Master;
+using FabriqStudio.Services;
 using FabriqStudio.Services.Gpo;
 
 namespace FabriqStudio.ViewModels.Master;
@@ -39,6 +41,12 @@ public sealed class MasterItemContext
 
     /// <summary>gpo 項目: 表示名・生成行数の解決に使う辞書。</summary>
     public IGpoCatalogService? GpoCatalog { get; init; }
+
+    /// <summary>registry 項目: レジストリ辞書ダイアログでエントリを 1 件選ぶ（キャンセルで null）。</summary>
+    public Func<Task<RegistryTemplateEntry?>>? PickRegistry { get; init; }
+
+    /// <summary>registry 項目: 表示名・キー・辞書値の解決に使う辞書。</summary>
+    public IRegistryCollectionService? RegistryDictionary { get; init; }
 }
 
 /// <summary>ボタンで処理を実行する項目（例: ODT のオフライン資材ダウンロード）。値は持たない。</summary>
@@ -53,6 +61,12 @@ public sealed partial class ActionItemViewModel : MasterItemViewModel
     }
 
     public string ActionId => Item.Action ?? "";
+
+    public string ButtonLabel  => string.IsNullOrWhiteSpace(Item.ButtonLabel)  ? "▶ 実行"       : Item.ButtonLabel!;
+    public string RunningLabel => string.IsNullOrWhiteSpace(Item.RunningLabel) ? "⏳ 実行中..." : Item.RunningLabel!;
+    /// <summary>ボタン横の注記（テンプレートの placeholder）。</summary>
+    public string Note    => Item.Placeholder ?? "";
+    public bool   HasNote => !string.IsNullOrWhiteSpace(Item.Placeholder);
 
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(RunCommand))]
@@ -99,11 +113,10 @@ public abstract partial class MasterItemViewModel : ObservableObject
     public bool    HasTarget => !string.IsNullOrWhiteSpace(Item.Target);
     public string  Kind      => Item.Kind ?? MasterItemKinds.Module;
 
-    /// <summary>バッジ文言（対応 / 辞書 / 配備 / 手動 / fabriq側）。</summary>
+    /// <summary>バッジ文言（対応 / 辞書 / 手動 / fabriq側）。</summary>
     public string KindLabel => Kind switch
     {
         MasterItemKinds.Dict   => "辞書",
-        MasterItemKinds.Deploy => "配備",
         MasterItemKinds.Manual => "手動",
         MasterItemKinds.Fabriq => "fabriq側",
         _                      => "対応",

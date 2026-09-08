@@ -75,6 +75,17 @@ public sealed class PlanRegistryRow
     public string KeyName      { get; init; } = "";
     public string Type         { get; init; } = "";
     public string Value        { get; init; } = "";
+    /// <summary>行の Segment（通常はマスタ名。一時ポリシーは マスタ名:temp）。</summary>
+    public string Segment      { get; init; } = "";
+}
+
+/// <summary>生成するプロファイルの種別。</summary>
+public enum ProfileKind
+{
+    /// <summary>マスタ本体（profiles/&lt;名&gt;.csv）。</summary>
+    Master,
+    /// <summary>Sysprep（profiles/&lt;名&gt;_sysprep.csv）。マスタ作成後に Administrator で実行する。</summary>
+    Sysprep,
 }
 
 public sealed class PlanRegistryFile
@@ -94,7 +105,8 @@ public sealed class PlanProfile
     public string RelPath { get; init; } = "";
     public string AbsPath { get; init; } = "";
     public bool   Exists  { get; init; }
-    public bool   IsDeploy { get; init; }
+    public ProfileKind Kind { get; init; } = ProfileKind.Master;
+    public bool   IsSysprep => Kind == ProfileKind.Sysprep;
     public List<ProfileScriptEntry> Rows { get; } = [];
 }
 
