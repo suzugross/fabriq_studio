@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using FabriqStudio.Models.Master;
 using static FabriqStudio.Services.Master.Emitters.EmitterHelpers;
 
 namespace FabriqStudio.Services.Master.Emitters;
@@ -6,6 +7,9 @@ namespace FabriqStudio.Services.Master.Emitters;
 /// <summary>2. ライセンス、3. パーティション、4. マスタ作成時の仮ホスト名、5. ネットワーク（IPv6 / NTP）。</summary>
 public sealed class BaseSettingsEmitter : IMasterEmitter
 {
+    /// <summary>マスタ作成中の時刻合わせに使う既定 NTP（顧客の内部 NTP を仕上げ時に回す場合）。</summary>
+    private const string DefaultNtpServer = "time.windows.com";
+
     public string Name => "基盤設定";
 
     /// <summary>NetBIOS 名として妥当なコンピューター名（1〜15 文字、英数字とハイフン、先頭末尾はハイフン不可）。</summary>
@@ -166,7 +170,7 @@ public sealed class BaseSettingsEmitter : IMasterEmitter
             ctx.AddProfile("ipv6_config", "ipv6_config.ps1", ProfileSlot.Base, 40, isolated: true);
         }
 
-        // NTP
+        // NTP。時刻ずれはライセンス認証を落とすので、マスタ側の同期は認証（Order 10）より前に置く。
         if (ctx.IsTrue("ntp_enabled"))
         {
             var server = ctx.Get("ntp_server").Trim();
@@ -176,11 +180,28 @@ public sealed class BaseSettingsEmitter : IMasterEmitter
             }
             else
             {
+                // 顧客の内部 NTP は社内から到達できないことが多いので、設定だけ仕上げ時に回す。
+                // 既定サーバーそのものなら回す意味が無いのでマスタ側だけで完結させる。
+                var late = ctx.LateSub("ntp_server");
+                if (server.Equals(DefaultNtpServer, StringComparison.OrdinalIgnoreCase)) late = null;
+
                 ctx.AddCsvRow("time_sync_config", "time_sync_list.csv", Row(
                     ("Enabled", "1"),
-                    ("NtpServer", server),
-                    ("Description", "NTP server (master)")));
-                ctx.AddProfile("time_sync_config", "time_sync_config.ps1", ProfileSlot.Base, 50, isolated: true, errorMode: "retry");
+                    ("NtpServer", late is null ? server : DefaultNtpServer),
+                    ("Description", late is null ? "NTP server (master)" : "NTP server (master build)")));
+                ctx.AddProfile("time_sync_config", "time_sync_config.ps1", ProfileSlot.Base, 3, isolated: true, errorMode: "retry");
+
+                if (late is not null)
+                {
+                    ctx.AddCsvRow("time_sync_config", "time_sync_list.csv", Row(
+                        ("Enabled", "1"),
+                        ("NtpServer", server),
+                        ("Description", "NTP server (customer)")), subSegment: late);
+                    // 社内では到達できない前提なので、失敗しても仕上げを止めない（ErrorMode=skip）
+                    ctx.AddProfile("time_sync_config", "time_sync_config.ps1", ProfileSlot.Sysprep, 65, isolated: true,
+                        errorMode: "skip", subSegment: late, description: "Time Sync - 顧客環境向け設定", kind: ProfileKind.Sysprep);
+                    ctx.Info($"マスタ作成中は {DefaultNtpServer} で時刻を合わせ、仕上げ時に {server} へ切り替えます。");
+                }
             }
         }
     }

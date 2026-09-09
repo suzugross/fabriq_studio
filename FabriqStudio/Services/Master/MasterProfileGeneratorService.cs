@@ -233,11 +233,24 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
         CheckGpoConflicts(ctx);
         AssembleRegistryFiles(ctx);
         AssembleProfiles(ctx);
+        NoteDeferredSettings(ctx);
         AddStaleRowCleanups(ctx);
         CheckFirstGenerationCollisions(ctx);
         BuildFileSummaries(ctx.Plan);
 
         return ctx.Plan;
+    }
+
+    /// <summary>
+    /// 仕上げ時に回した設定があることを知らせる（マスタ上では効いていないので、確認は初号機になる）。
+    /// </summary>
+    private static void NoteDeferredSettings(MasterContext ctx)
+    {
+        var rows = ctx.ProfileRequests.Count(p => p.SubSegment == MasterContext.LateSubSegment);
+        if (rows == 0) return;
+
+        ctx.Info($"顧客環境向けの設定（プロキシ / Windows Update / NTP）は Sysprep プロファイルの最後で適用します（{rows} 行）。"
+                 + "マスタ作成中は効かないため、設定の確認は展開後の初号機で行ってください。");
     }
 
     /// <summary>
@@ -400,11 +413,20 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
             if (rows.Any(r => r.SubSegment is null))
                 ctx.AddProfile(moduleDir, script, ProfileSlot.Registry, order, isolated: true);
 
-            // 副セグメント（マスタ作成中だけの一時ポリシー）はマスタ プロファイルの先頭で設定する。
-            // 解除は Sysprep プロファイル側の reg_*_delete 行（SysprepEmitter）が同じ Segment で行う。
+            // 副セグメントごとに置き場所を決める。
+            //   temp = マスタ作成中だけの一時ポリシー → マスタ プロファイルの先頭で設定
+            //          （解除は Sysprep プロファイル側の reg_*_delete 行が同じ Segment で行う）
+            //   late = 顧客環境向け設定（プロキシ等） → Sysprep プロファイルの最後、Sysprep 実行の直前で適用
             foreach (var sub in rows.Where(r => r.SubSegment is not null).Select(r => r.SubSegment!).Distinct())
-                ctx.AddProfile(moduleDir, script, ProfileSlot.Base, 1, isolated: true,
-                    subSegment: sub, description: $"{ctx.MenuName(moduleDir, script)} - 一時ポリシー");
+            {
+                var menu = ctx.MenuName(moduleDir, script);
+                if (sub == MasterContext.LateSubSegment)
+                    ctx.AddProfile(moduleDir, script, ProfileSlot.Sysprep, 60 + order / 10, isolated: true,
+                        subSegment: sub, description: $"{menu} - 顧客環境向け設定", kind: ProfileKind.Sysprep);
+                else
+                    ctx.AddProfile(moduleDir, script, ProfileSlot.Base, 1, isolated: true,
+                        subSegment: sub, description: $"{menu} - 一時ポリシー");
+            }
         }
     }
 

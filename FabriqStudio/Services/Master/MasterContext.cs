@@ -65,6 +65,21 @@ public sealed class MasterContext
     /// <summary>[master:名] 形式のタグ（Segment 列が無い CSV の隔離用）。</summary>
     public string Tag => $"[master:{MasterName}]";
 
+    /// <summary>顧客環境向け設定の副セグメント（Segment = マスタ名:late）。</summary>
+    public const string LateSubSegment = "late";
+
+    /// <summary>
+    /// 顧客環境向けの設定（プロキシ・Windows Update ポリシー・顧客 NTP）を
+    /// Sysprep プロファイル側（マスタ仕上げ）で適用するか。社内でのマスタ作成中は
+    /// これらが通信やアプリ配布の妨げになるため、既定で回す。
+    /// Sysprep プロファイルを作らない構成では回す先が無いので false（マスタ側で適用する）。
+    /// </summary>
+    public bool DeferToSysprep => IsTrue("sysprep_profile") && IsTrue("sp_late_apply");
+
+    /// <summary>この項目を仕上げ時に回す場合の副セグメント（回さないなら null）。</summary>
+    public string? LateSub(string itemId)
+        => DeferToSysprep && Item(itemId)?.ApplyAt == MasterApplyAt.Sysprep ? LateSubSegment : null;
+
     /// <summary>
     /// その Segment 値がマスタの所有行か。マスタ名と一致、またはマスタ名 + ":" で始まるもの
     /// （副セグメント。例: M_x:app01:GoogleChrome）。マスタ名にコロンは使えないため他マスタと衝突しない。
@@ -349,9 +364,12 @@ public sealed class MasterContext
     /// <summary>
     /// レジストリ辞書のエントリを 1 行追加する。<paramref name="valueOverride"/> が非 null ならその値で上書き。
     /// 同じ KeyPath + KeyName は後勝ちで 1 行にまとめる（選択肢の値上書きが確実に効くように）。
+    /// <paramref name="subSegment"/> 未指定でも、項目が applyAt="sysprep"（顧客環境向け）なら自動で late に回す。
     /// </summary>
     public void AddRegistry(string dictId, string? valueOverride, string? sourceLabel, string? subSegment = null, string? itemId = null)
     {
+        subSegment ??= itemId is null ? null : LateSub(itemId);
+
         if (!_dictionary.TryGetValue(dictId, out var entry))
         {
             Warn($"レジストリ辞書に ID {dictId} がありません（{sourceLabel ?? "テンプレート"}）。この設定は書きません。");

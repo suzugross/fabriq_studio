@@ -65,6 +65,15 @@ public sealed class MasterSheetService : IMasterSheetService
             list.Add(text);
         }
 
+        // 顧客環境向け設定を仕上げ時に回す構成か（生成側 MasterContext.DeferToSysprep と同じ判定）
+        bool Flag(string id)
+        {
+            var v = answers.GetValue(id);
+            if (string.IsNullOrEmpty(v) && items.TryGetValue(id, out var it)) v = it.Default ?? "";
+            return v.Trim() == "1";
+        }
+        _deferLate = Flag("sysprep_profile") && Flag("sp_late_apply");
+
         var doc = new SheetDocument
         {
             MasterName    = answers.MasterName,
@@ -104,6 +113,9 @@ public sealed class MasterSheetService : IMasterSheetService
         doc.ManualTasks.AddRange(plan.ManualTasks);
         return doc;
     }
+
+    /// <summary>顧客環境向けの設定を Sysprep プロファイル側で適用する構成か。</summary>
+    private bool _deferLate;
 
     private Dictionary<string, List<string>> _regByItem = new(StringComparer.Ordinal);
     private Dictionary<string, List<string>> _gpoWrites = new(StringComparer.OrdinalIgnoreCase);
@@ -145,6 +157,10 @@ public sealed class MasterSheetService : IMasterSheetService
         // 実際に書くレジストリ（キー \ 値名 = 値）を設定方法に添える
         if (_regByItem.TryGetValue(item.Id, out var regLines) && regLines.Count > 0)
             method = (method.Length > 0 ? method + "\n" : "") + string.Join("\n", regLines);
+
+        // 顧客環境向けの設定は、マスタ作成の最後（Sysprep 直前）にまとめて入れる
+        if (_deferLate && item.ApplyAt == MasterApplyAt.Sysprep)
+            method = (method.Length > 0 ? method + "\n" : "") + "※ マスタ作成の最後に適用（確認は展開後の実機）";
 
         SheetRow Row(string text = "", List<string>? lines = null, SheetTable? table = null, bool secret = false) => new()
         {

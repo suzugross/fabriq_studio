@@ -54,6 +54,13 @@ public sealed class MasterItem
     /// <summary>秘密情報（生成時に ENC: 暗号化する）。</summary>
     [JsonPropertyName("secret")] public bool Secret { get; set; }
 
+    /// <summary>
+    /// 適用タイミング。既定（null / "master"）はマスタ プロファイル。
+    /// "sysprep" は顧客環境向けの設定で、マスタ作成中は入れず Sysprep プロファイルの最後で適用する
+    /// （<see cref="MasterApplyAt"/>）。
+    /// </summary>
+    [JsonPropertyName("applyAt")] public string? ApplyAt { get; set; }
+
     [JsonPropertyName("placeholder")] public string? Placeholder { get; set; }
     [JsonPropertyName("unit")]        public string? Unit        { get; set; }
 
@@ -235,4 +242,17 @@ public static class MasterItemKinds
     public const string Dict   = "dict";
     public const string Manual = "manual";
     public const string Fabriq = "fabriq";
+}
+
+/// <summary>MasterItem.ApplyAt の値。</summary>
+public static class MasterApplyAt
+{
+    /// <summary>マスタ プロファイルで適用する（既定）。</summary>
+    public const string Master = "master";
+
+    /// <summary>
+    /// 顧客環境向け。社内でのマスタ作成中は通信・作業の妨げになるため、
+    /// Sysprep プロファイルの最後（Sysprep 実行の直前）で適用する。
+    /// </summary>
+    public const string Sysprep = "sysprep";
 }
