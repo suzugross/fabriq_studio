@@ -30,6 +30,7 @@
     <Grid Background="#F3F3F3">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -58,6 +59,34 @@
                            FontSize="14" Foreground="#007ACC"
                            VerticalAlignment="Center"
                            Margin="4,0,8,0" />
+
+                <!-- データフォルダ（PDF）の有無。あれば行の ⚙ の編集先はそちらになる -->
+                <Border DockPanel.Dock="Left" CornerRadius="3"
+                        Padding="6,2" VerticalAlignment="Center" Margin="0,0,8,0"
+                        ToolTip="profiles/&lt;名&gt;/modules/ にモジュールの設定 CSV・資材を置くと、このプロファイルの実行ではそちらが本体より優先されます。行の ⚙ はこのフォルダを編集します">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="#EEEEEE" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasDataFolder}" Value="True">
+                                    <Setter Property="Background" Value="#E3F2E6" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="{Binding DataFolderLabel}" FontSize="11">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#555555" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HasDataFolder}" Value="True">
+                                        <Setter Property="Foreground" Value="#2F5D3A" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Border>
 
                 <!-- 右: ロック / 保存 / Dirty / ステータス -->
                 <ToggleButton DockPanel.Dock="Right"
@@ -134,8 +163,77 @@
             </DockPanel>
         </Border>
 
+        <!-- ===== データフォルダ（PDF）の案内: 旧形式の変換 / 未取り込み / 未使用 ===== -->
+        <StackPanel Grid.Row="1">
+
+            <!-- 旧形式: PDF が無くモジュール行がある → 一括変換を訊く（断れば行の ⚙ から 1 モジュールずつ） -->
+            <Border Background="#E8F1FB" BorderBrush="#9DBEE3" BorderThickness="0,0,0,1" Padding="16,8"
+                    Visibility="{Binding ShowConvertBanner, Converter={StaticResource BoolToVisibilityConverter}}">
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Content="今はしない"
+                            Command="{Binding DismissConvertBannerCommand}"
+                            Padding="10,3" FontSize="11" Cursor="Hand" Margin="6,0,0,0" />
+                    <Button DockPanel.Dock="Right" Content="取り込んでデータフォルダを作成"
+                            Command="{Binding MaterializeAllCommand}"
+                            Padding="10,3" FontSize="11" Cursor="Hand"
+                            Background="#1E6FBF" Foreground="White" BorderThickness="0" />
+                    <TextBlock FontSize="12" Foreground="#1F3A5F" TextWrapping="Wrap"
+                               VerticalAlignment="Center" Margin="0,0,12,0">
+                        <Run Text="このプロファイルにはデータフォルダ（profiles/&lt;名&gt;/）がありません。使用中の " /><Run Text="{Binding MissingModules.Count, Mode=OneWay}" /><Run Text=" モジュールの設定 CSV を本体から取り込んで、プロファイル別データフォルダの形式に変換しますか？ 内容はそのままコピーするので実行結果は変わりません。断った場合も、行の ⚙ から 1 モジュールずつ取り込めます。" />
+                    </TextBlock>
+                </DockPanel>
+            </Border>
+
+            <!-- PDF はあるが未取り込みのモジュールがある（実行時は本体にフォールバックし fabriq が警告する） -->
+            <Border Background="#FFF8E1" BorderBrush="#F0C36D" BorderThickness="0,0,0,1" Padding="16,8"
+                    Visibility="{Binding ShowMissingBanner, Converter={StaticResource BoolToVisibilityConverter}}">
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Content="取り込む"
+                            Command="{Binding MaterializeAllCommand}"
+                            Padding="10,3" FontSize="11" Cursor="Hand" />
+                    <TextBlock FontSize="12" Foreground="#6B4F00" TextWrapping="Wrap"
+                               VerticalAlignment="Center" Margin="0,0,12,0">
+                        <Run Text="データフォルダに未取り込みのモジュールがあります（実行時は本体の設定にフォールバックし、警告が出ます）: " /><Run Text="{Binding MissingSummary, Mode=OneWay}" />
+                    </TextBlock>
+                </DockPanel>
+            </Border>
+
+            <!-- PDF にあるが使っていないモジュール（自動では消さない。明示操作で削除） -->
+            <Border Background="#F4F4F4" BorderBrush="#DDDDDD" BorderThickness="0,0,0,1" Padding="16,6"
+                    Visibility="{Binding HasUnusedModules, Converter={StaticResource BoolToVisibilityConverter}}">
+                <DockPanel LastChildFill="True">
+                    <TextBlock DockPanel.Dock="Left"
+                               Text="データフォルダにあるが使っていないモジュール: "
+                               FontSize="11" Foreground="#666666"
+                               VerticalAlignment="Center" Margin="0,0,6,0" />
+                    <ItemsControl ItemsSource="{Binding UnusedModules}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="White" BorderBrush="#CCCCCC" BorderThickness="1"
+                                        CornerRadius="3" Padding="6,1" Margin="0,0,6,2">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="{Binding}" FontSize="11" VerticalAlignment="Center" />
+                                        <Button Content="✕" FontSize="10" Padding="4,0" Margin="6,0,0,0"
+                                                Background="Transparent" BorderThickness="0" Cursor="Hand"
+                                                ToolTip="このモジュールのデータフォルダを削除する（元に戻せません）"
+                                                Command="{Binding DataContext.DeleteUnusedModuleDataCommand, ElementName=Root}"
+                                                CommandParameter="{Binding}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </DockPanel>
+            </Border>
+        </StackPanel>
+
         <!-- ===== コンテンツ: 左右 2ペイン ===== -->
-        <Grid Grid.Row="1" Margin="16">
+        <Grid Grid.Row="2" Margin="16">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="280" MinWidth="180" />
                 <ColumnDefinition Width="8" />

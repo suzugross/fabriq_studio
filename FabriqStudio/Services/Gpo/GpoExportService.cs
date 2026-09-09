@@ -16,8 +16,10 @@ public sealed class GpoExportResult
 /// <summary>GPO 辞書画面から、ワークスペースの gpo_config/gpo_list.csv へ行を書き出す。</summary>
 public interface IGpoExportService
 {
+    /// <summary>現在の書き先（編集先データセットに従う）。表示用の相対パス。</summary>
     string RelPath { get; }
-    Task<GpoExportResult> ExportAsync(string workspaceRoot, IReadOnlyList<GpoRow> rows);
+
+    Task<GpoExportResult> ExportAsync(IReadOnlyList<GpoRow> rows);
 }
 
 /// <summary>
@@ -26,23 +28,44 @@ public interface IGpoExportService
 /// </summary>
 public sealed class GpoExportService : IGpoExportService
 {
-    private readonly IFileService _file;
+    private const string Module = "gpo_config";
+    private const string Csv    = "gpo_list.csv";
 
-    public string RelPath => @"modules\standard\gpo_config\gpo_list.csv";
+    private readonly IFileService        _file;
+    private readonly IModuleDataResolver _resolver;
+    private readonly IDataSetContext     _dataSet;
+    private readonly IProfileDataService _profileData;
 
-    public GpoExportService(IFileService file)
+    public GpoExportService(IFileService file, IModuleDataResolver resolver, IDataSetContext dataSet, IProfileDataService profileData)
     {
-        _file = file;
+        _file        = file;
+        _resolver    = resolver;
+        _dataSet     = dataSet;
+        _profileData = profileData;
     }
 
-    public async Task<GpoExportResult> ExportAsync(string workspaceRoot, IReadOnlyList<GpoRow> rows)
+    /// <summary>本体側の相対パス（standard → extended の順に探索。無ければ standard 想定）。</summary>
+    private string BodyRel => _resolver.ModuleRelPath(Module, Csv) ?? _resolver.ModuleRelPath("standard", Module, Csv);
+
+    public string RelPath => _resolver.ResolveWrite(BodyRel, _dataSet.Current).RelPath;
+
+    public async Task<GpoExportResult> ExportAsync(IReadOnlyList<GpoRow> rows)
     {
-        var result = new GpoExportResult { RelPath = RelPath };
-        var path   = Path.Combine(workspaceRoot, RelPath);
+        var dataSet = _dataSet.Current;
+        var bodyRel = BodyRel;
+
+        // 編集先データセット（PDF）が選ばれていて PDF に無ければ、本体から as-is で取り込んでから追記する
+        //（本体の既存行を落とさない = 取り込みで実行結果は変わらない）
+        if (dataSet is not null)
+            await _profileData.MaterializeCsvAsync(dataSet, Module, Csv);
+
+        var target = _resolver.ResolveWrite(bodyRel, dataSet);
+        var result = new GpoExportResult { RelPath = target.RelPath };
+        var path   = target.AbsPath;
 
         if (!File.Exists(path))
         {
-            result.Error = $"{RelPath} が見つかりません（gpo_config モジュールが無いか、fabriq の版が古い可能性があります）。";
+            result.Error = $"{result.RelPath} が見つかりません（gpo_config モジュールが無いか、fabriq の版が古い可能性があります）。";
             return result;
         }
         if (rows.Count == 0)
@@ -58,7 +81,7 @@ public sealed class GpoExportService : IGpoExportService
             {
                 if (!table.Columns.Contains(col))
                 {
-                    result.Error = $"{RelPath} に列 {col} がありません。";
+                    result.Error = $"{result.RelPath} に列 {col} がありません。";
                     return result;
                 }
             }

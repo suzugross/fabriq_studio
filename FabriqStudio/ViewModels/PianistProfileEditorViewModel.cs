@@ -25,7 +25,7 @@ namespace FabriqStudio.ViewModels;
 /// Singleton 登録: ワークスペースを切り替えても VM 自体は再構築せず、
 /// <see cref="IWorkspaceService.WorkspaceChanged"/> を購読して内部状態を refresh する。
 /// </summary>
-public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwareViewModel
+public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwareViewModel, IDataSetDependentViewModel
 {
     // ─── IDirtyAwareViewModel ───────────────────────────────────────
     public bool HasUnsavedChanges => IsDirty;
@@ -191,18 +191,77 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
     /// <summary>テスト実行のステータス文字列（ヘッダに薄字で表示）。</summary>
     [ObservableProperty] private string? _testRunStatus;
 
+    private readonly IDataSetContext _dataSet;
+
+    // ── 編集先データセット（PDF）──────────────────────────────────
+    // pianist/profiles/ はフォルダ単位 all-or-nothing。データセット選択中に PDF 側が無ければ本体を読み取り専用で見せ、
+    // 「本体から取り込む」で丸ごと複製してから編集する（ModuleDetail の S3 と同じ形）。
+
+    public string DataSetLabel    => DataSetText.WriteTarget(_dataSet.Current);
+    public bool   IsProfileTarget => _dataSet.Current is not null;
+    public string ProfilesDirLabel => _pianistService.ProfilesDirLabel;
+
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
+    private bool _isFallbackView;
+
+    [ObservableProperty] private string? _fallbackNote;
+
+    private void RefreshDataSetState()
+    {
+        OnPropertyChanged(nameof(DataSetLabel));
+        OnPropertyChanged(nameof(IsProfileTarget));
+        OnPropertyChanged(nameof(ProfilesDirLabel));
+        IsFallbackView = _workspace.IsOpen && _pianistService.IsDataFolderFallback;
+        FallbackNote = IsFallbackView
+            ? $"プロファイル {_dataSet.Current} のデータフォルダに pianist/profiles/ がありません。本体の Pianist Profile を読み取り専用で表示しています。"
+              + "編集するには本体から取り込んでください（フォルダごと as-is で複製するので、実行結果は変わりません）。"
+            : null;
+    }
+
+    /// <summary>本体の pianist/profiles/ と pianist_list.csv を編集先データセットのデータフォルダへ取り込む。</summary>
+    [RelayCommand]
+    private async Task ImportPianistDataAsync()
+    {
+        if (!IsFallbackView || _dataSet.Current is null) return;
+        var ok = MessageBox.Show(
+            $"本体の pianist/profiles/（全プロファイル）と pianist_list.csv を、プロファイル {_dataSet.Current} のデータフォルダへそのまま複製します。\n"
+            + "以後このデータセットでの Pianist の編集はデータフォルダ側に対して行われ、本体は変わりません。続行しますか？",
+            "データフォルダへ取り込み", MessageBoxButton.OKCancel, MessageBoxImage.Question);
+        if (ok != MessageBoxResult.OK) return;
+
+        try
+        {
+            var n = await _pianistService.MaterializePianistDataAsync();
+            await LoadProfilesAsync();
+            SaveStatus = $"✓ データフォルダへ {n} ファイル取り込みました";
+        }
+        catch (Exception ex)
+        {
+            LoadError = $"取り込みエラー: {ex.Message}";
+        }
+    }
+
     public PianistProfileEditorViewModel(
         IPianistProfileService pianistService,
         IWorkspaceService      workspace,
         ICsvService            csvService,
         ICryptoService         crypto,
-        IPianistTestRunService testRunService)
+        IPianistTestRunService testRunService,
+        IDataSetContext        dataSet)
     {
         _pianistService = pianistService;
         _workspace      = workspace;
         _csvService     = csvService;
         _crypto         = crypto;
         _testRunService = testRunService;
+        _dataSet        = dataSet;
+        // 編集先の切替: 一覧を読み直す（LoadProfilesAsync が状態表示も更新する）。閉じているときは表示だけ更新
+        dataSet.Changed += (_, _) =>
+        {
+            if (_workspace.IsOpen) _ = LoadProfilesAsync();
+            else RefreshDataSetState();
+        };
 
         _workspace.WorkspaceChanged += (_, e) =>
         {
@@ -235,6 +294,11 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
+        if (IsFallbackView)
+        {
+            MessageBox.Show(FallbackNote, "pianist_list.csv 編集", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
         PianistListEditDialog.Show(_pianistService);
     }
 
@@ -250,6 +314,12 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
         {
             MessageBox.Show("ワークスペースが開かれていません。", "Pianist Profile 新規作成",
                 MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        if (IsFallbackView)
+        {
+            MessageBox.Show(FallbackNote, "Pianist Profile 新規作成", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
@@ -283,6 +353,11 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
     {
         if (entry is null) return;
         if (!_workspace.IsOpen) return;
+        if (IsFallbackView)
+        {
+            MessageBox.Show(FallbackNote, "Pianist Profile 削除", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
 
         // ── 1. Dirty 警告（削除対象が現在編集中の Profile の場合）──────
         var isDeletingCurrent = SelectedProfile is not null
@@ -399,6 +474,7 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
     {
         IsLoading = true;
         LoadError = null;
+        RefreshDataSetState();
 
         var preservedName = SelectedProfile?.Name;
 
@@ -1920,7 +1996,7 @@ public partial class PianistProfileEditorViewModel : ObservableObject, IDirtyAwa
 
     // ─── 保存（§10） ────────────────────────────────────────────
 
-    private bool CanSave() => IsDirty && !IsSaving && CurrentData is not null;
+    private bool CanSave() => IsDirty && !IsSaving && CurrentData is not null && !IsFallbackView;
 
     [RelayCommand(CanExecute = nameof(CanSave))]
     private async Task SaveAsync()

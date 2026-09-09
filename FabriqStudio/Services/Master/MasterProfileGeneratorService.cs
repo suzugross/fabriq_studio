@@ -22,6 +22,7 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
     private readonly IRegistryCollectionService _registry;
     private readonly ICryptoService             _crypto;
     private readonly IMasterTargetResolver      _resolver;
+    private readonly IProfileDataService        _profileData;
 
     /// <summary>実行順は固定（レジストリ辞書 → GPO → アカウント → 基盤 → システム → デスクトップ → アプリ → 仕上げ → 配備 → 手動）。</summary>
     private readonly IMasterEmitter[] _emitters;
@@ -34,8 +35,10 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
         IRegistryCollectionService registry,
         ICryptoService             crypto,
         IMasterTargetResolver      resolver,
-        IGpoCatalogService         gpoCatalog)
+        IGpoCatalogService         gpoCatalog,
+        IProfileDataService        profileData)
     {
+        _profileData   = profileData;
         _workspace     = workspace;
         _moduleService = moduleService;
         _fileService   = fileService;
@@ -100,7 +103,7 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
                 var name = Path.GetFileName(moduleDir);
                 if (snapshot.Modules.ContainsKey(name)) continue;   // standard 優先
 
-                var info = new MasterModuleInfo { Dir = name, Kind = tier, AbsPath = moduleDir };
+                var info = new MasterModuleInfo { Dir = name, Kind = tier, AbsPath = Path.GetFullPath(moduleDir) };
                 if (menuNames.TryGetValue(name, out var map))
                     foreach (var (k, v) in map) info.ScriptMenuNames[k] = v;
 
@@ -111,35 +114,30 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
                     info.Csvs[csvName] = await ReadCsvInfoAsync(csvPath);
                 }
 
-                foreach (var sub in Directory.GetDirectories(moduleDir))
-                {
-                    var subName = Path.GetFileName(sub);
-                    info.SubDirs.Add(subName);
-                    var entries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    try
-                    {
-                        foreach (var e in Directory.EnumerateFileSystemEntries(sub))
-                            entries.Add(Path.GetFileName(e));
-                    }
-                    catch { /* アクセス不可のフォルダは空扱い */ }
-                    info.SubDirFiles[subName] = entries;
-
-                    // 2 階層目（例: assets\M365 の中に Office\ があるか）も記録する
-                    try
-                    {
-                        foreach (var child in Directory.GetDirectories(sub))
-                        {
-                            var childEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                            foreach (var e in Directory.EnumerateFileSystemEntries(child))
-                                childEntries.Add(Path.GetFileName(e));
-                            info.SubDirFiles[$"{subName}\\{Path.GetFileName(child)}"] = childEntries;
-                        }
-                    }
-                    catch { /* アクセス不可は無視 */ }
-                }
+                ScanSubDirs(moduleDir, info);
 
                 snapshot.Modules[name] = info;
             }
+        }
+
+        // データフォルダ（PDF: profiles/<名>/modules/<module>/）。プロファイル実行時は本体より優先される案件データ
+        foreach (var dataSet in _resolver.ListDataSets())
+        {
+            var mods = new Dictionary<string, MasterModuleInfo>(StringComparer.OrdinalIgnoreCase);
+            foreach (var name in _resolver.ListDataSetModules(dataSet))
+            {
+                var dir  = _resolver.DataSetModuleDir(dataSet, name);
+                var info = new MasterModuleInfo { Dir = name, Kind = snapshot.GetModule(name)?.Kind ?? "", AbsPath = dir, DataSet = dataSet };
+                foreach (var csvPath in Directory.GetFiles(dir, "*.csv", SearchOption.TopDirectoryOnly))
+                {
+                    var csvName = Path.GetFileName(csvPath);
+                    if (excluded.Contains(csvName) || _resolver.IsFrameworkAsset(csvName)) continue;
+                    info.Csvs[csvName] = await ReadCsvInfoAsync(csvPath);
+                }
+                ScanSubDirs(dir, info);
+                mods[name] = info;
+            }
+            if (mods.Count > 0) snapshot.Overlays[dataSet] = mods;
         }
 
         var profilesDir = _resolver.ProfilesDir;
@@ -147,16 +145,56 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
             foreach (var f in Directory.GetFiles(profilesDir, "*.csv", SearchOption.TopDirectoryOnly))
                 snapshot.ProfileNames.Add(Path.GetFileNameWithoutExtension(f));
 
-        var hostlistPath = Path.Combine(root, "kernel", "csv", "hostlist.csv");
+        var hostlistPath = Path.GetFullPath(Path.Combine(root, "kernel", "csv", "hostlist.csv"));
         if (File.Exists(hostlistPath))
             snapshot.Hostlist = await ReadCsvInfoAsync(hostlistPath);
 
         return snapshot;
     }
 
+    /// <summary>モジュール直下のサブフォルダ（資材置き場）と、その 2 階層目までのエントリ名を記録する。</summary>
+    private static void ScanSubDirs(string moduleDir, MasterModuleInfo info)
+    {
+        foreach (var sub in Directory.GetDirectories(moduleDir))
+        {
+            var subName = Path.GetFileName(sub);
+            info.SubDirs.Add(subName);
+            var entries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                foreach (var e in Directory.EnumerateFileSystemEntries(sub))
+                    entries.Add(Path.GetFileName(e));
+            }
+            catch { /* アクセス不可のフォルダは空扱い */ }
+            info.SubDirFiles[subName] = entries;
+
+            // 2 階層目（例: assets\M365 の中に Office\ があるか）も記録する
+            try
+            {
+                foreach (var child in Directory.GetDirectories(sub))
+                {
+                    var childEntries = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var e in Directory.EnumerateFileSystemEntries(child))
+                        childEntries.Add(Path.GetFileName(e));
+                    info.SubDirFiles[$"{subName}\\{Path.GetFileName(child)}"] = childEntries;
+                }
+            }
+            catch { /* アクセス不可は無視 */ }
+        }
+    }
+
+    public MasterWorkspaceSnapshot ForMaster(MasterWorkspaceSnapshot snapshot, string masterName)
+        => snapshot.ForMaster(dir => _resolver.DataSetFor(masterName, dir));
+
+    public string? ResolveAssetWritePath(string masterName, string moduleDir, string rel)
+        => _resolver.ResolveWrite(moduleDir, rel, _resolver.DataSetFor(masterName, moduleDir))?.AbsPath;
+
+    public string? ResolveAssetReadPath(string masterName, string moduleDir, string rel)
+        => _resolver.ResolveRead(moduleDir, rel, _resolver.DataSetFor(masterName, moduleDir))?.AbsPath;
+
     private async Task<MasterCsvInfo> ReadCsvInfoAsync(string csvPath)
     {
-        var info = new MasterCsvInfo { Name = Path.GetFileName(csvPath), AbsPath = csvPath };
+        var info = new MasterCsvInfo { Name = Path.GetFileName(csvPath), AbsPath = Path.GetFullPath(csvPath) };
         try
         {
             var table = await _fileService.ReadCsvAsDataTableAsync(csvPath);
@@ -213,7 +251,8 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
             ? v => _crypto.Encrypt(v, pp)
             : null;
 
-        var ctx = new MasterContext(template, answers, snapshot, _registry.Entries, _resolver, encrypt);
+        // Emitter には「このマスタが使うデータフォルダを重ねた」合成ビューを見せる（資材の存在確認・列・既存行が PDF 準拠になる）
+        var ctx = new MasterContext(template, answers, ForMaster(snapshot, answers.MasterName), _registry.Entries, _resolver, encrypt);
 
         if (!MasterAnswers.IsValidMasterName(answers.MasterName))
         {
@@ -233,6 +272,7 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
         CheckGpoConflicts(ctx);
         AssembleRegistryFiles(ctx);
         AssembleProfiles(ctx);
+        AssembleCsvTargets(ctx);
         NoteDeferredSettings(ctx);
         AddStaleRowCleanups(ctx);
         CheckFirstGenerationCollisions(ctx);
@@ -300,29 +340,38 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
         var plan   = ctx.Plan;
         var suffix = $"_list_{ctx.MasterName}.csv";
 
-        foreach (var module in ctx.Snapshot.Modules.Values)
+        // 本体側（データフォルダ導入前に書いた行 = 今は読まれない行）と、両データフォルダ側を走査する
+        Scan(ctx.Snapshot.Modules.Values, null);
+        foreach (var dataSet in new[] { ctx.MasterName, ctx.SysprepDataSet })
+            if (ctx.Snapshot.Overlays.TryGetValue(dataSet, out var overlay)) Scan(overlay.Values, dataSet);
+
+        void Scan(IEnumerable<MasterModuleInfo> modules, string? dataSet)
         {
-            foreach (var csv in module.Csvs.Values)
+            foreach (var module in modules)
             {
-                // 案件別レジストリファイルは RegistryOps / Deletes で扱う
-                if (csv.Name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) continue;
-
-                var segCount = csv.HasSegment ? MasterContext.CountOwnedRows(csv, ctx.MasterName) : 0;
-                var tagCount = !csv.HasSegment && csv.HasColumn("Description") ? csv.TagCounts.GetValueOrDefault(ctx.Tag) : 0;
-                if (segCount == 0 && tagCount == 0) continue;
-
-                if (plan.CsvOps.Any(o => o.AbsPath.Equals(csv.AbsPath, StringComparison.OrdinalIgnoreCase))) continue;
-
-                plan.CsvOps.Add(new PlanCsvRows
+                foreach (var csv in module.Csvs.Values)
                 {
-                    ModuleDir = module.Dir,
-                    CsvName   = csv.Name,
-                    AbsPath   = csv.AbsPath,
-                    RelPath   = _resolver.ToRelative(csv.AbsPath),
-                    Isolation = csv.HasSegment ? PlanIsolation.Segment : PlanIsolation.DescriptionTag,
-                    Tag       = ctx.Tag,
-                    ExistingIsolatedRows = csv.HasSegment ? segCount : tagCount,
-                });
+                    // 案件別レジストリファイルは RegistryOps / Deletes で扱う
+                    if (csv.Name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) continue;
+
+                    var segCount = csv.HasSegment ? MasterContext.CountOwnedRows(csv, ctx.MasterName) : 0;
+                    var tagCount = !csv.HasSegment && csv.HasColumn("Description") ? csv.TagCounts.GetValueOrDefault(ctx.Tag) : 0;
+                    if (segCount == 0 && tagCount == 0) continue;
+
+                    if (plan.CsvOps.Any(o => o.AbsPath.Equals(csv.AbsPath, StringComparison.OrdinalIgnoreCase))) continue;
+
+                    plan.CsvOps.Add(new PlanCsvRows
+                    {
+                        ModuleDir = module.Dir,
+                        CsvName   = csv.Name,
+                        DataSet   = dataSet,
+                        AbsPath   = csv.AbsPath,
+                        RelPath   = _resolver.ToRelative(csv.AbsPath),
+                        Isolation = csv.HasSegment ? PlanIsolation.Segment : PlanIsolation.DescriptionTag,
+                        Tag       = ctx.Tag,
+                        ExistingIsolatedRows = csv.HasSegment ? segCount : tagCount,
+                    });
+                }
             }
         }
 
@@ -369,18 +418,15 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
             var fileName = $"reg_{hive.ToLowerInvariant()}_list_{ctx.MasterName}.csv";
             var module   = ctx.Snapshot.GetModule(moduleDir);
 
-            if (rows.Count == 0)
-            {
-                // 以前の生成物が残っていれば削除対象にする
-                if (module is not null && module.Csvs.TryGetValue(fileName, out var stale))
-                    plan.Deletes.Add(new PlanDelete
-                    {
-                        AbsPath = stale.AbsPath,
-                        RelPath = _resolver.ToRelative(stale.AbsPath),
-                        Reason  = $"{hive} のレジストリ設定が無くなったため",
-                    });
-                continue;
-            }
+            // 書き先のデータフォルダ: マスタ本体は常に。Sysprep 側は temp（削除）/ late（適用）の行があるとき。
+            // 両方のプロファイルが読むファイルは両方の PDF に同じ内容を書く（PDF 単体で完結して読めるように）
+            var targets = new List<string> { ctx.MasterName };
+            if (rows.Any(r => r.SubSegment is not null)) targets.Add(ctx.SysprepDataSet);
+
+            // 以前の生成物の掃除: 今回書かない場所（本体側 = データフォルダ導入前の置き場 / 使わなくなった PDF）に残っていれば削除
+            plan.Deletes.AddRange(StaleRegistryFiles(ctx, moduleDir, fileName, hive, rows.Count == 0 ? [] : targets));
+
+            if (rows.Count == 0) continue;
 
             if (module is null)
             {
@@ -388,27 +434,33 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
                 continue;
             }
 
-            var abs = Path.Combine(module.AbsPath, fileName);
-            var op  = new PlanRegistryFile
+            foreach (var dataSet in targets)
             {
-                Hive      = hive,
-                ModuleDir = moduleDir,
-                AbsPath   = abs,
-                RelPath   = _resolver.ToRelative(abs),
-                Exists    = module.Csvs.ContainsKey(fileName),
-            };
-            foreach (var r in rows)
-                op.Rows.Add(new PlanRegistryRow
+                var write = _resolver.ResolveWrite(moduleDir, fileName, dataSet);
+                if (write is null) continue;
+
+                var op = new PlanRegistryFile
                 {
-                    SettingTitle = r.SettingTitle,
-                    ItemId       = r.ItemId ?? "",
-                    KeyPath      = r.Entry.KeyPath,
-                    KeyName      = r.Entry.KeyName,
-                    Type         = r.Entry.Type,
-                    Value        = r.Value,
-                    Segment      = ctx.SegmentFor(r.SubSegment),
-                });
-            plan.RegistryOps.Add(op);
+                    Hive      = hive,
+                    ModuleDir = moduleDir,
+                    DataSet   = dataSet,
+                    AbsPath   = write.AbsPath,
+                    RelPath   = write.RelPath,
+                    Exists    = File.Exists(write.AbsPath),
+                };
+                foreach (var r in rows)
+                    op.Rows.Add(new PlanRegistryRow
+                    {
+                        SettingTitle = r.SettingTitle,
+                        ItemId       = r.ItemId ?? "",
+                        KeyPath      = r.Entry.KeyPath,
+                        KeyName      = r.Entry.KeyName,
+                        Type         = r.Entry.Type,
+                        Value        = r.Value,
+                        Segment      = ctx.SegmentFor(r.SubSegment),
+                    });
+                plan.RegistryOps.Add(op);
+            }
 
             if (rows.Any(r => r.SubSegment is null))
                 ctx.AddProfile(moduleDir, script, ProfileSlot.Registry, order, isolated: true);
@@ -428,6 +480,94 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
                         subSegment: sub, description: $"{menu} - 一時ポリシー");
             }
         }
+    }
+
+    /// <summary>reg_*_list_&lt;名&gt;.csv の旧生成物（本体側・使わなくなったデータフォルダ側）を削除計画にする。</summary>
+    private IEnumerable<PlanDelete> StaleRegistryFiles(MasterContext ctx, string moduleDir, string fileName, string hive, IReadOnlyList<string> keep)
+    {
+        // 本体側（データフォルダ導入前の置き場）
+        var body = _resolver.GetModuleCsvPath(moduleDir, fileName);
+        if (body is not null && File.Exists(body))
+            yield return new PlanDelete { AbsPath = body, RelPath = _resolver.ToRelative(body), Reason = "本体側の旧生成物（データフォルダへ移行したため）" };
+
+        foreach (var dataSet in new[] { ctx.MasterName, ctx.SysprepDataSet })
+        {
+            if (keep.Contains(dataSet, StringComparer.OrdinalIgnoreCase)) continue;
+            var path = _resolver.ResolveWrite(moduleDir, fileName, dataSet)?.AbsPath;
+            if (path is null || !File.Exists(path)) continue;
+            yield return new PlanDelete
+            {
+                AbsPath = path,
+                RelPath = _resolver.ToRelative(path),
+                Reason  = keep.Count == 0 ? $"{hive} のレジストリ設定が無くなったため" : $"{dataSet} 側では不要になったため",
+            };
+        }
+    }
+
+    /// <summary>
+    /// モジュール CSV の書き先をデータフォルダに振り分ける。規則: そのモジュールの行を持つプロファイルすべてのデータフォルダに
+    /// 同じ内容を書く（マスタ本体 / Sysprep / 両方）。hostlist（kernel/csv）は本体固定。
+    /// 既存行数は実際に読まれるファイル（PDF にあればそれ、無ければ取り込み元の本体）から取り直す。
+    /// </summary>
+    private void AssembleCsvTargets(MasterContext ctx)
+    {
+        var plan     = ctx.Plan;
+        var expanded = new List<PlanCsvRows>();
+
+        foreach (var op in plan.CsvOps)
+        {
+            if (op.Isolation == PlanIsolation.AdminId || op.DataSet is not null)
+            {
+                expanded.Add(op);
+                continue;
+            }
+
+            var kinds = ctx.ProfileRequests
+                .Where(p => p.Module.Equals(op.ModuleDir, StringComparison.OrdinalIgnoreCase))
+                .Select(p => p.Kind)
+                .Distinct()
+                .ToList();
+            if (kinds.Count == 0) kinds.Add(ProfileKind.Master);
+
+            foreach (var kind in kinds)
+            {
+                var dataSet = kind == ProfileKind.Sysprep ? ctx.SysprepDataSet : ctx.MasterName;
+                var write   = _resolver.ResolveWrite(op.ModuleDir, op.CsvName, dataSet);
+                if (write is null) continue;
+
+                var info = ctx.Snapshot.CsvInfoFor(op.ModuleDir, op.CsvName, dataSet);
+                var existing = info is null ? 0 : op.Isolation switch
+                {
+                    PlanIsolation.Segment        => MasterContext.CountOwnedRows(info, ctx.MasterName),
+                    PlanIsolation.DescriptionTag => info.TagCounts.GetValueOrDefault(op.Tag),
+                    _                            => 0,
+                };
+
+                // 列差の凍結: データフォルダ側のファイルが本体と列違いなら知らせる（取り込み後に本体だけ列が増えた等）
+                var bodyInfo = ctx.Snapshot.Modules.TryGetValue(op.ModuleDir, out var bodyModule) && bodyModule.Csvs.TryGetValue(op.CsvName, out var bc) ? bc : null;
+                if (info is not null && bodyInfo is not null && !ReferenceEquals(info, bodyInfo)
+                    && !info.Headers.SequenceEqual(bodyInfo.Headers, StringComparer.OrdinalIgnoreCase))
+                    ctx.Warn($"{write.RelPath} の列が本体（{_resolver.ToRelative(bodyInfo.AbsPath)}）と異なります。本体側で列が増えていれば取り込み直しを検討してください。");
+
+                var clone = new PlanCsvRows
+                {
+                    ModuleDir  = op.ModuleDir,
+                    CsvName    = op.CsvName,
+                    DataSet    = dataSet,
+                    AbsPath    = write.AbsPath,
+                    RelPath    = write.RelPath,
+                    Isolation  = op.Isolation,
+                    Tag        = op.Tag,
+                    AdminIdKey = op.AdminIdKey,
+                    ExistingIsolatedRows = existing,
+                };
+                clone.Rows.AddRange(op.Rows);
+                expanded.Add(clone);
+            }
+        }
+
+        plan.CsvOps.Clear();
+        plan.CsvOps.AddRange(expanded);
     }
 
     private void AssembleProfiles(MasterContext ctx)
@@ -491,7 +631,7 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
             ctx.Warn("生成されるモジュール行がありません。各章の設定を入力してください。");
 
         // ── Sysprep プロファイル（マスタ作成後に Administrator で実行。順序は Order のみ、ゲート無し）──
-        var sysprepName = ctx.MasterName + "_sysprep";
+        var sysprepName = ctx.SysprepDataSet;
         var sysprep = ctx.ProfileRequests.Where(p => p.Kind == ProfileKind.Sysprep)
             .OrderBy(p => p.Order).ThenBy(p => p.Sequence).ToList();
 
@@ -742,6 +882,15 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
 
     private async Task WriteCsvRowsAsync(PlanCsvRows op, string masterName)
     {
+        // データフォルダ側に無ければ本体から as-is で取り込んでから編集する（取り込みで実行結果は変わらない）
+        if (op.DataSet is not null && !File.Exists(op.AbsPath))
+            await _profileData.MaterializeCsvAsync(op.DataSet, op.ModuleDir, op.CsvName);
+        if (!File.Exists(op.AbsPath))
+        {
+            if (op.Rows.Count == 0) return;   // 掃除だけの計画で対象が無い
+            throw new FileNotFoundException("取り込み元の CSV がありません。", op.AbsPath);
+        }
+
         var table = await _fileService.ReadCsvAsDataTableAsync(op.AbsPath);
         if (table.Columns.Count == 0)
             throw new InvalidDataException("CSV のヘッダーを読めませんでした。");
@@ -787,8 +936,9 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
     {
         // ヘッダーはモジュール同梱の基本 CSV に合わせる（無ければ標準 8 列）
         var headers = DefaultRegistryHeaders.ToList();
-        var basePath = Path.Combine(Path.GetDirectoryName(op.AbsPath)!,
-            op.Hive.Equals("HKLM", StringComparison.OrdinalIgnoreCase) ? "reg_hklm_list.csv" : "reg_hkcu_list.csv");
+        var baseName = op.Hive.Equals("HKLM", StringComparison.OrdinalIgnoreCase) ? "reg_hklm_list.csv" : "reg_hkcu_list.csv";
+        var basePath = Path.Combine(Path.GetDirectoryName(op.AbsPath)!, baseName);
+        if (!File.Exists(basePath)) basePath = _resolver.GetModuleCsvPath(op.ModuleDir, baseName) ?? basePath;   // データフォルダに無ければ本体の基本 CSV
         if (File.Exists(basePath))
         {
             try
@@ -818,6 +968,7 @@ public sealed class MasterProfileGeneratorService : IMasterProfileGeneratorServi
             table.Rows.Add(row);
         }
 
+        Directory.CreateDirectory(Path.GetDirectoryName(op.AbsPath)!);   // データフォルダ側は書く瞬間だけ作る
         Backup(op.AbsPath);
         await _fileService.WriteCsvFromDataTableAsync(op.AbsPath, table);
 

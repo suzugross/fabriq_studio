@@ -26,7 +26,7 @@ namespace FabriqStudio.ViewModels;
 /// <summary>
 /// マスタ設計画面。
 ///   - テンプレート（JSON）から章・質問の VM を組み立てる
-///   - 回答は profiles/&lt;マスタ名&gt;.master.json に保存（Save）
+///   - 回答は profiles/&lt;マスタ名&gt;/master.json に保存（Save）。生成物はそのデータフォルダ（profiles/&lt;マスタ名&gt;/modules/）へ
 ///   - 入力のたびに計画（MasterPlan）を再計算して右ペインにプレビュー
 ///   - 「プレビュー／生成」でモーダルダイアログを開き、そこで初めてディスクに書く
 ///
@@ -351,12 +351,20 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
 
     private void RefreshActionStates()
     {
-        foreach (var a in _itemsById.Values.OfType<ActionItemViewModel>())
+        foreach (var a in _itemsById.Values.OfType<ActionItemViewModel>().ToList())
             a.RefreshCanExecute();
     }
 
     partial void OnIsOdtDownloadingChanged(bool value) => RefreshActionStates();
     partial void OnIsLockedChanged(bool value)         => RefreshActionStates();
+
+    /// <summary>データフォルダに資材フォルダを初めて作るときの確認（テストで差し替え可能）。既定は MessageBox。</summary>
+    public Func<string, string, bool> ConfirmCreateFolder { get; set; } =
+        (message, title) => MessageBox.Show(message, title, MessageBoxButton.OKCancel, MessageBoxImage.Warning) == MessageBoxResult.OK;
+
+    /// <summary>このマスタのデータフォルダを重ねたスナップショット（資材の存在確認用）。</summary>
+    private MasterWorkspaceSnapshot? Composed()
+        => _snapshot is null || !IsMasterNameValid ? _snapshot : _generator.ForMaster(_snapshot, MasterName.Trim());
 
     private bool CanRunAction(string actionId)
     {
@@ -365,7 +373,7 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
         {
             case OdtDownloadAction:
                 // setup.exe が配置済みのときだけ実行できる
-                return !IsOdtDownloading && _snapshot.GetModule("odt_config")?.HasFile("assets", "setup.exe") == true;
+                return !IsOdtDownloading && Composed()?.GetModule("odt_config")?.HasFile("assets", "setup.exe") == true;
             case AppAssocEditAction:
                 // ワークスペースの XML を書き換えるので編集モードのときだけ
                 return IsEditable && _snapshot.HasModule("default_app_config");
@@ -388,11 +396,11 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     private async Task RunAppAssocEditAsync(ActionItemViewModel item)
     {
         if (_snapshot is null || _workspace.RootPath is null) return;
-        var module = _snapshot.GetModule("default_app_config");
-        if (module is null) { item.Status = "モジュール default_app_config がワークスペースにありません。"; return; }
+        // 案件の XML は Sysprep プロファイルのデータフォルダ側（profiles/<名>_sysprep/modules/default_app_config/xml/）
+        var path = _generator.ResolveAssetWritePath(MasterName.Trim(), "default_app_config", "xml/AppAssoc.xml");
+        if (path is null) { item.Status = "モジュール default_app_config がワークスペースにありません。"; return; }
 
         await _appAssoc.EnsureLoadedAsync();
-        var path  = Path.Combine(module.AbsPath, "xml", "AppAssoc.xml");
         var rel   = Path.GetRelativePath(_workspace.RootPath, path).Replace('/', '\\');
         var saved = AppAssocEditorDialog.Show(Application.Current?.MainWindow, _appAssoc, path, rel);
         if (!saved) return;
@@ -422,10 +430,9 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     {
         if (_template is null || _snapshot is null || _workspace.RootPath is null) return;
 
-        var module = _snapshot.GetModule("odt_config");
-        if (module is null) { item.Status = "モジュール odt_config がワークスペースにありません。"; return; }
-
-        var setupExe = Path.Combine(module.AbsPath, "assets", "setup.exe");
+        // setup.exe は案件の資材（データフォルダにあればそちら、無ければ本体）
+        var setupExe = _generator.ResolveAssetReadPath(MasterName.Trim(), "odt_config", "assets/setup.exe");
+        if (setupExe is null) { item.Status = "モジュール odt_config がワークスペースにありません。"; return; }
         if (!File.Exists(setupExe)) { item.Status = "odt_config/assets/setup.exe がありません。先に setup.exe をドロップしてください。"; return; }
 
         // 生成計画から XML を取る（既製 XML の場合は計画に無いので assets/custom を読む）
@@ -441,7 +448,7 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
         }
         else
         {
-            var custom = Path.Combine(module.AbsPath, "assets", "custom", "configuration.xml");
+            var custom = _generator.ResolveAssetReadPath(MasterName.Trim(), "odt_config", "assets/custom/configuration.xml") ?? "";
             if (!File.Exists(custom))
             {
                 item.Status = "製品を選択するか、既製の configuration.xml をドロップしてください。";
@@ -539,7 +546,7 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     /// <summary>辞書の読み込み完了／再読込で、GPO 項目の表示（表示名・行数）とプレビューを更新する。</summary>
     private void OnGpoCatalogChanged()
     {
-        foreach (var g in _itemsById.Values.OfType<GpoItemViewModel>()) g.RefreshFromCatalog();
+        foreach (var g in _itemsById.Values.OfType<GpoItemViewModel>().ToList()) g.RefreshFromCatalog();
         if (_template is not null && _snapshot is not null) SchedulePreview();
     }
 
@@ -557,12 +564,13 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     private async Task<AssetDropResult> ImportAssetsAsync(MasterDropSpec spec, IReadOnlyList<string> paths)
     {
         ErrorMessage = null;
-        var result = await _assetService.ImportAsync(spec, paths, name =>
-            MessageBox.Show(
+        var result = await _assetService.ImportAsync(spec, paths, MasterName.Trim(),
+            name => MessageBox.Show(
                 $"「{name}」は既に存在します。\n上書きしますか？",
                 "上書き確認",
                 MessageBoxButton.YesNo,
-                MessageBoxImage.Question) == MessageBoxResult.Yes);
+                MessageBoxImage.Question) == MessageBoxResult.Yes,
+            message => ConfirmCreateFolder(message, "データフォルダに資材フォルダを作成"));
 
         if (result.Errors.Count > 0)
             ErrorMessage = string.Join(" / ", result.Errors);

@@ -30,11 +30,11 @@ public interface IPrinterDriverDetectorService
         string scanDir, string? sevenZipPath, CancellationToken ct = default);
 
     /// <summary>
-    /// 1 件のドライバ情報を現在のワークスペースの
-    /// <c>modules/standard/printer_driver_config/printer_driver_list.csv</c> に追記する。
+    /// 1 件のドライバ情報を <paramref name="csvPath"/>（printer_driver_list.csv。呼び出し側が IModuleDataResolver で
+    /// 本体 / プロファイルのデータフォルダを解決する）に追記する。
     /// DriverName が既存行と重複する場合はスキップする（大文字小文字無視）。
     /// CSV が存在しない場合は新規作成する。
     /// </summary>
-    Task<DriverExportResult> ExportToWorkspaceAsync(
-        PrinterDriverInfo driver, string workspaceRootPath, CancellationToken ct = default);
+    Task<DriverExportResult> ExportToCsvAsync(
+        PrinterDriverInfo driver, string csvPath, CancellationToken ct = default);
 }

@@ -209,6 +209,27 @@
                     </Button>
                 </Border>
 
+                <!-- 編集先データセット（PDF）: プロファイルに紐づかない画面（GPO 辞書 / レジストリ辞書の書き出し、
+                     プリンタ検出、Pianist）の書き先。基本パラメータの「実行プロファイル」と連動する。
+                     プロファイル画面の ⚙ とマスタ設計は自分のプロファイルに固定 -->
+                <Border DockPanel.Dock="Top"
+                        Background="#1A1A1A"
+                        Padding="12,6"
+                        BorderThickness="0,0,0,1"
+                        BorderBrush="#333333"
+                        Visibility="{Binding IsWorkspaceOpen,
+                                     Converter={StaticResource BoolToVisibilityConverter}}"
+                        ToolTip="辞書の書き出し・プリンタ検出・Pianist の書き先。基本パラメータの「実行プロファイル」と連動します。「（本体）」は modules/ 配下、プロファイル名を選ぶと profiles/&lt;名&gt;/modules/ 配下に書きます。切り替えるとこれらの画面を再読込します">
+                    <StackPanel>
+                        <TextBlock Text="編集先（辞書の書き出し・プリンタ検出・Pianist）"
+                                   FontSize="9" Foreground="#555555" />
+                        <ComboBox ItemsSource="{Binding DataSetChoices}"
+                                  SelectedItem="{Binding SelectedDataSetChoice, Mode=TwoWay}"
+                                  FontSize="11"
+                                  Margin="0,3,0,0" />
+                    </StackPanel>
+                </Border>
+
                 <!-- セクションラベル -->
                 <TextBlock DockPanel.Dock="Top"
                            Text="メニュー"
@@ -222,12 +243,6 @@
                             Style="{StaticResource NavButtonStyle}"
                             Command="{Binding NavigateCommand}"
                             CommandParameter="BasicParams"
-                            IsEnabled="{Binding IsWorkspaceOpen}" />
-
-                    <Button Content="🧩  モジュール編集"
-                            Style="{StaticResource NavButtonStyle}"
-                            Command="{Binding NavigateCommand}"
-                            CommandParameter="ModuleEdit"
                             IsEnabled="{Binding IsWorkspaceOpen}" />
 
                     <Button Content="🖥  端末一覧"
@@ -269,6 +284,50 @@
                             Style="{StaticResource NavChildButtonStyle}"
                             Command="{Binding NavigateCommand}"
                             CommandParameter="PrinterDriverDetector" />
+                </StackPanel>
+
+                <!-- Advanced: モジュール本体（modules/<tier>/…）を直接編集する画面など、日常のキッティング作業では
+                     使わないもの。プロファイル別データフォルダ（PDF）運用では本体側の編集は「既定値の手入れ」なので、
+                     既定で畳んで目立たせない -->
+                <Button DockPanel.Dock="Top"
+                        Command="{Binding ToggleAdvancedCommand}"
+                        HorizontalAlignment="Left"
+                        Margin="16,16,0,4"
+                        Cursor="Hand"
+                        ToolTip="日常では使わない画面（モジュール本体の直接編集など）">
+                    <Button.Style>
+                        <Style TargetType="Button">
+                            <Setter Property="Content"    Value="▸  Advanced" />
+                            <Setter Property="FontSize"   Value="10" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                            <Setter Property="Foreground" Value="#666666" />
+                            <Setter Property="Template">
+                                <Setter.Value>
+                                    <ControlTemplate TargetType="Button">
+                                        <ContentPresenter />
+                                    </ControlTemplate>
+                                </Setter.Value>
+                            </Setter>
+                            <Style.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter Property="Foreground" Value="#AAAAAA" />
+                                </Trigger>
+                                <DataTrigger Binding="{Binding IsAdvancedExpanded}" Value="True">
+                                    <Setter Property="Content" Value="▾  Advanced" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Button.Style>
+                </Button>
+                <StackPanel DockPanel.Dock="Top"
+                            Visibility="{Binding IsAdvancedExpanded,
+                                         Converter={StaticResource BoolToVisibilityConverter}}">
+                    <Button Content="🧩  モジュール編集（本体）"
+                            Style="{StaticResource NavChildButtonStyle}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="ModuleEdit"
+                            IsEnabled="{Binding IsWorkspaceOpen}"
+                            ToolTip="modules/ 配下の本体 CSV を直接編集します。プロファイル別データフォルダで上書きされている設定には反映されません" />
                     <Button Content="🔁  Script Looper"
                             Style="{StaticResource NavChildButtonStyle}"
                             Command="{Binding NavigateCommand}"

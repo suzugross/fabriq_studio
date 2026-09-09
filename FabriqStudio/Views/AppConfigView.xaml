@@ -30,6 +30,7 @@
     <Grid Background="#F3F3F3">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -65,9 +66,39 @@
                                FontSize="11" Foreground="#3050CC" />
                 </Border>
 
+                <!-- 編集先データセット: 本体（既定値）か、プロファイルのデータフォルダ（PDF）か -->
+                <Border DockPanel.Dock="Left" CornerRadius="3"
+                        Padding="6,2" VerticalAlignment="Center" Margin="6,0,0,0"
+                        ToolTip="プロファイルの行の ⚙ から開くとそのプロファイルのデータフォルダ（profiles/&lt;名&gt;/modules/）を、Advanced のモジュール編集から開くと本体（modules/）を編集します">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="#EEEEEE" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsProfileContext}" Value="True">
+                                    <Setter Property="Background" Value="#E3F2E6" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="{Binding DataSetLabel}" FontSize="11">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="#555555" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProfileContext}" Value="True">
+                                        <Setter Property="Foreground" Value="#2F5D3A" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+                </Border>
+
                 <!-- 右: ロック / 保存ボタン / ステータス / Dirty -->
                 <ToggleButton DockPanel.Dock="Right"
                               IsChecked="{Binding IsLocked}"
+                              IsEnabled="{Binding IsFallbackView,
+                                  Converter={StaticResource InverseBooleanConverter}}"
                               Padding="10,4" FontSize="12" Cursor="Hand">
                     <ToggleButton.Style>
                         <Style TargetType="ToggleButton">
@@ -142,8 +173,48 @@
             </DockPanel>
         </Border>
 
+        <!-- 案内バナー群（Row 1）
+             1) PDF 上書き警告: 本体側の編集画面で、profiles/<名>/modules/ が上書きしているとき（前倒しの注意喚起）
+             2) フォールバック: プロファイル文脈で CSV がまだ PDF に無いとき（本体を読み取り専用で表示 → 取り込んで編集）
+             3) 取り込み直後: サンプル行の整理を促す -->
+        <StackPanel Grid.Row="1">
+            <Border Background="#FFF8E1" BorderBrush="#F0C36D" BorderThickness="0,0,0,1" Padding="16,8"
+                    Visibility="{Binding HasOverrides, Converter={StaticResource BoolToVisibilityConverter}}">
+                <StackPanel>
+                    <TextBlock Text="{Binding OverrideSummary}"
+                               FontSize="12" Foreground="#6B4F00" TextWrapping="Wrap" />
+                    <TextBlock Text="{Binding CsvOverrideNote}"
+                               FontSize="11" Foreground="#8A6D00" TextWrapping="Wrap" Margin="0,2,0,0"
+                               Visibility="{Binding CsvOverrideNote, Converter={StaticResource NullToCollapsedConverter}}" />
+                </StackPanel>
+            </Border>
+            <Border Background="#E8F1FB" BorderBrush="#9DBEE3" BorderThickness="0,0,0,1" Padding="16,8"
+                    Visibility="{Binding IsFallbackView, Converter={StaticResource BoolToVisibilityConverter}}">
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Content="取り込んで編集"
+                            Command="{Binding ImportCsvCommand}"
+                            Padding="10,3" FontSize="11" Cursor="Hand"
+                            Background="#1E6FBF" Foreground="White" BorderThickness="0" />
+                    <TextBlock Text="{Binding FallbackNote}"
+                               FontSize="12" Foreground="#1F3A5F" TextWrapping="Wrap"
+                               VerticalAlignment="Center" Margin="0,0,12,0" />
+                </DockPanel>
+            </Border>
+            <Border Background="#E3F2E6" BorderBrush="#9CCB9F" BorderThickness="0,0,0,1" Padding="16,8"
+                    Visibility="{Binding ImportedNote, Converter={StaticResource NullToCollapsedConverter}}">
+                <DockPanel LastChildFill="True">
+                    <Button DockPanel.Dock="Right" Content="サンプル行を削除"
+                            Command="{Binding RemoveSampleRowsCommand}"
+                            Padding="10,3" FontSize="11" Cursor="Hand" />
+                    <TextBlock Text="{Binding ImportedNote}"
+                               FontSize="12" Foreground="#2F5D3A" TextWrapping="Wrap"
+                               VerticalAlignment="Center" Margin="0,0,12,0" />
+                </DockPanel>
+            </Border>
+        </StackPanel>
+
         <!-- ===== コンテンツ ===== -->
-        <Grid Grid.Row="1" Margin="16">
+        <Grid Grid.Row="2" Margin="16">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*" MinHeight="160" />
                 <RowDefinition Height="8" />
@@ -249,6 +320,15 @@
                                    VerticalAlignment="Center"
                                    Visibility="{Binding HasConfigCsv,
                                        Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                        <!-- 採用元（PDF 文脈のみ）: データフォルダ / 本体（未取り込み） -->
+                        <TextBlock DockPanel.Dock="Left"
+                                   Text="{Binding CsvSourceLabel}"
+                                   FontSize="11" Foreground="#2F5D3A"
+                                   VerticalAlignment="Center"
+                                   Margin="8,0,0,0"
+                                   Visibility="{Binding CsvSourceLabel,
+                                       Converter={StaticResource NullToCollapsedConverter}}" />
 
                         <!-- CSV Dirty インジケーター -->
                         <TextBlock DockPanel.Dock="Left"

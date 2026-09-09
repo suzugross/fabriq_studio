@@ -8,7 +8,7 @@ public sealed class MasterPlan
     /// <summary>モジュール CSV への行追加（Segment または Description タグで隔離）。</summary>
     public List<PlanCsvRows>      CsvOps      { get; } = [];
 
-    /// <summary>案件別レジストリ CSV（reg_hklm_list_&lt;名&gt;.csv / reg_hkcu_list_&lt;名&gt;.csv）の全体書き込み。</summary>
+    /// <summary>案件別レジストリ CSV（reg_hklm_list_&lt;名&gt;.csv / reg_hkcu_list_&lt;名&gt;.csv）の全体書き込み（データフォルダごとに 1 件）。</summary>
     public List<PlanRegistryFile> RegistryOps { get; } = [];
 
     /// <summary>生成するプロファイル CSV（マスタ本体 / 配備）。</summary>
@@ -63,6 +63,8 @@ public sealed class PlanCsvRows
     /// <summary>ワークスペースルートからの相対パス（表示用）。</summary>
     public string RelPath   { get; init; } = "";
     public string AbsPath   { get; init; } = "";
+    /// <summary>書き先のデータフォルダ（プロファイル名）。null = 本体（kernel/csv、または本体側に残った旧行の掃除）。</summary>
+    public string? DataSet   { get; init; }
     public PlanIsolation Isolation { get; init; }
     /// <summary>DescriptionTag 方式で使うタグ文字列（例: [master:M_xxx]）。</summary>
     public string Tag       { get; init; } = "";
@@ -101,6 +103,8 @@ public sealed class PlanRegistryFile
     /// <summary>"HKLM" / "HKCU"</summary>
     public string Hive      { get; init; } = "";
     public string ModuleDir { get; init; } = "";
+    /// <summary>書き先のデータフォルダ（マスタ本体 / Sysprep）。</summary>
+    public string DataSet   { get; init; } = "";
     public string RelPath   { get; init; } = "";
     public string AbsPath   { get; init; } = "";
     public bool   Exists    { get; init; }

@@ -99,6 +99,21 @@
                        FontSize="20" FontWeight="Bold"
                        Foreground="#2D2D30"
                        Margin="0,0,0,2" />
+            <!-- 書き先（編集先データセット）。サイドバーの「編集先」で切り替える -->
+            <Border CornerRadius="3" Padding="6,2" HorizontalAlignment="Left" Margin="0,0,0,4"
+                    ToolTip="サイドバーの「編集先」で切り替えます。プロファイルを選ぶと profiles/&lt;名&gt;/modules/ 側に書きます">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#EEEEEE" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding IsProfileTarget}" Value="True">
+                                <Setter Property="Background" Value="#E3F2E6" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock Text="{Binding DataSetLabel}" FontSize="11" Foreground="#2F5D3A" />
+            </Border>
             <TextBlock FontSize="11" Foreground="#888888"
                        Text="レジストリ設定のテンプレートを管理し、ワークスペースの reg_config CSV へエクスポートします。" />
         </StackPanel>

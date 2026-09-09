@@ -3,6 +3,7 @@ using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FabriqStudio.Services;
+using FabriqStudio.Helpers;
 using FabriqStudio.Services.Gpo;
 using FabriqStudio.ViewModels.Gpo;
 
@@ -12,7 +13,7 @@ namespace FabriqStudio.ViewModels;
 /// GPO 辞書画面。ADMX から生成した辞書を検索し、状態・要素を決めて gpo_config/gpo_list.csv へ書き出す。
 /// 辞書の読み込み元（ADMX フォルダー）の切り替えもここで行う。IGpoCatalogService はワークスペース非依存。
 /// </summary>
-public partial class GpoCollectionViewModel : ObservableObject
+public partial class GpoCollectionViewModel : ObservableObject, IDataSetDependentViewModel
 {
     private readonly IGpoCatalogService _service;
     private readonly IGpoExportService  _export;
@@ -39,11 +40,24 @@ public partial class GpoCollectionViewModel : ObservableObject
         ? $"右の状態・オプションで {_export.RelPath} に行を追加します（同じポリシーの既存行は置き換え。Segment 付きの行は触りません）。"
         : "ワークスペースを開くと gpo_list.csv へ書き出せます。";
 
-    public GpoCollectionViewModel(IGpoCatalogService service, IGpoExportService export, IWorkspaceService workspace)
+    private readonly IDataSetContext _dataSet;
+
+    /// <summary>書き先（編集先データセット）の表示。</summary>
+    public string DataSetLabel    => DataSetText.WriteTarget(_dataSet.Current);
+    public bool   IsProfileTarget => _dataSet.Current is not null;
+
+    public GpoCollectionViewModel(IGpoCatalogService service, IGpoExportService export, IWorkspaceService workspace, IDataSetContext dataSet)
     {
         _service   = service;
         _export    = export;
         _workspace = workspace;
+        _dataSet   = dataSet;
+        dataSet.Changed += (_, _) =>
+        {
+            OnPropertyChanged(nameof(DataSetLabel));
+            OnPropertyChanged(nameof(IsProfileTarget));
+            OnPropertyChanged(nameof(ExportHint));
+        };
         Browser    = new GpoBrowserViewModel(service);
 
         Browser.PropertyChanged += OnBrowserPropertyChanged;
@@ -114,7 +128,7 @@ public partial class GpoCollectionViewModel : ObservableObject
         ErrorMessage  = null;
 
         var rows   = Config.PreviewRows.ToList();
-        var result = await _export.ExportAsync(_workspace.RootPath, rows);
+        var result = await _export.ExportAsync(rows);
         if (result.Succeeded)
             StatusMessage = $"✓ {result.RelPath} に {result.Added} 行を追加しました"
                             + (result.Replaced > 0 ? $"（既存 {result.Replaced} 行を置き換え）" : "");

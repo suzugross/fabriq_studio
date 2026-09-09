@@ -102,8 +102,9 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
         }
     }
 
-    private readonly IModuleService  _moduleService;
-    private readonly IProfileService _profileService;
+    private readonly IModuleService      _moduleService;
+    private readonly IProfileService     _profileService;
+    private readonly IProfileDataService _profileData;
 
     /// <summary>ロード中／保存中は true にして Dirty 検知をバイパスする。</summary>
     private bool _isInitializing;
@@ -117,7 +118,9 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
         new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase);
 
     // ─── 対象プロファイル ─────────────────────────────────────────
-    [ObservableProperty] private ProfileEntry? _profile;
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DataFolderLabel))]
+    private ProfileEntry? _profile;
 
     // ─── 左ペイン: 利用可能モジュール（通常モジュール + 特殊コマンド） ────────
     [ObservableProperty] private ObservableCollection<AvailableItem> _availableModules = [];
@@ -187,10 +190,62 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
     [ObservableProperty] private string? _saveError;
     [ObservableProperty] private string? _errorMessage;
 
-    public ProfileDetailViewModel(IModuleService moduleService, IProfileService profileService)
+    // ─── プロファイル別データフォルダ（PDF: profiles/<名>/）───────
+    // 状態は「PDF の有無」と「ロード時に行があったか」からだけ決まる（TM t-0022 の状態機械）:
+    //   旧形式（PDF なし・行あり）= 変換バナーで明示的に取り込む。断れば行の ⚙ から 1 モジュールずつ。
+    //   それ以外（PDF あり / 空から始めた）= この編集で追加したモジュールを保存時に取り込む。
+
+    /// <summary>profiles/<名>/ があるか（あればそのプロファイルの実行はこのフォルダの設定を使う）。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DataFolderLabel))]
+    [NotifyPropertyChangedFor(nameof(ShowMissingBanner))]
+    private bool _hasDataFolder;
+
+    public string DataFolderLabel => HasDataFolder
+        ? $"データフォルダ: profiles/{Profile?.Name}/"
+        : "データフォルダ: なし（本体の設定で実行）";
+
+    /// <summary>PDF なしでモジュール行があるプロファイル（= 旧形式）。一括変換バナーの対象。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowConvertBanner))]
+    [NotifyPropertyChangedFor(nameof(ShowMissingBanner))]
+    private bool _isLegacyProfile;
+
+    /// <summary>PDF に未取り込みの使用モジュール。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowConvertBanner))]
+    [NotifyPropertyChangedFor(nameof(ShowMissingBanner))]
+    [NotifyPropertyChangedFor(nameof(MissingSummary))]
+    [NotifyCanExecuteChangedFor(nameof(MaterializeAllCommand))]
+    private IReadOnlyList<string> _missingModules = [];
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowConvertBanner))]
+    private bool _convertBannerDismissed;
+
+    public bool   ShowConvertBanner => IsLegacyProfile && !ConvertBannerDismissed && MissingModules.Count > 0;
+    public bool   ShowMissingBanner => !IsLegacyProfile && HasDataFolder && MissingModules.Count > 0;
+    public string MissingSummary    => string.Join(", ", MissingModules);
+
+    /// <summary>PDF にあるがプロファイルに行が無いモジュール（自動では消さない）。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasUnusedModules))]
+    private IReadOnlyList<string> _unusedModules = [];
+
+    public bool HasUnusedModules => UnusedModules.Count > 0;
+
+    /// <summary>この編集セッションで追加したモジュール（保存時に PDF へ取り込む）。</summary>
+    private readonly HashSet<string> _addedModules = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>確認ダイアログ（テストで差し替え可能）。既定は MessageBox。</summary>
+    public Func<string, string, bool> ConfirmAction { get; set; } =
+        (message, title) => MessageBox.Show(message, title, MessageBoxButton.OKCancel, MessageBoxImage.Question) == MessageBoxResult.OK;
+
+    public ProfileDetailViewModel(IModuleService moduleService, IProfileService profileService, IProfileDataService profileData)
     {
         _moduleService  = moduleService;
         _profileService = profileService;
+        _profileData    = profileData;
     }
 
     /// <summary>BasicParams 画面から遷移してきたときに呼び出す。</summary>
@@ -243,6 +298,12 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
 
             // Group ComboBox 候補を構築（プリセット + プロファイル内のカスタム値）
             RebuildAvailableGroups();
+
+            // PDF（profiles/<名>/）の状態。PDF が無いのにモジュール行がある = 旧形式（変換を訊く）
+            _addedModules.Clear();
+            ConvertBannerDismissed = false;
+            RefreshDataFolderState();
+            IsLegacyProfile = !HasDataFolder && UsedModuleDirs().Count > 0;
 
             // ロード完了後に必ずクリーン状態にリセット
             IsDirty = false;
@@ -411,6 +472,9 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
         };
         ApplySegmentOptions(entry);   // 追加前に Segment 候補を解決
         Modules.Add(entry);
+
+        if (SelectedAvailable.Module is { } addedModule)
+            _addedModules.Add(addedModule.ModuleDir);   // 保存時に PDF へ取り込む
     }
 
     // ─── モジュール削除（右から削除）──────────────────────────────
@@ -538,6 +602,8 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
                 };
                 ApplySegmentOptions(entry);   // 追加前に Segment 候補を解決
                 Modules.Add(entry);
+                if (ExtractModuleDirectory(src.ScriptPath) is { } importedDir)
+                    _addedModules.Add(importedDir);   // 保存時に PDF へ取り込む
             }
 
             IsDirty = true;
@@ -568,7 +634,10 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
             _isInitializing = true;
             await _profileService.SaveProfileModulesAsync(Profile, Modules);
             IsDirty    = false;
-            SaveStatus = "✓ 保存しました";
+
+            // この編集で追加したモジュールの設定 CSV を PDF へ取り込む（旧形式のプロファイルはバナーで明示的に変換する）
+            var imported = await MaterializeAddedAsync();
+            SaveStatus = imported == 0 ? "✓ 保存しました" : $"✓ 保存しました（データフォルダへ {imported} ファイル取り込み）";
             WeakReferenceMessenger.Default.Send(new WorkspaceDataUpdatedMessage("ProfileDetail"));
         }
         catch (Exception ex)
@@ -578,6 +647,108 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
         finally
         {
             _isInitializing = false;
+        }
+    }
+
+    // ─── PDF: 状態の取得・取り込み・整理 ─────────────────────────
+
+    /// <summary>行から使用モジュール名（重複なし）を集める。特殊コマンド行は除く。</summary>
+    private List<string> UsedModuleDirs()
+        => Modules.Where(m => !m.IsSystemCommand)
+                  .Select(m => ExtractModuleDirectory(m.ScriptPath))
+                  .OfType<string>()
+                  .Distinct(StringComparer.OrdinalIgnoreCase)
+                  .ToList();
+
+    /// <summary>PDF の状態（有無・未取り込み・未使用）を取り直す。</summary>
+    private void RefreshDataFolderState()
+    {
+        if (Profile is null) return;
+        try
+        {
+            var used = UsedModuleDirs();
+            HasDataFolder  = _profileData.HasDataFolder(Profile.Name);
+            MissingModules = _profileData.FindMissingModules(Profile.Name, used);
+            UnusedModules  = _profileData.FindUnusedModules(Profile.Name, used);
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"データフォルダの確認エラー: {ex.Message}";
+        }
+    }
+
+    /// <summary>この編集で追加したモジュールを PDF へ取り込む（保存成功後）。旧形式は対象外。戻り値はコピーしたファイル数。</summary>
+    private async Task<int> MaterializeAddedAsync()
+    {
+        if (Profile is null || IsLegacyProfile || _addedModules.Count == 0) return 0;
+
+        var used  = new HashSet<string>(UsedModuleDirs(), StringComparer.OrdinalIgnoreCase);
+        var total = 0;
+        foreach (var dir in _addedModules.Where(used.Contains).ToList())
+            total += (await _profileData.MaterializeModuleAsync(Profile.Name, dir)).Count;
+
+        _addedModules.Clear();
+        RefreshDataFolderState();
+        return total;
+    }
+
+    private bool CanMaterializeAll() => Profile is not null && MissingModules.Count > 0;
+
+    /// <summary>未取り込みの使用モジュールをまとめて PDF へ取り込む（旧形式の変換 / 未取り込みの補完）。</summary>
+    [RelayCommand(CanExecute = nameof(CanMaterializeAll))]
+    private async Task MaterializeAllAsync()
+    {
+        if (Profile is null) return;
+        var targets = MissingModules.ToList();
+        var list    = string.Join(", ", targets);
+        var message = HasDataFolder
+            ? $"未取り込みの {targets.Count} モジュールの設定 CSV を本体からデータフォルダ（profiles/{Profile.Name}/）へコピーします。\n"
+              + $"内容はそのままコピーするので実行結果は変わりません。\n\n{list}"
+            : $"このプロファイルで使用中の {targets.Count} モジュールの設定 CSV を本体からコピーして、データフォルダ（profiles/{Profile.Name}/）を作成します。\n"
+              + "以後このプロファイルの設定編集は本体ではなくデータフォルダに対して行います。内容はそのままコピーするので実行結果は変わりません。\n"
+              + $"（資材フォルダは取り込みません。必要になったときに置いてください）\n\n{list}";
+        if (!ConfirmAction(message, "データフォルダへ取り込み")) return;
+
+        SaveError = null;
+        try
+        {
+            var total = 0;
+            foreach (var dir in targets)
+                total += (await _profileData.MaterializeModuleAsync(Profile.Name, dir)).Count;
+
+            RefreshDataFolderState();
+            if (HasDataFolder) IsLegacyProfile = false;
+            SaveStatus = $"✓ データフォルダへ {total} ファイル取り込みました";
+        }
+        catch (Exception ex)
+        {
+            SaveError = $"取り込みエラー: {ex.Message}";
+        }
+    }
+
+    [RelayCommand]
+    private void DismissConvertBanner() => ConvertBannerDismissed = true;
+
+    /// <summary>PDF にあるが使っていないモジュールのデータを削除する（明示操作のみ。使用中は消さない）。</summary>
+    [RelayCommand]
+    private void DeleteUnusedModuleData(string? moduleDir)
+    {
+        if (Profile is null || string.IsNullOrWhiteSpace(moduleDir)) return;
+        if (UsedModuleDirs().Contains(moduleDir, StringComparer.OrdinalIgnoreCase)) return;
+        if (!ConfirmAction(
+                $"profiles/{Profile.Name}/modules/{moduleDir}/ を削除します（設定 CSV と資材を含む）。元に戻せません。よろしいですか？",
+                "未使用データの削除"))
+            return;
+
+        SaveError = null;
+        try
+        {
+            _profileData.DeleteModuleData(Profile.Name, moduleDir);
+            RefreshDataFolderState();
+        }
+        catch (Exception ex)
+        {
+            SaveError = $"削除エラー: {ex.Message}";
         }
     }
 
@@ -606,7 +777,11 @@ public partial class ProfileDetailViewModel : ObservableObject, IDirtyAwareViewM
             return;
         }
 
-        ModuleSettingsDialog.Show(module, Application.Current.MainWindow);
+        ModuleSettingsDialog.Show(module, Application.Current.MainWindow, Profile?.Name);
+
+        // ダイアログ内で取り込み（PDF 作成）が行われた可能性があるので状態を取り直す
+        RefreshDataFolderState();
+        if (HasDataFolder) IsLegacyProfile = false;
     }
 
     /// <summary>

@@ -20,20 +20,39 @@ public sealed class MasterAssetService : IMasterAssetService
     }
 
     public async Task<AssetDropResult> ImportAsync(
-        MasterDropSpec spec, IReadOnlyList<string> paths, Func<string, bool> confirmOverwrite)
+        MasterDropSpec spec, IReadOnlyList<string> paths, string masterName,
+        Func<string, bool> confirmOverwrite, Func<string, bool>? confirmCreateFolder = null)
     {
         var result = new AssetDropResult();
 
-        var moduleDir = _resolver.FindModuleDir(spec.Module);
-        if (moduleDir is null)
+        // 案件の資材は、そのモジュールを使うプロファイルのデータフォルダ（PDF）へ置く
+        var dataSet = _resolver.DataSetFor(masterName, spec.Module);
+        var write   = _resolver.ResolveWrite(spec.Module, spec.SubDir, dataSet);
+        if (write is null)
         {
             result.Errors.Add($"モジュール {spec.Module} がワークスペースにありません。");
             return result;
         }
+        var targetDir = write.AbsPath;
 
-        var targetDir = Path.Combine(moduleDir, spec.SubDir.Replace('/', Path.DirectorySeparatorChar));
+        // 資材フォルダはフォルダ単位 all-or-nothing: データフォルダに初めて作るときは、本体側の同名フォルダが
+        // このプロファイルでは使われなくなることを確認してもらう（本体側が空なら黙って作る）
+        if (!Directory.Exists(targetDir) && confirmCreateFolder is not null)
+        {
+            var bodyDir   = _resolver.ResolveRead(spec.Module, spec.SubDir, null)?.AbsPath;
+            var bodyCount = bodyDir is not null && Directory.Exists(bodyDir) ? Directory.EnumerateFileSystemEntries(bodyDir).Count() : 0;
+            if (bodyCount > 0 && !confirmCreateFolder(
+                    $"プロファイル {dataSet} のデータフォルダに {spec.Module}/{spec.SubDir}/ を作ります。\n\n" +
+                    $"作ると、本体側の {spec.SubDir}/（{bodyCount} 件）はこのプロファイルの実行では一切使われなくなります" +
+                    "（フォルダ単位で切り替わり、足りない分を本体から補うことはありません）。\n" +
+                    "この案件で使う資材は、すべてデータフォルダ側に置いてください。続行しますか？"))
+            {
+                result.Skipped.Add($"{spec.SubDir}/（データフォルダへの作成をキャンセル）");
+                return result;
+            }
+        }
         Directory.CreateDirectory(targetDir);
-        result.TargetRelPath = _resolver.ToRelative(targetDir);
+        result.TargetRelPath = write.RelPath;
 
         await _catalog.EnsureLoadedAsync();
 

@@ -21,8 +21,9 @@ namespace FabriqStudio.Services;
 /// </summary>
 public class PianistProfileService : IPianistProfileService
 {
-    /// <summary>workspace ルートからの Pianist プロファイル親ディレクトリ（相対パス）。</summary>
-    private const string PianistProfilesRel = "modules/extended/pianist/profiles";
+    /// <summary>pianist モジュール（extended）。profiles/ と pianist_list.csv は案件コンテンツ = PDF 対象（fabriq Q3 裁定）。</summary>
+    private const string ModuleKind = "extended";
+    private const string ModuleDir  = "pianist";
 
     /// <summary>
     /// Pianist 配下の CSV を読むときの寛容設定。
@@ -43,23 +44,80 @@ public class PianistProfileService : IPianistProfileService
             MissingFieldFound = null,
         };
 
-    private readonly IWorkspaceService _workspace;
-    private readonly ICsvService       _csvService;
+    private readonly IWorkspaceService   _workspace;
+    private readonly ICsvService         _csvService;
+    private readonly IModuleDataResolver _resolver;
+    private readonly IDataSetContext     _dataSet;
 
-    public PianistProfileService(IWorkspaceService workspace, ICsvService csvService)
+    public PianistProfileService(IWorkspaceService workspace, ICsvService csvService, IModuleDataResolver resolver, IDataSetContext dataSet)
     {
         _workspace  = workspace;
         _csvService = csvService;
+        _resolver   = resolver;
+        _dataSet    = dataSet;
     }
 
-    private string GetRoot() =>
-        _workspace.RootPath
-            ?? throw new InvalidOperationException(
-                "ワークスペースが開かれていません。fabriq フォルダを選択してください。");
+    // ── パス解決（編集先データセットに従う）────────────────────────
+    // profiles/ は資材フォルダ = フォルダ単位 all-or-nothing。PDF にあればそちらだけ、無ければ本体（フォールバック）。
+
+    private string ProfilesRel => _resolver.ModuleRelPath(ModuleKind, ModuleDir, "profiles");
+    private string ListRel     => _resolver.ModuleRelPath(ModuleKind, ModuleDir, "pianist_list.csv");
+
+    /// <summary>読み取り用 profiles/（PDF があればそちら、無ければ本体）。</summary>
+    private string ProfilesDirRead()  => _resolver.ResolveRead(ProfilesRel, _dataSet.Current).AbsPath;
+
+    /// <summary>書き込み用 profiles/（編集先データセットが選ばれていれば PDF 側）。</summary>
+    private string ProfilesDirWrite() => _resolver.ResolveWrite(ProfilesRel, _dataSet.Current).AbsPath;
+
+    public bool IsDataFolderFallback
+        => _workspace.IsOpen
+           && _dataSet.Current is not null
+           && _resolver.ResolveRead(ProfilesRel, _dataSet.Current).Source == ModuleDataSource.Fallback;
+
+    public string ProfilesDirLabel
+        => (_workspace.IsOpen ? _resolver.ResolveRead(ProfilesRel, _dataSet.Current).RelPath : ProfilesRel) + "/";
+
+    public async Task<int> MaterializePianistDataAsync()
+    {
+        var dataSet = _dataSet.Current;
+        if (dataSet is null) return 0;
+        var copied = 0;
+
+        // profiles/ はフォルダ単位なので、丸ごと as-is で複製する（PDF に無いときだけ）
+        var src = _resolver.ResolveRead(ProfilesRel, null).AbsPath;
+        var dst = _resolver.ResolveWrite(ProfilesRel, dataSet).AbsPath;
+        if (Directory.Exists(src) && !Directory.Exists(dst))
+            copied += await Task.Run(() => CopyDirectory(src, dst));
+
+        // pianist_list.csv はファイル単位
+        var listSrc = _resolver.ResolveRead(ListRel, null).AbsPath;
+        var listDst = _resolver.ResolveWrite(ListRel, dataSet).AbsPath;
+        if (File.Exists(listSrc) && !File.Exists(listDst))
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(listDst)!);
+            File.Copy(listSrc, listDst);
+            copied++;
+        }
+        return copied;
+    }
+
+    private static int CopyDirectory(string src, string dst)
+    {
+        var n = 0;
+        Directory.CreateDirectory(dst);
+        foreach (var f in Directory.GetFiles(src))
+        {
+            File.Copy(f, Path.Combine(dst, Path.GetFileName(f)), overwrite: false);
+            n++;
+        }
+        foreach (var d in Directory.GetDirectories(src))
+            n += CopyDirectory(d, Path.Combine(dst, Path.GetFileName(d)));
+        return n;
+    }
 
     public Task<IReadOnlyList<PianistProfileEntry>> GetProfilesAsync()
     {
-        var profilesDir = Path.Combine(GetRoot(), PianistProfilesRel);
+        var profilesDir = ProfilesDirRead();
 
         if (!Directory.Exists(profilesDir))
             return Task.FromResult<IReadOnlyList<PianistProfileEntry>>(Array.Empty<PianistProfileEntry>());
@@ -233,7 +291,7 @@ public class PianistProfileService : IPianistProfileService
             return "プロファイル名を入力してください。";
         if (!ProfileNamePattern.IsMatch(name))
             return "プロファイル名は半角英数 + アンダースコア (_) のみ使用できます（§2）。";
-        var folder = Path.Combine(GetRoot(), PianistProfilesRel, name);
+        var folder = Path.Combine(ProfilesDirWrite(), name);
         if (Directory.Exists(folder))
             return $"プロファイル「{name}」は既に存在します。";
         return null;
@@ -244,7 +302,7 @@ public class PianistProfileService : IPianistProfileService
         var err = ValidateNewProfileName(name);
         if (err is not null) throw new InvalidOperationException(err);
 
-        var folder = Path.Combine(GetRoot(), PianistProfilesRel, name);
+        var folder = Path.Combine(ProfilesDirWrite(), name);
         Directory.CreateDirectory(folder);
         Directory.CreateDirectory(Path.Combine(folder, "instructions"));
         // [Samples] section が参照する画像置き場（pianist v1.5.0 以降）。
@@ -445,7 +503,7 @@ public class PianistProfileService : IPianistProfileService
 
         // セーフガード: workspace ルート配下の profiles ディレクトリ配下に居ること
         // （tampered entry で Studio 外のフォルダを誤削除しないよう絶対パス比較）
-        var profilesRoot = Path.GetFullPath(Path.Combine(GetRoot(), PianistProfilesRel));
+        var profilesRoot = Path.GetFullPath(ProfilesDirRead());
         var target = Path.GetFullPath(entry.FolderPath);
         if (!target.StartsWith(profilesRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             return $"安全のため削除できません: {target} は profiles/ 配下ではありません。";
@@ -465,9 +523,6 @@ public class PianistProfileService : IPianistProfileService
     }
 
     // ─── pianist_list.csv I/O ─────────────────────────────────────
-    /// <summary>workspace ルートからの pianist_list.csv 相対パス。</summary>
-    private const string PianistListRel = "modules/extended/pianist/pianist_list.csv";
-
     /// <summary>
     /// CsvHelper シリアライズ専用 DTO。Studio 内のモデル（<see cref="PianistListEntry"/>）は
     /// Enabled を bool で扱うが CSV 上は "1"/"0" 文字列のため、間にこの DTO を挟んで変換する。
@@ -483,7 +538,7 @@ public class PianistProfileService : IPianistProfileService
 
     public async Task<IReadOnlyList<PianistListEntry>> LoadPianistListAsync()
     {
-        var path = Path.Combine(GetRoot(), PianistListRel);
+        var path = _resolver.ResolveRead(ListRel, _dataSet.Current).AbsPath;
         if (!File.Exists(path))
             return Array.Empty<PianistListEntry>();
 
@@ -505,10 +560,13 @@ public class PianistProfileService : IPianistProfileService
 
     public async Task<string?> SavePianistListAsync(IEnumerable<PianistListEntry> entries)
     {
-        var path = Path.Combine(GetRoot(), PianistListRel);
+        var path = _resolver.ResolveWrite(ListRel, _dataSet.Current).AbsPath;
         var dir  = Path.GetDirectoryName(path);
-        if (string.IsNullOrEmpty(dir) || !Directory.Exists(dir))
+        if (string.IsNullOrEmpty(dir))
+            return "pianist_list.csv の書き先を解決できません。";
+        if (_dataSet.Current is null && !Directory.Exists(dir))
             return $"pianist モジュールディレクトリが存在しません: {dir}";
+        Directory.CreateDirectory(dir);   // データフォルダ側は保存の瞬間だけ作る
 
         try
         {

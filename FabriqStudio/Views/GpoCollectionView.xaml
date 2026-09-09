@@ -13,6 +13,21 @@
             <StackPanel>
                 <DockPanel LastChildFill="False">
                     <TextBlock DockPanel.Dock="Left" Text="📜 GPO 辞書" FontSize="18" FontWeight="Bold" Foreground="#2D2D30" VerticalAlignment="Center" />
+                    <!-- 書き先（編集先データセット）。サイドバーの「編集先」で切り替える -->
+                    <Border DockPanel.Dock="Left" CornerRadius="3" Padding="6,2" VerticalAlignment="Center" Margin="10,0,0,0"
+                            ToolTip="サイドバーの「編集先」で切り替えます。プロファイルを選ぶと profiles/&lt;名&gt;/modules/ 側に書きます">
+                        <Border.Style>
+                            <Style TargetType="Border">
+                                <Setter Property="Background" Value="#EEEEEE" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsProfileTarget}" Value="True">
+                                        <Setter Property="Background" Value="#E3F2E6" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
+                        <TextBlock Text="{Binding DataSetLabel}" FontSize="11" Foreground="#2F5D3A" />
+                    </Border>
                     <TextBlock DockPanel.Dock="Left" FontSize="11" Foreground="#888888" VerticalAlignment="Center" Margin="14,0,0,0"
                                Text="ADMX（管理用テンプレート）から生成したローカル グループポリシーの辞書。検索して状態を決め、gpo_config/gpo_list.csv へ書き出します" />
                     <TextBlock DockPanel.Dock="Right" Text="{Binding StatusMessage}" Foreground="#107C10" FontSize="12" VerticalAlignment="Center"

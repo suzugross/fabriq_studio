@@ -50,6 +50,9 @@ public partial class App : Application
         services.AddSingleton<IProfileService, ProfileService>();
         services.AddSingleton<IModuleService, ModuleService>();
         services.AddSingleton<IFileService, FileService>();
+        services.AddSingleton<IModuleDataResolver, ModuleDataResolver>();   // PDF（プロファイル別データフォルダ）の解決規則
+        services.AddSingleton<IProfileDataService, ProfileDataService>();     // PDF への取り込み・整理
+        services.AddSingleton<IDataSetContext, DataSetContext>();             // グローバルの編集先データセット（辞書の書き出し・プリンタ検出・Pianist が従う）
         services.AddSingleton<ILooperService, LooperService>();
         services.AddSingleton<IRegistryCollectionService, RegistryCollectionService>();
         services.AddSingleton<IPrinterDriverDetectorService, PrinterDriverDetectorService>();

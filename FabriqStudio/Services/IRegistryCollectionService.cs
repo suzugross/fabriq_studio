@@ -42,8 +42,11 @@ public interface IRegistryCollectionService
     /// KeyPath + KeyName が既存行と重複する場合はスキップする。
     /// </summary>
     /// <param name="entry">エクスポートするエントリ。</param>
-    /// <param name="workspaceRootPath">エクスポート先ワークスペースの絶対パス（IWorkspaceService.RootPath）。</param>
-    Task<ExportResult> ExportToWorkspaceAsync(RegistryTemplateEntry entry, string workspaceRootPath);
+    /// <param name="csvPath">
+    /// 書き先の reg_hklm_list.csv / reg_hkcu_list.csv の絶対パス。呼び出し側が IModuleDataResolver で
+    /// 本体 / プロファイルのデータフォルダを解決する（無ければ新規作成）。
+    /// </param>
+    Task<ExportResult> ExportToCsvAsync(RegistryTemplateEntry entry, string csvPath);
 }
 
 /// <summary>ワークスペースへのエクスポート結果。</summary>

@@ -46,6 +46,13 @@ public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewMod
     private readonly IWorkspaceService    _workspace;
     private readonly IFabriqBackupService _backupService;
     private readonly IFabriqUpdateService _updateService;
+    private readonly IDataSetContext      _dataSet;
+
+    /// <summary>編集先コンテキストからの追従中（自分の再代入なので編集先へ押し返さない）。</summary>
+    private bool _syncingFromDataSet;
+
+    /// <summary>プロファイル一覧の差し替え中（ComboBox が一時的に null を返すので編集先へ流さない）。</summary>
+    private bool _loadingProfiles;
 
     [ObservableProperty] private ObservableCollection<WorkerEntry> _workers         = [];
     [ObservableProperty] private bool                              _isWorkersLoading;
@@ -121,7 +128,8 @@ public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewMod
         IWorkspaceService    workspace,
         ICryptoService       crypto,
         IFabriqBackupService backupService,
-        IFabriqUpdateService updateService)
+        IFabriqUpdateService updateService,
+        IDataSetContext      dataSet)
     {
         _csvService     = csvService;
         _fileService    = fileService;
@@ -130,13 +138,18 @@ public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewMod
         _workspace      = workspace;
         _backupService  = backupService;
         _updateService  = updateService;
+        _dataSet        = dataSet;
         workspace.WorkspaceChanged += (_, e) =>
         {
             if (e.NewPath is null) { ClearAll(); return; }
-            _ = LoadAllAsync();
+            // 同じワークスペースの再読込なら選択中のプロファイルを名前で復元する。別ワークスペースなら先頭から
+            var samePath = string.Equals(e.NewPath, e.OldPath, StringComparison.OrdinalIgnoreCase);
+            _ = LoadAllAsync(samePath ? SelectedProfile?.Name : null);
         };
+        // 編集先（サイドバーのセレクタ）で選ばれたプロファイルを「実行プロファイル」にも映す
+        dataSet.Changed += (_, _) => SyncSelectionFromDataSet();
         if (workspace.IsOpen)
-            _ = LoadAllAsync();
+            _ = LoadAllAsync(null);
 
         // 詳細画面での保存完了を受信してデータを自動リフレッシュ
         WeakReferenceMessenger.Default.Register<WorkspaceDataUpdatedMessage>(this, (_, msg) =>
@@ -155,10 +168,7 @@ public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewMod
         {
             case "ProfileDetail":
             case "MasterParam":   // マスタ設計の生成でプロファイルが増減する
-                var profileName = SelectedProfile?.Name;
-                await LoadProfilesAsync();
-                if (profileName is not null)
-                    SelectedProfile = Profiles.FirstOrDefault(p => p.Name == profileName);
+                await LoadProfilesAsync(SelectedProfile?.Name);
                 break;
 
             case "HostDetail":
@@ -173,8 +183,8 @@ public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewMod
         }
     }
 
-    private Task LoadAllAsync()
-        => Task.WhenAll(LoadWorkersAsync(), LoadLogDestAsync(), LoadProfilesAsync());
+    private Task LoadAllAsync(string? preferProfile)
+        => Task.WhenAll(LoadWorkersAsync(), LoadLogDestAsync(), LoadProfilesAsync(preferProfile));
 
     private void ClearAll()
     {
@@ -432,15 +442,22 @@ public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewMod
         }
     }
 
-    private async Task LoadProfilesAsync()
+    /// <summary>
+    /// プロファイル一覧を読み直す。<paramref name="preferName"/> があればそれを選び直し（無ければ先頭）、
+    /// 選択が変わったときだけ編集先（IDataSetContext）を追従させる。
+    /// 同じプロファイルに戻った再読込では編集先に触らない（ユーザーが「（本体）」を選んでいればそれを尊重する）。
+    /// </summary>
+    private async Task LoadProfilesAsync(string? preferName)
     {
         IsProfilesLoading = true;
         ProfilesError     = null;
+        _loadingProfiles  = true;
         try
         {
             var items = await _profileService.GetProfilesAsync();
             Profiles        = new ObservableCollection<ProfileEntry>(items);
-            SelectedProfile = Profiles.FirstOrDefault();
+            SelectedProfile = (preferName is null ? null : Profiles.FirstOrDefault(p => p.Name == preferName))
+                              ?? Profiles.FirstOrDefault();
         }
         catch (Exception ex)
         {
@@ -448,8 +465,11 @@ public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewMod
         }
         finally
         {
+            _loadingProfiles  = false;
             IsProfilesLoading = false;
         }
+        if (!string.Equals(SelectedProfile?.Name, preferName, StringComparison.Ordinal))
+            _dataSet.Set(SelectedProfile?.Name);
     }
 
     partial void OnSelectedProfileChanged(ProfileEntry? value)
@@ -458,6 +478,24 @@ public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewMod
         ModulesError = null;
         if (value is not null)
             _ = LoadProfileModulesAsync(value);
+
+        // 実行プロファイルの選択を編集先（辞書の書き出し・プリンタ検出・Pianist の書き先）に連動させる。
+        // 一覧差し替え中の一時的な null と、編集先からの追従（自分の再代入）は流さない
+        if (!_loadingProfiles && !_syncingFromDataSet)
+            _dataSet.Set(value?.Name);
+    }
+
+    /// <summary>編集先で選ばれたプロファイルを「実行プロファイル」に映す。「（本体）」は表せないので選択を維持する。</summary>
+    private void SyncSelectionFromDataSet()
+    {
+        var name = _dataSet.Current;
+        if (name is null) return;
+        if (string.Equals(SelectedProfile?.Name, name, StringComparison.Ordinal)) return;
+        var match = Profiles.FirstOrDefault(p => p.Name == name);
+        if (match is null) return;   // 一覧に無い名前（PDF だけのデータセット等）
+        _syncingFromDataSet = true;
+        try { SelectedProfile = match; }
+        finally { _syncingFromDataSet = false; }
     }
 
     private async Task LoadProfileModulesAsync(ProfileEntry profile)
@@ -521,12 +559,9 @@ public partial class BasicParamsViewModel : ObservableObject, IDirtyAwareViewMod
             // ファイル作成（バリデーション含む）
             var newProfile = await _profileService.CreateProfileAsync(NewProfileName.Trim());
 
-            // プロファイル一覧をリフレッシュ
-            var items = await _profileService.GetProfilesAsync();
-            Profiles = new ObservableCollection<ProfileEntry>(items);
-
-            // 作成したばかりのプロファイルを自動選択
-            SelectedProfile = Profiles.FirstOrDefault(p => p.Name == newProfile.Name);
+            // プロファイル一覧をリフレッシュし、作成したばかりのプロファイルを自動選択して編集先にもする
+            await LoadProfilesAsync(newProfile.Name);
+            _dataSet.Set(SelectedProfile?.Name);
 
             // フォームを閉じる
             IsCreatingProfile = false;

@@ -26,11 +26,6 @@ public class RegistryCollectionService : IRegistryCollectionService
 
     private static readonly string CatalogPath = Path.Combine(DataDir, "catalog.json");
 
-    // ── reg_config CSV の相対パス（ワークスペースルートからの相対）────────
-
-    private const string HklmRelPath = @"modules\standard\reg_hklm_config\reg_hklm_list.csv";
-    private const string HkcuRelPath = @"modules\standard\reg_hkcu_config\reg_hkcu_list.csv";
-
     // ── JSON シリアライズ設定 ─────────────────────────────────────────────
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -112,18 +107,8 @@ public class RegistryCollectionService : IRegistryCollectionService
 
     // ── Export ────────────────────────────────────────────────────────────
 
-    public async Task<ExportResult> ExportToWorkspaceAsync(
-        RegistryTemplateEntry entry,
-        string workspaceRootPath)
-    {
-        var relPath = entry.Hive.Equals("HKCU", StringComparison.OrdinalIgnoreCase)
-            ? HkcuRelPath
-            : HklmRelPath;
-
-        var csvPath = Path.Combine(workspaceRootPath, relPath);
-
-        return await Task.Run(() => ExportSingle(entry, csvPath));
-    }
+    public async Task<ExportResult> ExportToCsvAsync(RegistryTemplateEntry entry, string csvPath)
+        => await Task.Run(() => ExportSingle(entry, csvPath));
 
     /// <summary>
     /// 既存 CSV を読み込み、重複チェック後に新行を追加して全件書き戻す。

@@ -12,10 +12,6 @@ namespace FabriqStudio.Services;
 
 public class PrinterDriverDetectorService : IPrinterDriverDetectorService
 {
-    /// <summary>ワークスペース内のエクスポート先 CSV 相対パス。</summary>
-    private const string DriverListRelPath =
-        @"modules\standard\printer_driver_config\printer_driver_list.csv";
-
     // ═══════════════════════════════════════════════════════════════════════
     // Scan
     // ═══════════════════════════════════════════════════════════════════════
@@ -198,14 +194,12 @@ public class PrinterDriverDetectorService : IPrinterDriverDetectorService
     // ExportToWorkspace (Phase 2)
     // ═══════════════════════════════════════════════════════════════════════
 
-    public Task<DriverExportResult> ExportToWorkspaceAsync(
-        PrinterDriverInfo driver, string workspaceRootPath, CancellationToken ct = default)
+    public Task<DriverExportResult> ExportToCsvAsync(
+        PrinterDriverInfo driver, string csvPath, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(driver);
-        if (string.IsNullOrEmpty(workspaceRootPath))
-            throw new ArgumentException("ワークスペースパスが指定されていません。", nameof(workspaceRootPath));
-
-        var csvPath = Path.Combine(workspaceRootPath, DriverListRelPath);
+        if (string.IsNullOrEmpty(csvPath))
+            throw new ArgumentException("書き先の CSV パスが指定されていません。", nameof(csvPath));
 
         return Task.Run(() =>
         {

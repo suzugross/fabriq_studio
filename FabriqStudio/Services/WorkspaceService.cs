@@ -62,7 +62,7 @@ public class WorkspaceService : IWorkspaceService
             throw new ArgumentException(error, nameof(path));
 
         var old   = _rootPath;
-        _rootPath = path.TrimEnd('\\', '/');
+        _rootPath = System.IO.Path.GetFullPath(path).TrimEnd('\\', '/');   // 区切りを正規化（生成物のパス比較で表記揺れを出さない）
 
         Persist(_rootPath);
         WorkspaceChanged?.Invoke(this, new WorkspaceChangedEventArgs(_rootPath, old));
@@ -104,7 +104,7 @@ public class WorkspaceService : IWorkspaceService
 
             // 検証 OK の場合のみサイレントに復元（イベント発火なし）
             if (Validate(data.RootPath) is null)
-                _rootPath = data.RootPath.TrimEnd('\\', '/');
+                _rootPath = System.IO.Path.GetFullPath(data.RootPath).TrimEnd('\\', '/');
         }
         catch
         {

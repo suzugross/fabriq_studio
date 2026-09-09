@@ -169,12 +169,36 @@
                                         ToolTip="Pianist Profile を新規作成（テンプレートから生成）" />
                             </StackPanel>
                         </Grid>
-                        <TextBlock Text="modules/extended/pianist/profiles/"
+                        <!-- 参照先（本体 / 編集先データセットのデータフォルダ） -->
+                        <TextBlock Text="{Binding ProfilesDirLabel}"
                                    FontSize="10"
-                                   Foreground="#999999"
                                    Margin="0,4,0,0"
                                    TextTrimming="CharacterEllipsis"
-                                   ToolTip="modules/extended/pianist/profiles/" />
+                                   ToolTip="{Binding DataSetLabel}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#999999" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsProfileTarget}" Value="True">
+                                            <Setter Property="Foreground" Value="#2F5D3A" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </Border>
+
+                <!-- データセット選択中に PDF 側が無いとき: 本体を読み取り専用で表示 → 取り込んで編集 -->
+                <Border DockPanel.Dock="Top"
+                        Background="#E8F1FB" BorderBrush="#9DBEE3" BorderThickness="0,0,0,1" Padding="10,8"
+                        Visibility="{Binding IsFallbackView, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <StackPanel>
+                        <TextBlock Text="{Binding FallbackNote}" FontSize="11" Foreground="#1F3A5F" TextWrapping="Wrap" />
+                        <Button Content="本体から取り込む"
+                                Command="{Binding ImportPianistDataCommand}"
+                                HorizontalAlignment="Left" Padding="10,3" FontSize="11" Cursor="Hand" Margin="0,6,0,0"
+                                Background="#1E6FBF" Foreground="White" BorderThickness="0" />
                     </StackPanel>
                 </Border>
 

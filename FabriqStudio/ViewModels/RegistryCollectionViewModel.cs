@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
+using FabriqStudio.Helpers;
 
 namespace FabriqStudio.ViewModels;
 
@@ -12,7 +13,7 @@ namespace FabriqStudio.ViewModels;
 /// 左ペイン（フィルタ + 一覧）と右ペイン（詳細フォーム）を 1 つの VM で管理する。
 /// IRegistryCollectionService はワークスペース非依存。
 /// </summary>
-public partial class RegistryCollectionViewModel : ObservableObject
+public partial class RegistryCollectionViewModel : ObservableObject, IDataSetDependentViewModel
 {
     private readonly IRegistryCollectionService _service;
     private readonly IWorkspaceService          _workspace;
@@ -64,12 +65,31 @@ public partial class RegistryCollectionViewModel : ObservableObject
 
     // ── コンストラクタ ────────────────────────────────────────────────────
 
+    private readonly IModuleDataResolver _resolver;
+    private readonly IDataSetContext     _dataSet;
+    private readonly IProfileDataService _profileData;
+
+    /// <summary>書き先（編集先データセット）の表示。</summary>
+    public string DataSetLabel    => DataSetText.WriteTarget(_dataSet.Current);
+    public bool   IsProfileTarget => _dataSet.Current is not null;
+
     public RegistryCollectionViewModel(
         IRegistryCollectionService service,
-        IWorkspaceService          workspace)
+        IWorkspaceService          workspace,
+        IModuleDataResolver        resolver,
+        IDataSetContext            dataSet,
+        IProfileDataService        profileData)
     {
-        _service   = service;
-        _workspace = workspace;
+        _service     = service;
+        _workspace   = workspace;
+        _resolver    = resolver;
+        _dataSet     = dataSet;
+        _profileData = profileData;
+        dataSet.Changed += (_, _) =>
+        {
+            OnPropertyChanged(nameof(DataSetLabel));
+            OnPropertyChanged(nameof(IsProfileTarget));
+        };
 
         IsWorkspaceOpen = workspace.IsOpen;
         workspace.WorkspaceChanged += (_, e) => IsWorkspaceOpen = e.NewPath is not null;
@@ -193,14 +213,31 @@ public partial class RegistryCollectionViewModel : ObservableObject
         if (!IsEntrySelected || _workspace.RootPath is null) return;
 
         // 未保存の内容でもエクスポートできるよう、フォームの現在値を使用する
-        var entry  = BuildEntryFromForm();
-        var result = await _service.ExportToWorkspaceAsync(entry, _workspace.RootPath);
+        var entry   = BuildEntryFromForm();
+        var isHkcu  = entry.Hive.Equals("HKCU", StringComparison.OrdinalIgnoreCase);
+        var module  = isHkcu ? "reg_hkcu_config" : "reg_hklm_config";
+        var csvName = isHkcu ? "reg_hkcu_list.csv" : "reg_hklm_list.csv";
+
+        var rel = _resolver.ModuleRelPath(module, csvName);
+        if (rel is null)
+        {
+            StatusMessage = $"エクスポート失敗: モジュール {module} がワークスペースにありません。";
+            return;
+        }
+
+        // 編集先データセット（PDF）が選ばれていれば、reg_* をモジュール単位で取り込んでから PDF 側に追記する
+        var dataSet = _dataSet.Current;
+        if (dataSet is not null)
+            await _profileData.MaterializeCsvAsync(dataSet, module, csvName);
+        var target = _resolver.ResolveWrite(rel, dataSet);
+
+        var result = await _service.ExportToCsvAsync(entry, target.AbsPath);
 
         StatusMessage = result switch
         {
             { Error: not null } => $"エクスポート失敗: {result.Error}",
-            { Skipped: > 0   } => "このエントリは既に reg_config CSV に登録されています。",
-            _                  => $"reg_config CSV に追加しました（{entry.Hive}）。",
+            { Skipped: > 0   } => $"このエントリは既に {target.RelPath} に登録されています。",
+            _                  => $"{target.RelPath} に追加しました（{entry.Hive}）。",
         };
     }
 

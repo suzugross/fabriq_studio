@@ -65,6 +65,9 @@ public sealed class MasterContext
     /// <summary>[master:名] 形式のタグ（Segment 列が無い CSV の隔離用）。</summary>
     public string Tag => $"[master:{MasterName}]";
 
+    /// <summary>Sysprep プロファイル名（= そのデータフォルダ名 profiles/&lt;名&gt;_sysprep/）。</summary>
+    public string SysprepDataSet => Resolver.SysprepDataSet(MasterName);
+
     /// <summary>顧客環境向け設定の副セグメント（Segment = マスタ名:late）。</summary>
     public const string LateSubSegment = "late";
 
@@ -287,14 +290,17 @@ public sealed class MasterContext
     public void AddTextFile(string moduleDir, string relativePath, string content, string label)
     {
         if (!ModuleAvailable(moduleDir)) return;
-        var module = Snapshot.GetModule(moduleDir)!;
-        var abs    = System.IO.Path.Combine(module.AbsPath, relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
+
+        // 案件のテキストファイルは、そのモジュールを使うプロファイルのデータフォルダへ（本体には書かない）
+        var write = Resolver.ResolveWrite(moduleDir, relativePath, Resolver.DataSetFor(MasterName, moduleDir));
+        if (write is null) return;
+        var abs = write.AbsPath;
 
         Plan.TextFiles.RemoveAll(t => t.AbsPath.Equals(abs, StringComparison.OrdinalIgnoreCase));
         Plan.TextFiles.Add(new PlanTextFile
         {
             AbsPath = abs,
-            RelPath = Resolver.ToRelative(abs),
+            RelPath = write.RelPath,
             Exists  = System.IO.File.Exists(abs),
             Content = content,
             Label   = label,
@@ -424,12 +430,12 @@ public sealed class MasterContext
         });
     }
 
-    /// <summary>モジュール配下のファイルの絶対パス（モジュールが無ければ null）。資材の存在確認・読み込みに使う。</summary>
+    /// <summary>
+    /// 案件資材の絶対パス（そのモジュールのデータフォルダにあればそちら、無ければ本体。モジュールが無ければ null）。
+    /// 資材の存在確認・読み込みに使う。
+    /// </summary>
     public string? ModuleFile(string moduleDir, string relativePath)
-    {
-        var module = Snapshot.GetModule(moduleDir);
-        return module is null ? null : System.IO.Path.Combine(module.AbsPath, relativePath.Replace('/', System.IO.Path.DirectorySeparatorChar));
-    }
+        => Resolver.ResolveRead(moduleDir, relativePath, Resolver.DataSetFor(MasterName, moduleDir))?.AbsPath;
 
     /// <summary>秘密情報を ENC: 化する。パスフレーズ未設定なら平文のまま（1 回だけ警告）。既に ENC: なら変えない。</summary>
     public string Secret(string value)

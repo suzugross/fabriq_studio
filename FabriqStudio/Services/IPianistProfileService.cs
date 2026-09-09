@@ -76,4 +76,21 @@ public interface IPianistProfileService
     /// </summary>
     /// <returns>null=成功 / 非 null = エラーメッセージ（呼び出し側で表示）</returns>
     Task<string?> SavePianistListAsync(IEnumerable<PianistListEntry> entries);
+
+    // ─── 編集先データセット（PDF）────────────────────────────────
+
+    /// <summary>
+    /// 編集先データセットが選ばれているのに、そのデータフォルダに pianist/profiles/ が無い（本体を参照している）状態か。
+    /// この状態では書き込みを行わない（取り込んでから編集する）。
+    /// </summary>
+    bool IsDataFolderFallback { get; }
+
+    /// <summary>profiles/ の現在の参照先（表示用、末尾 '/'）。</summary>
+    string ProfilesDirLabel { get; }
+
+    /// <summary>
+    /// 本体の pianist/profiles/ と pianist_list.csv を、編集先データセットのデータフォルダへ as-is で複製する（無いときだけ）。
+    /// 戻り値はコピーしたファイル数。
+    /// </summary>
+    Task<int> MaterializePianistDataAsync();
 }

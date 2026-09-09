@@ -16,4 +16,13 @@ public interface IMasterProfileGeneratorService
 
     /// <summary>計画をディスクに書く。ファイルごとに続行し、結果に成否を列挙する。</summary>
     Task<MasterApplyResult> ApplyAsync(MasterPlan plan, IProgress<string>? progress = null);
+
+    /// <summary>マスタ設計用の合成ビュー（各モジュールに、そのマスタが使うデータフォルダの内容を重ねたもの）。</summary>
+    MasterWorkspaceSnapshot ForMaster(MasterWorkspaceSnapshot snapshot, string masterName);
+
+    /// <summary>案件資材の書き先（データフォルダ側）の絶対パス。モジュールが無ければ null。</summary>
+    string? ResolveAssetWritePath(string masterName, string moduleDir, string rel);
+
+    /// <summary>案件資材の読み元（データフォルダにあればそちら、無ければ本体）。モジュールが無ければ null。</summary>
+    string? ResolveAssetReadPath(string masterName, string moduleDir, string rel);
 }

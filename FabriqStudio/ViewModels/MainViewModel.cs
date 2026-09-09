@@ -6,6 +6,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using FabriqStudio.Helpers;
 using FabriqStudio.Messages;
 using FabriqStudio.Services;
+using System.Collections.ObjectModel;
 using FabriqStudio.Views;
 
 namespace FabriqStudio.ViewModels;
@@ -32,6 +33,8 @@ public partial class MainViewModel : ObservableObject
     private readonly GpoCollectionViewModel           _gpoCollectionVm;
     private readonly IWorkspaceService                _workspace;
     private readonly ICryptoService                   _crypto;
+    private readonly IDataSetContext                  _dataSet;
+    private readonly IProfileService                  _profiles;
 
     [ObservableProperty]
     private object _currentPage;
@@ -44,6 +47,28 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>パスフレーズ設定状態の表示テキスト。</summary>
     [ObservableProperty] private string _passphraseStatus = "未設定";
+
+    /// <summary>
+    /// サイドバーの Advanced グループ（モジュール本体の直接編集・Script Looper）を開いているか。
+    /// 日常のキッティング作業では使わない画面なので既定は畳む。
+    /// </summary>
+    [ObservableProperty] private bool _isAdvancedExpanded;
+
+    // ─── 編集先データセット（PDF）─────────────────────────────────
+    // プロファイルに紐づかない画面（GPO 辞書 / レジストリ辞書の書き出し、プリンタ検出、Pianist）の書き先。
+    // 「（本体）」= modules/ 配下、プロファイル名 = profiles/<名>/modules/ 配下。
+    // 基本パラメータの「実行プロファイル」と連動する（状態は IDataSetContext が唯一持ち、このセレクタはその鏡）。
+    // 切り替えは IDataSetContext.Changed で依存画面（IDataSetDependentViewModel）だけが再読込する。
+    // ワークスペース全体は再読込しないので、基本パラメータ等の編集中の内容は失われない。
+
+    /// <summary>「本体」を表す選択肢。</summary>
+    public const string BodyChoice = "（本体）";
+
+    public ObservableCollection<string> DataSetChoices { get; } = [BodyChoice];
+
+    [ObservableProperty] private string? _selectedDataSetChoice = BodyChoice;
+
+    private bool _suppressDataSetChange;
 
     public MainViewModel(
         BasicParamsViewModel              basicParamsVm,
@@ -61,8 +86,12 @@ public partial class MainViewModel : ObservableObject
         MasterParamViewModel              masterParamVm,
         GpoCollectionViewModel            gpoCollectionVm,
         IWorkspaceService                 workspace,
-        ICryptoService                    crypto)
+        ICryptoService                    crypto,
+        IDataSetContext                   dataSet,
+        IProfileService                   profiles)
     {
+        _dataSet                 = dataSet;
+        _profiles                = profiles;
         _masterParamVm           = masterParamVm;
         _gpoCollectionVm         = gpoCollectionVm;
         _basicParamsVm           = basicParamsVm;
@@ -108,6 +137,16 @@ public partial class MainViewModel : ObservableObject
                 CurrentPage     = _basicParamsVm;
             }
         };
+
+        // ── 編集先データセット: 候補（profiles/*.csv）の更新。別ワークスペースでは本体に戻す（DataSetContext も戻る）──
+        workspace.WorkspaceChanged += (_, e) =>
+        {
+            if (e.NewPath != e.OldPath) SetDataSetChoiceSilently(BodyChoice);
+            _ = RefreshDataSetChoicesAsync();
+        };
+        WeakReferenceMessenger.Default.Register<WorkspaceDataUpdatedMessage>(this, (_, _) => _ = RefreshDataSetChoicesAsync());
+        dataSet.Changed += (_, _) => MirrorDataSetChoice();   // 基本パラメータの「実行プロファイル」からの連動もここで映る
+        _ = RefreshDataSetChoicesAsync();
 
         // ── 詳細画面への遷移 ──────────────────────────────────────────────
         WeakReferenceMessenger.Default.Register<ShowHostDetailMessage>(this, (_, msg) =>
@@ -169,6 +208,9 @@ public partial class MainViewModel : ObservableObject
         => DirtyConfirmHelper.ConfirmDiscard(CurrentPage as IDirtyAwareViewModel);
 
     [RelayCommand]
+    private void ToggleAdvanced() => IsAdvancedExpanded = !IsAdvancedExpanded;
+
+    [RelayCommand]
     private void Navigate(string? page)
     {
         if (!ConfirmDiscardIfDirty()) return;
@@ -185,6 +227,81 @@ public partial class MainViewModel : ObservableObject
             "GpoCollection"          => _gpoCollectionVm,
             _                        => CurrentPage
         };
+    }
+
+    // ─── 編集先データセット ─────────────────────────────────────
+
+    private async Task RefreshDataSetChoicesAsync()
+    {
+        if (!_workspace.IsOpen)
+        {
+            ResetChoices([]);
+            return;
+        }
+        try
+        {
+            var names = (await _profiles.GetProfilesAsync())
+                .Select(p => p.Name)
+                .OrderBy(n => n, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+            ResetChoices(names);
+        }
+        catch
+        {
+            // 一覧が取れなくても「本体」は選べる
+        }
+    }
+
+    private void ResetChoices(IReadOnlyList<string> names)
+    {
+        var keep = _dataSet.Current;
+        _suppressDataSetChange = true;
+        try
+        {
+            DataSetChoices.Clear();
+            DataSetChoices.Add(BodyChoice);
+            foreach (var n in names) DataSetChoices.Add(n);
+            if (keep is not null && !DataSetChoices.Contains(keep)) DataSetChoices.Add(keep);   // PDF だけあるプロファイル等
+            SelectedDataSetChoice = keep ?? BodyChoice;
+        }
+        finally
+        {
+            _suppressDataSetChange = false;
+        }
+    }
+
+    private void SetDataSetChoiceSilently(string choice)
+    {
+        _suppressDataSetChange = true;
+        try { SelectedDataSetChoice = choice; }
+        finally { _suppressDataSetChange = false; }
+    }
+
+    partial void OnSelectedDataSetChoiceChanged(string? oldValue, string? newValue)
+    {
+        if (_suppressDataSetChange) return;
+        var target = string.IsNullOrEmpty(newValue) || newValue == BodyChoice ? null : newValue;
+        if (target == _dataSet.Current) return;
+
+        // 切替で再読込されるのは編集先に依存する画面（IDataSetDependentViewModel）だけ。
+        // その画面を表示中で未保存があれば先に確認し、他の画面（基本パラメータ等）の編集はそのまま残す
+        if (CurrentPage is IDataSetDependentViewModel && !ConfirmDiscardIfDirty())
+        {
+            SetDataSetChoiceSilently(oldValue ?? BodyChoice);
+            return;
+        }
+        _dataSet.Set(target);   // Changed を受けて依存画面が自分で再読込し、セレクタは MirrorDataSetChoice で追従する
+    }
+
+    /// <summary>
+    /// 編集先コンテキストの変化をセレクタへ映す（基本パラメータの「実行プロファイル」からの連動、
+    /// 別ワークスペースでの本体戻し）。候補に無い名前（PDF だけのデータセット等）は候補に足してから選ぶ。
+    /// </summary>
+    private void MirrorDataSetChoice()
+    {
+        var choice = _dataSet.Current ?? BodyChoice;
+        if (!DataSetChoices.Contains(choice)) DataSetChoices.Add(choice);
+        SetDataSetChoiceSilently(choice);
     }
 
     // ─── パスフレーズ設定 ───────────────────────────────────────

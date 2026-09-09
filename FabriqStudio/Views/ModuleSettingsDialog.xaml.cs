@@ -12,7 +12,7 @@ namespace FabriqStudio.Views;
 
 public partial class ModuleSettingsDialog : Window
 {
-    private ModuleSettingsDialog(ModuleMasterEntry module)
+    private ModuleSettingsDialog(ModuleMasterEntry module, string? dataSet)
     {
         var sp  = App.Services;
         var dir = module.ModuleDir ?? "";
@@ -25,8 +25,9 @@ public partial class ModuleSettingsDialog : Window
         {
             var appVm = new AppConfigViewModel(
                 sp.GetRequiredService<IFileService>(),
-                sp.GetRequiredService<IWorkspaceService>());
-            appVm.Load(module);
+                sp.GetRequiredService<IModuleDataResolver>(),
+                sp.GetRequiredService<IProfileDataService>());
+            appVm.Load(module, dataSet);
             vm = appVm;
         }
         else
@@ -34,15 +35,17 @@ public partial class ModuleSettingsDialog : Window
             var detailVm = new ModuleDetailViewModel(
                 sp.GetRequiredService<IFileService>(),
                 sp.GetRequiredService<ICsvService>(),
-                sp.GetRequiredService<IWorkspaceService>(),
                 sp.GetRequiredService<IRegistryCollectionService>(),
                 sp.GetRequiredService<ICryptoService>(),
-                sp.GetRequiredService<IModulePresetService>());
-            detailVm.Load(module);
+                sp.GetRequiredService<IModulePresetService>(),
+                sp.GetRequiredService<IModuleDataResolver>(),
+                sp.GetRequiredService<IProfileDataService>());
+            detailVm.Load(module, dataSet);
             vm = detailVm;
         }
 
         InitializeComponent();
+        Title = dataSet is null ? "モジュール設定（本体）" : $"モジュール設定 — プロファイル {dataSet}";
         DetailContent.Content = vm;
 
         // NavigateBackMessage をインターセプトしてダイアログを閉じる
@@ -81,9 +84,10 @@ public partial class ModuleSettingsDialog : Window
     /// </summary>
     /// <param name="module">対象モジュール</param>
     /// <param name="owner">オーナーウィンドウ（省略時は MainWindow）</param>
-    public static void Show(ModuleMasterEntry module, Window? owner = null)
+    /// <param name="dataSet">編集先のプロファイル名（profiles/&lt;名&gt;/modules/ を編集）。null なら本体。</param>
+    public static void Show(ModuleMasterEntry module, Window? owner = null, string? dataSet = null)
     {
-        var dialog = new ModuleSettingsDialog(module)
+        var dialog = new ModuleSettingsDialog(module, dataSet)
         {
             Owner = owner ?? Application.Current.MainWindow
         };

@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.Messaging;
 using FabriqStudio.Messages;
 using FabriqStudio.Models;
 using FabriqStudio.Services;
+using FabriqStudio.Helpers;
 
 namespace FabriqStudio.ViewModels;
 
@@ -49,7 +50,8 @@ public partial class AppConfigViewModel : ObservableObject, IDirtyAwareViewModel
     }
 
     private readonly IFileService      _fileService;
-    private readonly IWorkspaceService _workspace;
+    private readonly IModuleDataResolver _resolver;
+    private readonly IProfileDataService _profileData;
 
     // ─── モジュール情報 ───────────────────────────────────────────
     [ObservableProperty] private ModuleMasterEntry? _module;
@@ -60,6 +62,7 @@ public partial class AppConfigViewModel : ObservableObject, IDirtyAwareViewModel
     [NotifyCanExecuteChangedFor(nameof(AddCsvRowCommand))]
     [NotifyCanExecuteChangedFor(nameof(DeleteCsvRowCommand))]
     [NotifyCanExecuteChangedFor(nameof(ImportInstallerCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveSampleRowsCommand))]
     private bool _isLocked = true;
 
     // ─── guide.txt ───────────────────────────────────────────────
@@ -87,6 +90,7 @@ public partial class AppConfigViewModel : ObservableObject, IDirtyAwareViewModel
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(AddCsvRowCommand))]
     [NotifyCanExecuteChangedFor(nameof(ImportInstallerCommand))]
+    [NotifyCanExecuteChangedFor(nameof(RemoveSampleRowsCommand))]
     private bool _hasConfigCsv;
 
     [ObservableProperty] private string? _configCsvFileName;
@@ -105,22 +109,77 @@ public partial class AppConfigViewModel : ObservableObject, IDirtyAwareViewModel
     [ObservableProperty] private string? _saveError;
     [ObservableProperty] private string? _errorMessage;
 
+    // ── PDF（profiles/<名>/modules/<module>）による上書き ────────
+    // この画面は本体側を編集する。上書きしているプロファイルの実行には反映されないので注意を出す。
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasOverrides))]
+    [NotifyPropertyChangedFor(nameof(OverrideSummary))]
+    private IReadOnlyList<ModuleOverride> _overrides = [];
+
+    public bool   HasOverrides    => Overrides.Count > 0;
+    public string OverrideSummary => ModuleOverrideText.Summary(Overrides);
+
+    /// <summary>表示中の CSV が PDF 側で上書きされているときの注記（無ければ null）。</summary>
+    [ObservableProperty] private string? _csvOverrideNote;
+
+    // ── 編集先データセット（PDF 文脈）────────────────────────────
+    // null = 本体（Advanced のモジュール編集）。プロファイル名 = そのプロファイルの ⚙ から開いた
+    //（profiles/<名>/modules/<module>/ を編集する）。
+
+    /// <summary>編集先のデータセット（プロファイル名）。null なら本体。</summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsProfileContext))]
+    [NotifyPropertyChangedFor(nameof(DataSetLabel))]
+    private string? _dataSet;
+
+    public bool   IsProfileContext => !string.IsNullOrEmpty(DataSet);
+    public string DataSetLabel     => IsProfileContext
+        ? $"編集先: プロファイル {DataSet}（profiles/{DataSet}/modules/）"
+        : "編集先: 本体（既定値）";
+
+    /// <summary>表示中の CSV が PDF に無く、本体の内容を読み取り専用で見せている状態。</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(ImportCsvCommand))]
+    private bool _isFallbackView;
+
+    /// <summary>フォールバック表示の説明。</summary>
+    [ObservableProperty] private string? _fallbackNote;
+
+    /// <summary>表示中の CSV の採用元（PDF / 本体）。本体文脈では空。</summary>
+    [ObservableProperty] private string _csvSourceLabel = "";
+
+    /// <summary>取り込み直後の案内（サンプル行の整理を促す）。</summary>
+    [ObservableProperty] private string? _importedNote;
+
+    /// <summary>保存先。PDF 文脈では ResolveWrite の結果（読み取り元と違うことがある）。</summary>
+    private string? _csvSavePath;
+
+    /// <summary>本体側の file/（PDF に file/ を作る前の確認に使う）。</summary>
+    private string? _bodyFileDirPath;
+
     // ファイルパス（保存時に使用）
     private string? _guidePath;
     private string? _csvFilePath;
     private string? _fileDirPath;
 
     public AppConfigViewModel(
-        IFileService      fileService,
-        IWorkspaceService workspace)
+        IFileService        fileService,
+        IModuleDataResolver resolver,
+        IProfileDataService profileData)
     {
         _fileService = fileService;
-        _workspace   = workspace;
+        _resolver    = resolver;
+        _profileData = profileData;
     }
 
-    /// <summary>選択されたモジュールを読み込む。</summary>
-    public void Load(ModuleMasterEntry module)
+    /// <summary>選択されたモジュールを本体文脈で読み込む。</summary>
+    public void Load(ModuleMasterEntry module) => Load(module, null);
+
+    /// <summary>選択されたモジュールを読み込む。<paramref name="dataSet"/> はプロファイル名（PDF 文脈）、null なら本体。</summary>
+    public void Load(ModuleMasterEntry module, string? dataSet)
     {
+        DataSet    = string.IsNullOrWhiteSpace(dataSet) ? null : dataSet.Trim();
         Module     = module;
         IsLocked   = true;
         SaveStatus = null;
@@ -141,17 +200,29 @@ public partial class AppConfigViewModel : ObservableObject, IDirtyAwareViewModel
         ConfigCsvFileName = null;
         _guidePath        = null;
         _csvFilePath      = null;
+        _csvSavePath      = null;
         _fileDirPath      = null;
+        _bodyFileDirPath  = null;
+        Overrides         = [];
+        CsvOverrideNote   = null;
+        IsFallbackView    = false;
+        FallbackNote      = null;
+        CsvSourceLabel    = "";
+        ImportedNote      = null;
 
         try
         {
-            var root = _workspace.RootPath
-                ?? throw new InvalidOperationException(
-                    "ワークスペースが開かれていません。fabriq フォルダを選択してください。");
-            var moduleDir = Path.Combine(root, "modules", module.Kind, module.ModuleDir);
+            // 本体側のモジュールフォルダ（guide.txt / module.csv はフレームワーク資産なので常に本体）
+            var moduleRel = _resolver.ModuleRelPath(module.Kind, module.ModuleDir, "");
+            var moduleDir = _resolver.ResolveRead(moduleRel, null).AbsPath;
 
-            // file/ ディレクトリパスを算出
-            _fileDirPath = Path.Combine(moduleDir, "file");
+            // file/（インストーラー置き場）。PDF 文脈では PDF 側に置く（フォルダは実際に置くときだけ作る）
+            var fileRel      = _resolver.ModuleRelPath(module.Kind, module.ModuleDir, "file");
+            _bodyFileDirPath = _resolver.ResolveRead(fileRel, null).AbsPath;
+            _fileDirPath     = IsProfileContext ? _resolver.ResolveWrite(fileRel, DataSet).AbsPath : _bodyFileDirPath;
+
+            // PDF 側の上書き有無（本体側の編集画面でだけ注意喚起する）
+            Overrides = IsProfileContext ? [] : _resolver.FindOverrides(module.ModuleDir);
 
             // ── guide.txt ──────────────────────────────────────────
             _guidePath = Path.Combine(moduleDir, "guide.txt");
@@ -165,23 +236,21 @@ public partial class AppConfigViewModel : ObservableObject, IDirtyAwareViewModel
             // 他列は XAML 側で明示定義済みのため）
             if (Directory.Exists(moduleDir))
             {
-                var csvFile = Directory
-                    .GetFiles(moduleDir, "*.csv")
-                    .Where(f => !string.Equals(
-                        Path.GetFileName(f), "module.csv",
-                        StringComparison.OrdinalIgnoreCase))
-                    .Where(f => !string.Equals(
-                        Path.GetFileName(f), ModulePresetService.PresetFileName,
-                        StringComparison.OrdinalIgnoreCase))
-                    .OrderBy(f => f)
-                    .FirstOrDefault();
+                // 先頭の設定 CSV（カーネルと同じ合成一覧。PDF 文脈では PDF 優先）
+                var entry = _resolver.EnumerateCsvs(module.ModuleDir, DataSet).FirstOrDefault();
 
-                if (csvFile is not null)
+                if (entry is not null)
                 {
+                    var csvRel        = _resolver.ModuleRelPath(module.Kind, module.ModuleDir, entry.Name);
+                    var csvFile       = entry.AbsPath;
                     _csvFilePath      = csvFile;
+                    _csvSavePath      = IsProfileContext ? _resolver.ResolveWrite(csvRel, DataSet).AbsPath : csvFile;
+                    ApplyCsvSource(entry.Source, entry.Name);
+
                     var table         = await _fileService.ReadCsvAsDataTableAsync(csvFile);
                     HasConfigCsv      = table.Columns.Count > 0;
-                    ConfigCsvFileName = Path.GetFileName(csvFile);
+                    ConfigCsvFileName = entry.Name;
+                    CsvOverrideNote   = IsProfileContext ? null : ModuleOverrideText.CsvNote(Overrides, ConfigCsvFileName);
 
                     table.AcceptChanges();
                     table.RowChanged += OnCsvRowChanged;
@@ -244,12 +313,16 @@ public partial class AppConfigViewModel : ObservableObject, IDirtyAwareViewModel
                 OriginalGuideText = GuideText;
             }
 
-            // CSV 保存
-            if (HasCsvChanges && _csvFilePath is not null)
+            // CSV 保存（PDF 文脈では profiles/<名>/modules/app_config/ へ。フォルダは保存の瞬間だけ作る）
+            var savePath = _csvSavePath ?? _csvFilePath;
+            if (HasCsvChanges && savePath is not null)
             {
-                await _fileService.WriteCsvFromDataTableAsync(_csvFilePath, ConfigCsvData);
+                Directory.CreateDirectory(Path.GetDirectoryName(savePath)!);
+                await _fileService.WriteCsvFromDataTableAsync(savePath, ConfigCsvData);
                 ConfigCsvData.AcceptChanges();
                 HasCsvChanges = false;
+                _csvFilePath  = savePath;
+                if (IsProfileContext) ApplyCsvSource(ModuleDataSource.Profile, ConfigCsvFileName);
             }
 
             SaveStatus = "✓ 保存しました";
@@ -259,6 +332,76 @@ public partial class AppConfigViewModel : ObservableObject, IDirtyAwareViewModel
         {
             SaveError = $"保存エラー: {ex.Message}";
         }
+    }
+
+    // ── PDF 文脈: 採用元の反映 / 取り込んで編集 ─────────────────
+
+    /// <summary>採用元に応じて、フォールバック表示（読み取り専用 + 取り込み導線）と採用元ラベルを更新する。</summary>
+    private void ApplyCsvSource(ModuleDataSource source, string? csvName)
+    {
+        IsFallbackView = IsProfileContext && source == ModuleDataSource.Fallback;
+        CsvSourceLabel = !IsProfileContext ? ""
+                       : IsFallbackView    ? "採用元: 本体（未取り込み）"
+                                           : "採用元: データフォルダ（PDF）";
+        FallbackNote = IsFallbackView
+            ? $"{csvName} はまだプロファイル {DataSet} のデータフォルダにありません。本体の内容を読み取り専用で表示しています。"
+              + "編集するには取り込んでください（本体からそのままコピーするので、実行結果は変わりません）。"
+            : null;
+        if (IsFallbackView) IsLocked = true;
+    }
+
+    private bool CanImportCsv() => IsFallbackView && IsProfileContext && Module is not null && ConfigCsvFileName is not null;
+
+    [RelayCommand(CanExecute = nameof(CanImportCsv))]
+    private async Task ImportCsvAsync()
+    {
+        if (DataSet is null || Module is null || ConfigCsvFileName is null) return;
+        SaveError = null;
+        try
+        {
+            var copied = await _profileData.MaterializeCsvAsync(DataSet, Module.ModuleDir, ConfigCsvFileName);
+            await LoadFilesAsync(Module);   // 採用元が PDF に変わる
+
+            IsLocked     = false;   // 編集したくて取り込んだので開く
+            ImportedNote = $"本体から取り込みました（{string.Join(", ", copied)}）。"
+                         + "案件に不要なサンプル行（無効行・Description に Sample／サンプルを含む行）は「サンプル行を削除」で落とせます。";
+        }
+        catch (Exception ex)
+        {
+            SaveError = $"取り込みエラー: {ex.Message}";
+        }
+    }
+
+    // ── サンプル行の整理（取り込み直後の導線）────────────────────
+    private bool CanRemoveSampleRows() => HasConfigCsv && !IsLocked;
+
+    [RelayCommand(CanExecute = nameof(CanRemoveSampleRows))]
+    private void RemoveSampleRows()
+    {
+        var targets = ConfigCsvData.Rows.Cast<DataRow>()
+            .Where(r => r.RowState != DataRowState.Deleted && IsSampleRow(r))
+            .ToList();
+        if (targets.Count == 0)
+        {
+            MessageBox.Show("サンプル行（Enabled=0、または Description に Sample／サンプルを含む行）はありません。",
+                "サンプル行を削除", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (MessageBox.Show($"{targets.Count} 行を削除します（無効行・Description に Sample／サンプルを含む行）。よろしいですか？",
+                "サンプル行を削除", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+
+        foreach (var r in targets) r.Delete();   // RowDeleted → HasCsvChanges
+        ImportedNote = null;
+    }
+
+    private static bool IsSampleRow(DataRow row)
+    {
+        var t = row.Table;
+        string Cell(string col) => t.Columns.Contains(col) ? (row[col]?.ToString() ?? "").Trim() : "";
+        if (t.Columns.Contains("Enabled") && Cell("Enabled") == "0") return true;
+        var desc = Cell("Description");
+        return desc.Contains("sample", StringComparison.OrdinalIgnoreCase) || desc.Contains("サンプル", StringComparison.Ordinal);
     }
 
     // ── インストーラー取り込み ─────────────────────────────────────
@@ -286,8 +429,24 @@ public partial class AppConfigViewModel : ObservableObject, IDirtyAwareViewModel
             _     => "exe"
         };
 
-        // file/ ディレクトリの確保
+        // file/ ディレクトリの確保。PDF 文脈で初めて作るときは、本体側の file/ がこのプロファイルでは
+        // 使われなくなる（資材フォルダはフォルダ単位 all-or-nothing）ことを確認してから作る
         if (_fileDirPath is null) return;
+        if (IsProfileContext && !Directory.Exists(_fileDirPath)
+            && _bodyFileDirPath is not null && Directory.Exists(_bodyFileDirPath))
+        {
+            var bodyCount = Directory.EnumerateFileSystemEntries(_bodyFileDirPath).Count();
+            if (bodyCount > 0)
+            {
+                var ok = MessageBox.Show(
+                    $"プロファイル {DataSet} のデータフォルダに file/ を作ります。\n" +
+                    $"作ると、本体側の file/（{bodyCount} 件）はこのプロファイルの実行では一切使われなくなります" +
+                    "（フォルダ単位で切り替わり、足りない分を本体から補うことはありません）。\n\n" +
+                    "この案件で使うインストーラーは、すべてデータフォルダ側に置いてください。続行しますか？",
+                    "データフォルダに file/ を作成", MessageBoxButton.OKCancel, MessageBoxImage.Warning);
+                if (ok != MessageBoxResult.OK) return;
+            }
+        }
         Directory.CreateDirectory(_fileDirPath);
 
         var destPath = Path.Combine(_fileDirPath, fileName);

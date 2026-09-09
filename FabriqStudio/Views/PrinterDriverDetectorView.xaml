@@ -35,6 +35,37 @@
                 <Run FontFamily="Consolas" Foreground="#5C2D91" Text="printer_driver_list.csv" />
                 <Run Text=" にそのまま転記できます。" />
             </TextBlock>
+
+            <!-- 書き先（編集先データセット）と INF の所在。INF/ はフォルダ単位で切り替わるため二択を明示する -->
+            <DockPanel Margin="0,8,0,0" LastChildFill="True">
+                <Border DockPanel.Dock="Left" CornerRadius="3" Padding="6,2" VerticalAlignment="Center" Margin="0,0,10,0"
+                        ToolTip="サイドバーの「編集先」で切り替えます">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="#EEEEEE" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsProfileTarget}" Value="True">
+                                    <Setter Property="Background" Value="#E3F2E6" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <TextBlock Text="{Binding DataSetLabel}" FontSize="11" Foreground="#2F5D3A" />
+                </Border>
+                <Button DockPanel.Dock="Right"
+                        Content="データフォルダに INF/ を作る"
+                        Command="{Binding CreateProfileInfCommand}"
+                        Padding="8,3" FontSize="11" Cursor="Hand" Margin="6,0,0,0"
+                        ToolTip="この案件のドライバを全部データフォルダ側に置く選択。作ると本体の INF はこのプロファイルでは使われません"
+                        Visibility="{Binding CanCreateProfileInf, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <Button DockPanel.Dock="Right"
+                        Content="データフォルダの INF/ を削除（本体の共通庫に戻す）"
+                        Command="{Binding RemoveProfileInfCommand}"
+                        Padding="8,3" FontSize="11" Cursor="Hand" Margin="6,0,0,0"
+                        Visibility="{Binding CanRemoveProfileInf, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <TextBlock Text="{Binding InfStatus}" FontSize="11" Foreground="#555555"
+                           VerticalAlignment="Center" TextWrapping="Wrap" />
+            </DockPanel>
         </StackPanel>
 
         <!-- ===== スキャン入力行 ===== -->

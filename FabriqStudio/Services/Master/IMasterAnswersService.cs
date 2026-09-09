@@ -3,7 +3,7 @@ using FabriqStudio.Models.Master;
 namespace FabriqStudio.Services.Master;
 
 /// <summary>
-/// 回答ファイル <c>profiles/&lt;マスタ名&gt;.master.json</c> の読み書き。
+/// 回答ファイル <c>profiles/&lt;マスタ名&gt;/master.json</c> の読み書き（旧置き場 <c>profiles/&lt;マスタ名&gt;.master.json</c> も読める）。
 /// </summary>
 public interface IMasterAnswersService
 {
