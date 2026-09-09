@@ -3036,6 +3036,18 @@
       "value": "1",
       "description": "【Windows Defender ウイルス対策を無効化】\n\nグループポリシー「Microsoft Defender ウイルス対策を無効にする」に相当します（WindowsDefender.admx / DisableAntiSpywareDefender）。\n設定仕様書の「Windows Defender：無効（ローカルグループポリシーにて設定）」に対応し、リアルタイム保護の無効化（00000007）と併用します。\n\n■ 値の意味\n  1 = Defender ウイルス対策を無効化\n  0 = 有効\n\n■ 注意事項（重要）\n  Windows 10 1903 以降 / Windows 11 では「改ざん防止（Tamper Protection）」が有効な場合、本ポリシーは無視されます。\n  事前に Windows セキュリティ → ウイルスと脅威の防止の設定 → 改ざん防止 をオフにする手動作業が必要です。\n  他社製ウイルス対策を導入する案件では、その製品のインストールで Defender は自動的に受動モードになるため、本設定は通常不要です。",
       "tags": "Defender;ウイルス対策;無効化;ポリシー;改ざん防止"
+    },
+    {
+      "id": "00000100",
+      "category": "Security",
+      "title": "Bluetooth を完全に無効化",
+      "hive": "HKLM",
+      "keyPath": "HKEY_LOCAL_MACHINE\\SOFTWARE\\Microsoft\\PolicyManager\\default\\Connectivity\\AllowBluetooth",
+      "keyName": "value",
+      "type": "REG_DWORD",
+      "value": "0",
+      "description": "【Bluetooth を完全に無効化】\n\nPolicy CSP「Connectivity/AllowBluetooth」の既定値を格納する PolicyManager\\default 配下に\nvalue = 0 を書き込み、Bluetooth 機能そのものを使用不可にする。\n設定 → Bluetooth とデバイス の Bluetooth トグルが消え（またはオフ固定になり）、\n新規ペアリング・既存デバイスとの接続がいずれも行えなくなる。\n\n■ 値の意味\n  0 = 無効（Bluetooth 使用不可。ペアリング済みデバイスも接続できない）\n  1 = 使用は許可するがペアリングは不可（探索・ペアリングを禁止）\n  2 = 有効（既定値）\n\n■ キッティングでの用途\n  情報漏えい対策として、業務端末の Bluetooth 経由のデータ持ち出し・持ち込みを\n  ハード的な無効化（BIOS / デバイスマネージャー）に頼らずポリシーで一括禁止する。\n  ファイル転送だけを止めたい場合は本エントリではなく\n  「Bluetooth ファイル転送を禁止（許可サービスリスト 1/2・2/2）」を使用すること。\n\n■ 有効化の条件\n  書き込み直後は反映されない。再起動後に適用される。\n\n■ 注意事項\n  - Bluetooth マウス / キーボード / ヘッドセットも一切使えなくなる。\n    無線マウスを使用する端末では、レシーバー方式（USB ドングル）であることを事前に確認すること。\n  - PolicyManager\\default は OS の既定ポリシー値を保持する領域のため、\n    Intune 等の MDM 管理下では次回同期で current 側の値が優先され上書きされる可能性がある\n    （MDM 管理端末では MDM 側で Connectivity/AllowBluetooth を設定すること）。\n  - 解除するには value を 2 に戻して再起動する。\n\n■ 確認方法\n  設定 → Bluetooth とデバイス に Bluetooth トグルが表示されない／オフのまま操作できない。\n  デバイスマネージャーの Bluetooth アダプター自体は残る（ドライバーは無効化されない）。\n\n■ 参照\n  Microsoft Learn — Policy CSP - Connectivity / AllowBluetooth",
+      "tags": "Bluetooth;無効化;AllowBluetooth;PolicyManager;Connectivity;情報漏えい対策"
     }
   ]
 }
