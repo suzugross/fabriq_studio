@@ -6,7 +6,7 @@ namespace FabriqStudio.Tests;
 /// <summary>固定ルートを返すだけの IWorkspaceService。</summary>
 internal sealed class StubWorkspace : IWorkspaceService
 {
-    public StubWorkspace(string root) => RootPath = root;
+    public StubWorkspace(string? root) => RootPath = root;
 
     public string? RootPath { get; }
     public bool    IsOpen   => RootPath is not null;

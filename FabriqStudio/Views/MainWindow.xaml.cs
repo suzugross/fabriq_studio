@@ -14,6 +14,9 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         _viewModel  = viewModel;
+
+        // 起動時のパスフレーズ確認（出す / 出さないの判断は VM 側。View は呼ぶだけ）
+        Loaded += (_, _) => _viewModel.PromptPassphraseOnStartup();
     }
 
     /// <summary>

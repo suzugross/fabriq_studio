@@ -64,6 +64,7 @@ public partial class App : Application
         services.AddSingleton<IRegistryCollectionService, RegistryCollectionService>();
         services.AddSingleton<IPrinterDriverDetectorService, PrinterDriverDetectorService>();
         services.AddSingleton<ICryptoService, CryptoService>();
+        services.AddSingleton<IPassphraseService, PassphraseService>();   // ワークスペースの検証トークン（kernel/txt/passphrase_verify.txt）
         services.AddSingleton<IModulePresetService, ModulePresetService>();
         services.AddSingleton<IHostListExportService, HostListExportService>();
         services.AddSingleton<IFabriqBackupService, FabriqBackupService>();

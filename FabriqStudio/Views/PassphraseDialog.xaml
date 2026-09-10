@@ -69,8 +69,10 @@
                          Padding="8,6"
                          FontSize="13"
                          PasswordChanged="PassphraseBox_PasswordChanged" />
-            <TextBlock Text="空のまま設定するとパスフレーズをクリアします"
+            <TextBlock x:Name="HintText"
+                       Text="空のまま設定するとパスフレーズをクリアします"
                        FontSize="9" Foreground="#555555"
+                       TextWrapping="Wrap"
                        Margin="0,4,0,0" />
         </StackPanel>
 

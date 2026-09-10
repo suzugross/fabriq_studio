@@ -350,6 +350,8 @@
                         <DockPanel>
                             <Button DockPanel.Dock="Left"
                                     Command="{Binding SetPassphraseCommand}"
+                                    IsEnabled="{Binding IsWorkspaceOpen}"
+                                    ToolTip="このワークスペースのマスターパスフレーズを設定します（ENC: 値の暗号化・復号に使用）"
                                     Cursor="Hand">
                                 <Button.Style>
                                     <Style TargetType="Button">

@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CommunityToolkit.Mvvm.Messaging;
@@ -34,6 +35,7 @@ public partial class MainViewModel : ObservableObject
     private readonly CollectViewModel                 _collectVm;
     private readonly IWorkspaceService                _workspace;
     private readonly ICryptoService                   _crypto;
+    private readonly IPassphraseService               _passphrase;
     private readonly IDataSetContext                  _dataSet;
     private readonly IProfileService                  _profiles;
 
@@ -89,6 +91,7 @@ public partial class MainViewModel : ObservableObject
         CollectViewModel                  collectVm,
         IWorkspaceService                 workspace,
         ICryptoService                    crypto,
+        IPassphraseService                passphrase,
         IDataSetContext                   dataSet,
         IProfileService                   profiles)
     {
@@ -111,6 +114,7 @@ public partial class MainViewModel : ObservableObject
         _pianistEditorVm         = pianistEditorVm;
         _workspace               = workspace;
         _crypto                  = crypto;
+        _passphrase              = passphrase;
 
         // ── 初期表示: ワークスペースが開いていればメイン画面、未設定なら WelcomeView ──
         IsWorkspaceOpen = workspace.IsOpen;
@@ -126,6 +130,7 @@ public partial class MainViewModel : ObservableObject
                 IsWorkspaceOpen = false;
                 WorkspaceName   = "";
                 CurrentPage     = _welcomeVm;
+                ClearSessionPassphrase();   // パスフレーズはワークスペースに属するので持ち越さない
             }
             else if (e.NewPath == e.OldPath)
             {
@@ -138,6 +143,7 @@ public partial class MainViewModel : ObservableObject
                 IsWorkspaceOpen = true;
                 WorkspaceName   = GetDisplayName(e.NewPath);
                 CurrentPage     = _basicParamsVm;
+                QueuePassphrasePrompt();    // 開いた直後に確認（Reload では出さない）
             }
         };
 
@@ -308,75 +314,116 @@ public partial class MainViewModel : ObservableObject
         SetDataSetChoiceSilently(choice);
     }
 
-    // ─── パスフレーズ設定 ───────────────────────────────────────
-    private const string VerifyToken    = "surkitinisme";
-    private const string VerifyRelPath  = "kernel/txt/passphrase_verify.txt";
+    // ─── パスフレーズ ─────────────────────────────────────────
+    // セッションのパスフレーズはワークスペースに属する（IPassphraseService の規約）。
+    // 起動時とワークスペースを開いた直後に一度だけ確認する。強制はせず、キャンセルすれば
+    // パスフレーズなしで編集を続行できる（＝合致判定なし）。忘却を防ぐための確認である。
 
+    /// <summary>起動時プロンプトは 1 回だけ（Loaded が複数回発火しても二重に出さない）。</summary>
+    private bool _startupPromptDone;
+
+    /// <summary>プロンプト表示中フラグ（モーダル中の再入防止）。</summary>
+    private bool _passphrasePromptOpen;
+
+    /// <summary>
+    /// MainWindow の Loaded から呼ぶ。永続化復元で開かれたワークスペースは
+    /// WorkspaceChanged が発火しないため、この経路で確認プロンプトを出す。
+    /// </summary>
+    public void PromptPassphraseOnStartup()
+    {
+        if (_startupPromptDone) return;
+        _startupPromptDone = true;
+        QueuePassphrasePrompt();
+    }
+
+    /// <summary>
+    /// 確認プロンプトを次の Dispatcher サイクルへ回す。
+    /// WorkspaceChanged ハンドラの途中でモーダルを出すと、後続ハンドラ（各 VM の再読込）が
+    /// ダイアログを閉じるまで走らないため、必ず遅延させる。
+    /// </summary>
+    private void QueuePassphrasePrompt()
+        => Application.Current?.Dispatcher.BeginInvoke(
+               new Action(PromptPassphraseForWorkspace), DispatcherPriority.Background);
+
+    /// <summary>
+    /// 現在のワークスペースについてパスフレーズを確認する。
+    /// 設定済み（検証トークンあり）→ 照合プロンプト。不一致なら再入力を促す。
+    /// 未設定 → 設定プロンプト。どちらもキャンセル可（パスフレーズなしで続行）。
+    /// </summary>
+    private void PromptPassphraseForWorkspace()
+    {
+        if (_passphrasePromptOpen || !_workspace.IsOpen) return;
+
+        _passphrasePromptOpen = true;
+        try
+        {
+            if (_passphrase.IsConfiguredInWorkspace)
+            {
+                // 既にこのワークスペースのパスフレーズを保持しているなら聞かない
+                if (_crypto.MasterPassphrase is { } current && _passphrase.Verify(current)) return;
+
+                ClearSessionPassphrase();   // 別ワークスペースのパスフレーズは持ち越さない
+
+                while (true)
+                {
+                    var input = PassphraseDialog.Show(PassphraseDialogMode.WorkspaceVerify);
+                    if (string.IsNullOrEmpty(input)) return;   // キャンセル / 空 = スキップ
+                    if (_passphrase.Verify(input)) { ApplyPassphrase(input); return; }
+
+                    MessageBox.Show(
+                        "パスフレーズが正しくありません。\nもう一度入力するか、キャンセルしてください。",
+                        "パスフレーズの確認",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+
+            ClearSessionPassphrase();
+
+            var created = PassphraseDialog.Show(PassphraseDialogMode.WorkspaceSetup);
+            if (string.IsNullOrEmpty(created)) return;   // キャンセル / 空 = スキップ
+            ApplyPassphrase(created);
+        }
+        finally
+        {
+            _passphrasePromptOpen = false;
+        }
+    }
+
+    /// <summary>左ペイン下部「🔑 パスフレーズ」からの手動設定。</summary>
     [RelayCommand]
     private void SetPassphrase()
     {
-        var result = Views.PassphraseDialog.Show(_crypto.HasPassphrase);
+        var result = PassphraseDialog.Show(PassphraseDialogMode.Manual, _crypto.HasPassphrase);
         if (result is null) return;   // キャンセル
 
         if (string.IsNullOrEmpty(result))
         {
-            // クリア
-            _crypto.MasterPassphrase = null;
-            PassphraseStatus = "未設定";
+            ClearSessionPassphrase();   // セッションのみ解除（検証トークンは残す）
             return;
         }
 
-        // ── 既存の検証トークンがあればパスフレーズを照合 ──
-        var verifyPath = GetVerifyTokenPath();
-        if (verifyPath is not null && File.Exists(verifyPath))
-        {
-            var token = File.ReadAllText(verifyPath).Trim();
-            if (!string.IsNullOrEmpty(token))
-            {
-                try
-                {
-                    var decrypted = _crypto.Decrypt(token, result);
-                    if (decrypted != VerifyToken)
-                    {
-                        MessageBox.Show(
-                            "パスフレーズが正しくありません。",
-                            "パスフレーズ検証エラー",
-                            MessageBoxButton.OK, MessageBoxImage.Warning);
-                        return;
-                    }
-                }
-                catch
-                {
-                    MessageBox.Show(
-                        "パスフレーズが正しくありません。",
-                        "パスフレーズ検証エラー",
-                        MessageBoxButton.OK, MessageBoxImage.Warning);
-                    return;
-                }
-            }
-        }
-
-        // ── パスフレーズを適用 ──
-        _crypto.MasterPassphrase = result;
-        PassphraseStatus = "設定済み";
-
-        // ── 検証トークンを書き出し（新規 or 上書き） ──
-        if (verifyPath is not null)
-        {
-            var dir = Path.GetDirectoryName(verifyPath)!;
-            if (!Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-
-            File.WriteAllText(verifyPath, _crypto.Encrypt(VerifyToken, result));
-        }
+        ApplyPassphrase(result);
     }
 
-    /// <summary>ワークスペースが開いていれば検証トークンの絶対パスを返す。</summary>
-    private string? GetVerifyTokenPath()
+    /// <summary>パスフレーズを適用し、失敗（不一致・トークン書き出し不能）はそのまま表示する。</summary>
+    private void ApplyPassphrase(string passphrase)
     {
-        var root = _workspace.RootPath;
-        return root is null ? null : Path.Combine(root, VerifyRelPath);
+        var error = _passphrase.Apply(passphrase);
+        if (error is not null)
+            MessageBox.Show(error, "パスフレーズ", MessageBoxButton.OK, MessageBoxImage.Warning);
+
+        RefreshPassphraseStatus();
     }
+
+    /// <summary>セッションのパスフレーズを解除する（検証トークンには触らない）。</summary>
+    private void ClearSessionPassphrase()
+    {
+        _passphrase.ClearSession();
+        RefreshPassphraseStatus();
+    }
+
+    private void RefreshPassphraseStatus()
+        => PassphraseStatus = _crypto.HasPassphrase ? "設定済み" : "未設定";
 
     /// <summary>
     /// 現在のワークスペースを閉じて WelcomeView へ戻る。
