@@ -45,6 +45,10 @@ dotnet publish FabriqStudio/FabriqStudio.csproj -c Release -o "E:/publish_fabriq
 
 このプロジェクトのタスクは、リポジトリ直下の `.tm/tasks.json` で管理されています
 （デスクトップアプリ「TM」と共用。人間も Claude も同じファイルを編集します）。
+
+**`.tm/` は Git 管理外**（`.gitignore`）で、ローカルにのみ存在します。
+顧客名・案件固有の設定・実行ログを含み得るため、リポジトリにはコミットしないこと。
+
 作業の際は次に従ってください。
 
 - **着手前**: `.tm/tasks.json` を読み、未完了タスク（status が「完了」以外）を確認する。
