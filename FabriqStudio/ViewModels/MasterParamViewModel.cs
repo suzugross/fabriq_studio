@@ -20,6 +20,7 @@ using FabriqStudio.Services.Master;
 using FabriqStudio.Services.Master.Emitters;
 using FabriqStudio.ViewModels.Master;
 using FabriqStudio.Views;
+using FabriqStudio.Services.Collect;
 
 namespace FabriqStudio.ViewModels;
 
@@ -191,8 +192,12 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
         IGpoCatalogService             gpoCatalog,
         IAppAssocService               appAssoc,
         IRegistryCollectionService     registry,
-        IMasterSheetService            sheets)
+        IMasterSheetService            sheets,
+        IStoreAppInventoryService      storeApps,
+        IDesktopIconLayoutService      iconLayout)
     {
+        _storeApps       = storeApps;
+        _iconLayout      = iconLayout;
         _templateService = templateService;
         _answersService  = answersService;
         _generator       = generator;
@@ -214,6 +219,8 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
             GpoCatalog   = gpoCatalog,
             PickRegistry       = PickRegistryAsync,
             RegistryDictionary = registry,
+            PickFiles          = (filter, dir) => Task.FromResult(FilePicker.PickMany(filter, dir, "タスクバーにピン留めするファイル")),
+            PickStoreApps      = PickStoreAppsAsync,
         };
         gpoCatalog.CatalogChanged += (_, _) => RunOnUi(OnGpoCatalogChanged);
 
@@ -346,8 +353,13 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
     //  action 項目（ODT のオフライン資材ダウンロード）
     // ═══════════════════════════════════════════════════════════════
 
-    private const string OdtDownloadAction   = "odtDownload";
-    private const string AppAssocEditAction  = "appassocEdit";
+    private const string OdtDownloadAction     = "odtDownload";
+    private const string AppAssocEditAction    = "appassocEdit";
+    private const string DeskIconCaptureAction = "deskIconCapture";
+    private const string AppAssocCaptureAction = "appassocCapture";
+
+    private readonly IStoreAppInventoryService _storeApps;
+    private readonly IDesktopIconLayoutService _iconLayout;
 
     private void RefreshActionStates()
     {
@@ -377,6 +389,10 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
             case AppAssocEditAction:
                 // ワークスペースの XML を書き換えるので編集モードのときだけ
                 return IsEditable && _snapshot.HasModule("default_app_config");
+            case AppAssocCaptureAction:
+                return IsEditable && _snapshot.HasModule("default_app_config");
+            case DeskIconCaptureAction:
+                return IsEditable && _snapshot.HasModule("desktop_icon_config");
             default:
                 return false;
         }
@@ -384,10 +400,100 @@ public partial class MasterParamViewModel : ObservableObject, IDirtyAwareViewMod
 
     private Task RunActionAsync(ActionItemViewModel item) => item.ActionId switch
     {
-        OdtDownloadAction  => RunOdtDownloadAsync(item),
-        AppAssocEditAction => RunAppAssocEditAsync(item),
-        _                  => Task.CompletedTask,
+        OdtDownloadAction     => RunOdtDownloadAsync(item),
+        AppAssocEditAction    => RunAppAssocEditAsync(item),
+        DeskIconCaptureAction => RunDeskIconCaptureAsync(item),
+        AppAssocCaptureAction => RunAppAssocCaptureAsync(item),
+        _                     => Task.CompletedTask,
     };
+
+    /// <summary>ストアアプリ項目の「この PC から選ぶ」: インストール済み一覧から選び、パッケージ名を返す。</summary>
+    private async Task<IReadOnlyList<string>?> PickStoreAppsAsync(IReadOnlyCollection<string> existing)
+    {
+        try
+        {
+            var apps   = await _storeApps.ListAsync();
+            var set    = new HashSet<string>(existing, StringComparer.OrdinalIgnoreCase);
+            var items  = apps.Select(a => new PickListItem(a.Name, a.Publisher, a.Version, set.Contains(a.Name))).ToList();
+            var picked = await PickListDialog.ShowAsync(Application.Current?.MainWindow, new PickListRequest("削除するストアアプリ", items));
+            return picked?.Select(p => p.Name).ToList();
+        }
+        catch (Exception ex)
+        {
+            ErrorMessage = $"ストアアプリの一覧を取得できませんでした: {ex.Message}";
+            return null;
+        }
+    }
+
+    /// <summary>この PC のアイコン配置を .reg に採取し、desk_icon_layout のドロップ枠と同じ経路でデータフォルダへ置く。</summary>
+    private async Task RunDeskIconCaptureAsync(ActionItemViewModel item)
+    {
+        if (!(_itemsById.TryGetValue("desk_icon_layout", out var target) && target is FileItemViewModel f && f.DropSpec is { } spec))
+        {
+            item.Status = "テンプレートに desk_icon_layout がありません";
+            return;
+        }
+
+        item.IsRunning = true;
+        var temp = Path.Combine(Path.GetTempPath(), $"DesktopIcons_{DateTime.Now:yyyyMMdd_HHmmss}.reg");
+        try
+        {
+            if (!await _iconLayout.ExportAsync(temp))
+            {
+                item.Status = "アイコン配置を取得できませんでした";
+                return;
+            }
+            var result = await ImportAssetsAsync(spec, [temp]);
+            var entry  = result.Entries.FirstOrDefault();
+            if (entry is not null) f.Text = entry.FileName;
+            item.Status = entry is null
+                ? string.Join(" / ", result.Errors.Concat(result.Skipped).DefaultIfEmpty("配置できませんでした"))
+                : $"✓ {result.TargetRelPath}/{entry.FileName}";
+        }
+        finally
+        {
+            try { if (File.Exists(temp)) File.Delete(temp); } catch { /* 後始末の失敗は無視 */ }
+            item.IsRunning = false;
+        }
+    }
+
+    /// <summary>この PC の既定のアプリを Dism で採取し（UAC）、sp_appassoc のドロップ枠と同じ経路で AppAssoc.xml として置く。</summary>
+    private async Task RunAppAssocCaptureAsync(ActionItemViewModel item)
+    {
+        if (!(_itemsById.TryGetValue("sp_appassoc", out var target) && target is FileItemViewModel f && f.DropSpec is { } spec))
+        {
+            item.Status = "テンプレートに sp_appassoc がありません";
+            return;
+        }
+
+        item.IsRunning = true;
+        try
+        {
+            var temp = await _appAssoc.ExportFromThisPcAsync();
+            if (temp is null)
+            {
+                item.Status = "キャンセル";
+                return;
+            }
+            try
+            {
+                var result = await ImportAssetsAsync(spec, [temp]);
+                var entry  = result.Entries.FirstOrDefault();
+                if (entry is not null) f.Text = entry.FileName;
+                item.Status = entry is null
+                    ? string.Join(" / ", result.Errors.Concat(result.Skipped).DefaultIfEmpty("配置できませんでした"))
+                    : $"✓ {result.TargetRelPath}/{entry.FileName}";
+            }
+            finally
+            {
+                try { File.Delete(temp); } catch { /* 後始末の失敗は無視 */ }
+            }
+        }
+        finally
+        {
+            item.IsRunning = false;
+        }
+    }
 
     /// <summary>
     /// 既定のアプリの関連付け XML（default_app_config/xml/AppAssoc.xml）を編集ダイアログで作成・編集する。

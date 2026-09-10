@@ -94,8 +94,8 @@ public sealed class SysprepEmitter : IMasterEmitter
         var module = ctx.Snapshot.GetModule("default_app_config")!;
         if (!module.HasFile("xml", name))
         {
-            ctx.Warn($"default_app_config/xml/{name} がありません。マスタ PC で既定のアプリを設定して「Export App Associations」を実行し、出来た XML をドロップするか、「既定のアプリを編集」で作成してください。既定のアプリの行は出しません。", "sp_appassoc");
-            ctx.Manual("マスタ PC で既定のアプリを設定し、Fabriq の「Export App Associations」で xml/AppAssoc.xml を作成して Studio の Sysprep 章にドロップする（または「既定のアプリを編集」で作成する）");
+            ctx.Warn($"default_app_config/xml/{name} がありません。「この PC から採取」するか、採取済みの XML をドロップしてください。既定のアプリの行は出しません。", "sp_appassoc");
+            ctx.Manual("参照 PC で既定のアプリを設定し、Studio のマスタ設計（Sysprep 章）で「この PC から採取」して xml/AppAssoc.xml を作る");
             return null;
         }
 

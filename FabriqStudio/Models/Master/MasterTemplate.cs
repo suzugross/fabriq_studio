@@ -88,6 +88,9 @@ public sealed class MasterItem
     /// <summary>ドラッグ＆ドロップで資材を受け付ける設定（table / file の項目）。</summary>
     [JsonPropertyName("drop")] public MasterDropSpec? Drop { get; set; }
 
+    /// <summary>入力の補助。"lnk" = table にファイル選択で行を足す（タスクバーのピン留め）、"storeApps" = multi にこの PC のストアアプリから選ぶ。</summary>
+    [JsonPropertyName("picker")] public string? Picker { get; set; }
+
     /// <summary>action 項目が実行する処理の識別子（例: odtDownload）。ViewModel 側で解釈する。</summary>
     [JsonPropertyName("action")] public string? Action { get; set; }
 

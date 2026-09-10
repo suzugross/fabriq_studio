@@ -381,6 +381,9 @@
                                  Width="260" Style="{StaticResource EditableTextBox}" ToolTip="リストに無い値を追加"
                                  IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                         <Button Content="＋ 追加" Command="{Binding AddFreeCommand}" Padding="8,2" FontSize="11" Margin="6,0,0,0" Cursor="Hand" />
+                        <Button Content="🖥 この PC から選ぶ…" Command="{Binding PickFromPcCommand}" Padding="8,2" FontSize="11" Margin="6,0,0,0" Cursor="Hand"
+                                Visibility="{Binding HasPcPicker, Converter={StaticResource BoolToVisibilityConverter}}"
+                                IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                         <ItemsControl ItemsSource="{Binding FreeEntries}" Margin="10,0,0,0" VerticalAlignment="Center">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate><WrapPanel /></ItemsPanelTemplate>
@@ -422,6 +425,10 @@
                             IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                     <Button DockPanel.Dock="Right" Content="＋ 行追加" Command="{Binding AddRowCommand}"
                             Padding="8,2" FontSize="11" Margin="0,0,6,0" Cursor="Hand"
+                            IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
+                    <Button DockPanel.Dock="Right" Content="📂 ファイルを選ぶ…" Command="{Binding PickFilesCommand}"
+                            Padding="8,2" FontSize="11" Margin="0,0,6,0" Cursor="Hand"
+                            Visibility="{Binding HasFilePicker, Converter={StaticResource BoolToVisibilityConverter}}"
                             IsEnabled="{Binding DataContext.IsEditable, RelativeSource={RelativeSource AncestorType=UserControl}}" />
                 </DockPanel>
                 <!-- 資材のドロップ枠（テンプレートに drop 設定がある表だけ。表そのものもドロップを受ける） -->

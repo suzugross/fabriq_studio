@@ -81,6 +81,10 @@
                 <views:GpoCollectionView />
             </DataTemplate>
 
+            <DataTemplate DataType="{x:Type vm:CollectViewModel}">
+                <views:CollectView />
+            </DataTemplate>
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

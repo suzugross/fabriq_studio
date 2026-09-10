@@ -53,6 +53,13 @@ public partial class App : Application
         services.AddSingleton<IModuleDataResolver, ModuleDataResolver>();   // PDF（プロファイル別データフォルダ）の解決規則
         services.AddSingleton<IProfileDataService, ProfileDataService>();     // PDF への取り込み・整理
         services.AddSingleton<IDataSetContext, DataSetContext>();             // グローバルの編集先データセット（辞書の書き出し・プリンタ検出・Pianist が従う）
+        // 採取（この PC から採取して現在のプロファイルのデータフォルダへ配置）
+        services.AddSingleton<FabriqStudio.Services.Collect.IPowerShellRunner, FabriqStudio.Services.Collect.PowerShellRunner>();
+        services.AddSingleton<FabriqStudio.Services.Collect.IWingetSearchService, FabriqStudio.Services.Collect.WingetSearchService>();
+        services.AddSingleton<FabriqStudio.Services.Collect.IStoreAppInventoryService, FabriqStudio.Services.Collect.StoreAppInventoryService>();
+        services.AddSingleton<FabriqStudio.Services.Collect.IDriverExportService, FabriqStudio.Services.Collect.DriverExportService>();
+        services.AddSingleton<FabriqStudio.Services.Collect.IDesktopIconLayoutService, FabriqStudio.Services.Collect.DesktopIconLayoutService>();
+        services.AddSingleton<FabriqStudio.Services.Collect.ICollectPlacementService, FabriqStudio.Services.Collect.CollectPlacementService>();
         services.AddSingleton<ILooperService, LooperService>();
         services.AddSingleton<IRegistryCollectionService, RegistryCollectionService>();
         services.AddSingleton<IPrinterDriverDetectorService, PrinterDriverDetectorService>();
@@ -94,6 +101,7 @@ public partial class App : Application
         services.AddSingleton<PianistProfileEditorViewModel>();
         services.AddSingleton<MasterParamViewModel>();
         services.AddSingleton<GpoCollectionViewModel>();
+        services.AddSingleton<CollectViewModel>();
         services.AddSingleton<MainViewModel>();
 
         // --- Views ---

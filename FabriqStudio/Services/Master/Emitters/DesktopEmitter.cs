@@ -24,6 +24,7 @@ public sealed class DesktopEmitter : IMasterEmitter
     public void Emit(MasterContext ctx)
     {
         EmitShortcuts(ctx);
+        EmitIconLayout(ctx);
         EmitWallpaper(ctx);
         EmitTaskbarPins(ctx);
 
@@ -54,6 +55,25 @@ public sealed class DesktopEmitter : IMasterEmitter
         }
         if (any)
             ctx.AddProfile("copyfile_config", "copyfile_config.ps1", ProfileSlot.Desktop, 30, isolated: true);
+    }
+
+    // ── デスクトップのアイコン配置 ─────────────────────────────────
+    // 参照 PC で採取した .reg（desktop_icon_config/backup/）をマスタ作成時に復元する。Restore は backup/ の最新の .reg を使う。
+    // サインイン中のユーザー（Administrator）に入り、CopyProfile で新規ユーザーの既定にもなる。
+    private static void EmitIconLayout(MasterContext ctx)
+    {
+        var file = ctx.Get("desk_icon_layout").Trim();
+        if (string.IsNullOrEmpty(file)) return;
+
+        if (!ctx.ModuleAvailable("desktop_icon_config"))
+        {
+            ctx.Warn("desktop_icon_config（extended）がワークスペースにありません。アイコン配置の復元は出しません。", "desk_icon_layout");
+            return;
+        }
+        if (ctx.Snapshot.GetModule("desktop_icon_config") is { } m && !m.HasFile("backup", file))
+            ctx.Warn($"desktop_icon_config/backup/{file} が見つかりません。「この PC から採取」するか .reg をドロップしてください。", "desk_icon_layout");
+
+        ctx.AddProfile("desktop_icon_config", "desktop_icon_restore.ps1", ProfileSlot.Desktop, 40, isolated: false, description: "デスクトップのアイコン配置");
     }
 
     // ── 壁紙 ──────────────────────────────────────────────────────

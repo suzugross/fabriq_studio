@@ -251,6 +251,13 @@
                             CommandParameter="HostList"
                             IsEnabled="{Binding IsWorkspaceOpen}" />
 
+                    <Button Content="📥  採取"
+                            Style="{StaticResource NavButtonStyle}"
+                            Command="{Binding NavigateCommand}"
+                            CommandParameter="Collect"
+                            IsEnabled="{Binding IsWorkspaceOpen}"
+                            ToolTip="この PC から採取して、実行プロファイルのデータフォルダへ配置します" />
+
                     <Button Content="🧭  マスタ設計"
                             Style="{StaticResource NavButtonStyle}"
                             Command="{Binding NavigateCommand}"

@@ -7,6 +7,8 @@ using FabriqStudio.Models.Gpo;
 using FabriqStudio.Models.Master;
 using FabriqStudio.Services;
 using FabriqStudio.Services.Gpo;
+using FabriqStudio.Helpers;
+using FabriqStudio.Services.Collect;
 
 namespace FabriqStudio.ViewModels.Master;
 
@@ -47,6 +49,12 @@ public sealed class MasterItemContext
 
     /// <summary>registry 項目: 表示名・キー・辞書値の解決に使う辞書。</summary>
     public IRegistryCollectionService? RegistryDictionary { get; init; }
+
+    /// <summary>picker "lnk": ファイル選択（filter, initialDir → パス一覧。キャンセルで null）。</summary>
+    public Func<string, string?, Task<IReadOnlyList<string>?>>? PickFiles { get; init; }
+
+    /// <summary>picker "storeApps": この PC のストアアプリから選ぶ（引数は選択済みの値。キャンセルで null）。</summary>
+    public Func<IReadOnlyCollection<string>, Task<IReadOnlyList<string>?>>? PickStoreApps { get; init; }
 }
 
 /// <summary>ボタンで処理を実行する項目（例: ODT のオフライン資材ダウンロード）。値は持たない。</summary>
@@ -338,6 +346,25 @@ public sealed partial class MultiItemViewModel : MasterItemViewModel
 
     public bool AllowFree => Item.AllowFree;
 
+    // ── この PC から選ぶ（picker "storeApps"）──
+    public bool HasPcPicker => string.Equals(Item.Picker, "storeApps", StringComparison.OrdinalIgnoreCase) && Context.PickStoreApps is not null;
+
+    [RelayCommand]
+    private async Task PickFromPcAsync()
+    {
+        if (!HasPcPicker || Context.PickStoreApps is null || !Context.CanEdit()) return;
+        var names = await Context.PickStoreApps(SelectedValues);
+        if (names is null || names.Count == 0) return;
+
+        foreach (var n in names)
+        {
+            var opt = Options.FirstOrDefault(o => o.Value.Equals(n, StringComparison.OrdinalIgnoreCase));
+            if (opt is not null) opt.IsChecked = true;
+            else if (!FreeEntries.Contains(n, StringComparer.OrdinalIgnoreCase)) FreeEntries.Add(n);
+        }
+        NotifyChanged();
+    }
+
     public MultiItemViewModel(MasterItem item, MasterItemContext context) : base(item, context)
     {
         foreach (var opt in item.Options ?? [])
@@ -439,6 +466,28 @@ public sealed partial class TableItemViewModel : MasterItemViewModel, IAssetDrop
     public bool   HasDrop  => DropSpec is not null;
     public bool   CanDrop  => DropSpec is not null && Context.Import is not null && Context.CanEdit();
     public string DropHint => DropSpec?.Hint ?? "ここへファイルをドロップ";
+
+    // ── ファイル選択（picker "lnk"）: タスクバーのピン留めを .lnk / .exe から足す ──
+    public bool HasFilePicker => string.Equals(Item.Picker, "lnk", StringComparison.OrdinalIgnoreCase) && Context.PickFiles is not null;
+
+    [RelayCommand]
+    private async Task PickFilesAsync()
+    {
+        if (!HasFilePicker || Context.PickFiles is null || !Context.CanEdit()) return;
+        var paths = await Context.PickFiles(FilePicker.LinkFilter, FilePicker.StartMenuPrograms);
+        if (paths is null || paths.Count == 0) return;
+
+        foreach (var p in paths)
+        {
+            var row = Table.NewRow();
+            FillRow(row, null);
+            Set(row, "Kind", "LinkPath");
+            Set(row, "Value", TaskbarLinkPath.ToPortable(p));
+            Set(row, "Description", System.IO.Path.GetFileNameWithoutExtension(p));
+            Table.Rows.Add(row);
+        }
+        NotifyChanged();
+    }
 
     public async Task AcceptDropAsync(IReadOnlyList<string> paths)
     {

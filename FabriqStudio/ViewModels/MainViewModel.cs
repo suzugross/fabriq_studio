@@ -31,6 +31,7 @@ public partial class MainViewModel : ObservableObject
     private readonly PianistProfileEditorViewModel    _pianistEditorVm;
     private readonly MasterParamViewModel             _masterParamVm;
     private readonly GpoCollectionViewModel           _gpoCollectionVm;
+    private readonly CollectViewModel                 _collectVm;
     private readonly IWorkspaceService                _workspace;
     private readonly ICryptoService                   _crypto;
     private readonly IDataSetContext                  _dataSet;
@@ -85,6 +86,7 @@ public partial class MainViewModel : ObservableObject
         PianistProfileEditorViewModel     pianistEditorVm,
         MasterParamViewModel              masterParamVm,
         GpoCollectionViewModel            gpoCollectionVm,
+        CollectViewModel                  collectVm,
         IWorkspaceService                 workspace,
         ICryptoService                    crypto,
         IDataSetContext                   dataSet,
@@ -94,6 +96,7 @@ public partial class MainViewModel : ObservableObject
         _profiles                = profiles;
         _masterParamVm           = masterParamVm;
         _gpoCollectionVm         = gpoCollectionVm;
+        _collectVm               = collectVm;
         _basicParamsVm           = basicParamsVm;
         _moduleEditVm            = moduleEditVm;
         _hostListVm              = hostListVm;
@@ -225,6 +228,7 @@ public partial class MainViewModel : ObservableObject
             "PianistProfile"         => _pianistEditorVm,
             "MasterParam"            => _masterParamVm,
             "GpoCollection"          => _gpoCollectionVm,
+            "Collect"                => _collectVm,
             _                        => CurrentPage
         };
     }
